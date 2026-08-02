@@ -593,7 +593,6 @@ def d8():
         # Row 1 (7)
         ("Claude Code",     ".mcp.json",                                BLU, BLU_BG),
         ("Codex",           "~/.codex/config.toml",                     PRP, PRP_BG),
-        ("Continue",        "~/.continue/config.json",                  RED, RED_BG),
         ("OpenCode",        ".opencode.json",                           BLU, PRP_BG),
         # Row 2 (7)
     ]

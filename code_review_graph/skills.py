@@ -49,14 +49,6 @@ PLATFORMS: dict[str, dict[str, Any]] = {
         "format": "object",
         "needs_type": True,
     },
-    "continue": {
-        "name": "Continue",
-        "config_path": lambda root: Path.home() / ".continue" / "config.json",
-        "key": "mcpServers",
-        "detect": lambda: (Path.home() / ".continue").exists(),
-        "format": "array",
-        "needs_type": True,
-    },
     "opencode": {
         "name": "OpenCode",
         "config_path": _opencode_config_path,

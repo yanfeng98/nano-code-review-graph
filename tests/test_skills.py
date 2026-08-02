@@ -922,28 +922,6 @@ class TestInstallPlatformConfigs:
         ):
             install_platform_configs(tmp_path, target="codex")
         assert codex_config.read_text().count("[mcp_servers.code-review-graph]") == 1
-
-    def test_install_continue_config(self, tmp_path):
-        continue_dir = tmp_path / ".continue"
-        continue_dir.mkdir()
-        config_path = continue_dir / "config.json"
-        with patch.dict(
-            PLATFORMS,
-            {
-                "continue": {
-                    **PLATFORMS["continue"],
-                    "config_path": lambda root: config_path,
-                    "detect": lambda: True,
-                },
-            },
-        ):
-            configured = install_platform_configs(tmp_path, target="continue")
-        assert "Continue" in configured
-        data = json.loads(config_path.read_text())
-        assert isinstance(data["mcpServers"], list)
-        assert data["mcpServers"][0]["name"] == "code-review-graph"
-        assert data["mcpServers"][0]["type"] == "stdio"
-
     def test_install_opencode_config(self, tmp_path):
         configured = install_platform_configs(tmp_path, target="opencode")
         assert "OpenCode" in configured
@@ -1013,7 +991,6 @@ class TestInstallPlatformConfigs:
                 },
                 "claude": {**PLATFORMS["claude"], "detect": lambda: True},
                 "opencode": {**PLATFORMS["opencode"], "detect": lambda: True},
-                "continue": {**PLATFORMS["continue"], "detect": lambda: False},
             },
         ):
             with patch("code_review_graph.skills.Path.home", return_value=tmp_path):
@@ -1045,26 +1022,7 @@ class TestInstallPlatformConfigs:
         configured = install_platform_configs(tmp_path, target="claude")
         assert "Claude Code" in configured
 
-    def test_continue_array_no_duplicate(self, tmp_path):
-        config_path = tmp_path / ".continue" / "config.json"
-        config_path.parent.mkdir(parents=True)
-        existing = {
-            "mcpServers": [{"name": "code-review-graph", "command": "uvx", "args": ["serve"]}]
-        }
-        config_path.write_text(json.dumps(existing))
-        with patch.dict(
-            PLATFORMS,
-            {
-                "continue": {
-                    **PLATFORMS["continue"],
-                    "config_path": lambda root: config_path,
-                    "detect": lambda: True,
-                },
-            },
-        ):
-            install_platform_configs(tmp_path, target="continue")
-        data = json.loads(config_path.read_text())
-        assert len(data["mcpServers"]) == 1
+
 class TestDetectServeCommand:
     """Tests for _detect_serve_command() and its helpers."""
 
@@ -1331,49 +1289,6 @@ class TestInstallOpenCodePlugin:
         # Should be readable as UTF-8 without errors
         content = result.read_text(encoding="utf-8")
         assert len(content) > 0
-
-
-class TestInstallConfigDataLoss:
-    """Regression tests for #344: ``install_platform_configs`` must never
-    destroy a user's existing platform config. Two residual bugs remained
-    on main even after the JSONC-stripping fix:
-
-    * a top-level JSON *array* hit ``existing.get(...)`` and crashed with
-      AttributeError before writing;
-    * an *empty* settings file was mis-flagged "unparseable" and skipped,
-      so a fresh install on an empty file silently did nothing.
-    """
-
-    def _run_continue(self, settings_path: Path, root: Path):
-        with patch.dict(
-            PLATFORMS,
-            {
-                "continue": {
-                    **PLATFORMS["continue"],
-                    "config_path": lambda r: settings_path,
-                    "detect": lambda: True,
-                },
-            },
-        ):
-            return install_platform_configs(root, target="continue")
-
-    def test_array_platform_preserves_wrong_typed_server_collection(
-        self, tmp_path, capsys
-    ):
-        config = tmp_path / ".continue" / "config.json"
-        config.parent.mkdir(parents=True)
-        original = '{\n  "mcpServers": {"legacy": "keep-me"}\n}\n'
-        config.write_text(original, encoding="utf-8")
-
-        configured = self._run_continue(config, tmp_path)
-
-        assert "Continue" not in configured
-        assert config.read_text(encoding="utf-8") == original
-        out = capsys.readouterr().out
-        assert "mcpServers" in out
-        assert "expected a JSON array" in out
-        assert "skipping to avoid data loss" in out
-
 class TestGeneratedHooksGuardGitRepo:
     """Regression coverage for #312: generated Claude Code hooks must guard
     the ``update`` / ``status`` commands behind a git-repo check so that, in

@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**code-review-graph** is a persistent, incrementally updated, local-first knowledge graph for token-efficient code review through MCP and the CLI. It parses codebases using Tree-sitter and targeted fallbacks, builds a structural graph in SQLite, and exposes compact context to AI coding tools including Claude Code, Codex, Continue, and OpenCode.
+**code-review-graph** is a persistent, incrementally updated, local-first knowledge graph for token-efficient code review through MCP and the CLI. It parses codebases using Tree-sitter and targeted fallbacks, builds a structural graph in SQLite, and exposes compact context to AI coding tools including Claude Code, Codex, and OpenCode.
 
 ## Graph Tool Usage (Token-Efficient)
 When using code-review-graph MCP tools, follow these rules:

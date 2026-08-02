@@ -28,7 +28,6 @@ code-review-graph install --platform codebuddy
 | **Codex** | `~/.codex/config.toml` + `~/.codex/hooks.json` |
 | **Claude Code** | `.mcp.json` + `.claude/settings.json` |
 | **CodeBuddy Code** | `.mcp.json` + `CODEBUDDY.md` + `.codebuddy/settings.json` + `.codebuddy/skills/<name>/SKILL.md` |
-| **Continue** | `.continue/config.json` |
 | **OpenCode** | `opencode.jsonc` (preferred) or `opencode.json` |
 
 The CodeBuddy project layout follows its official documentation for

@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         code-review-graph already configures Claude Code, Codex,
-        Continue, and OpenCode.
+        and OpenCode.
         Use this form to request support for another AI coding tool.
   - type: input
     id: platform-name

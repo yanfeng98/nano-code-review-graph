@@ -13,7 +13,6 @@
 │  MCP clients              Hooks / watch mode                 │
 │  ├── Codex                └── incremental update             │
 │  ├── Claude Code, CodeBuddy Code                             │
-│  ├── Continue                         │
 │  └── OpenCode              │
 │          │                        │                          │
 │          ▼                        ▼                          │

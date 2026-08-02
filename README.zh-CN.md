@@ -321,5 +321,5 @@ MIT。详见 [LICENSE](LICENSE)。
 <br>
 <a href="https://code-review-graph.com">code-review-graph.com</a><br><br>
 <code>pip install code-review-graph && code-review-graph install</code><br>
-<sub>自动检测并配置支持的 AI 编码工具，包括 Codex、Claude Code、Continue 和 OpenCode</sub>
+<sub>自动检测并配置支持的 AI 编码工具，包括 Codex、Claude Code 和 OpenCode</sub>
 </p>
