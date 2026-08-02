@@ -1147,20 +1147,6 @@ def _process_user(
         report,
         dry_run=dry_run,
     )
-    _remove_hooks(
-        home / ".cursor" / "hooks.json",
-        _commands(skills.generate_cursor_hooks_config()),
-        home,
-        report,
-        dry_run=dry_run,
-    )
-    for filename in skills._cursor_hook_scripts():
-        _remove_file(
-            home / ".cursor" / "hooks" / filename,
-            home,
-            report,
-            dry_run=dry_run,
-        )
     _remove_file(
         home / ".config" / "opencode" / "plugins" / "crg-plugin.ts",
         home,

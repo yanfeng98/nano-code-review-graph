@@ -322,5 +322,5 @@ MIT। [LICENSE](LICENSE) देखें।
 <br>
 <a href="https://code-review-graph.com">code-review-graph.com</a><br><br>
 <code>pip install code-review-graph && code-review-graph install</code><br>
-<sub>Codex, Claude Code, Cursor, Windsurf, Zed, Continue, OpenCode, Antigravity, Kiro, Qoder, और GitHub Copilot सहित समर्थित AI कोडिंग टूल्स को स्वचालित रूप से पहचानता और कॉन्फ़िगर करता है</sub>
+<sub>Codex, Claude Code, Windsurf, Zed, Continue, OpenCode, Antigravity, Kiro, Qoder, और GitHub Copilot सहित समर्थित AI कोडिंग टूल्स को स्वचालित रूप से पहचानता और कॉन्फ़िगर करता है</sub>
 </p>

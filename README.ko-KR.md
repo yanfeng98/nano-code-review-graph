@@ -324,5 +324,5 @@ MIT. [LICENSE](LICENSE)를 참조하세요.
 <br>
 <a href="https://code-review-graph.com">code-review-graph.com</a><br><br>
 <code>pip install code-review-graph && code-review-graph install</code><br>
-<sub>Codex, Claude Code, Cursor, Windsurf, Zed, Continue, OpenCode, Antigravity, Kiro, Qoder, GitHub Copilot 등 지원되는 AI 코딩 도구를 자동 감지하고 설정합니다</sub>
+<sub>Codex, Claude Code, Windsurf, Zed, Continue, OpenCode, Antigravity, Kiro, Qoder, GitHub Copilot 등 지원되는 AI 코딩 도구를 자동 감지하고 설정합니다</sub>
 </p>

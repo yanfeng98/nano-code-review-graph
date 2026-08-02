@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 
 # Shared platform choices for install and init commands
 _PLATFORM_CHOICES = [
-    "codex", "claude", "claude-code", "cursor", "windsurf", "zed",
+    "codex", "claude", "claude-code", "windsurf", "zed",
     "continue", "opencode", "antigravity", "kiro", "qoder",
     "copilot", "copilot-cli", "codebuddy", "all",
 ]
@@ -311,7 +311,6 @@ def _handle_init(args: argparse.Namespace) -> None:
         install_codebuddy_hooks,
         install_codebuddy_skills,
         install_codex_hooks,
-        install_cursor_hooks,
         install_git_hook,
         install_hooks,
         install_opencode_plugin,
@@ -375,14 +374,6 @@ def _handle_init(args: argparse.Namespace) -> None:
         git_hook = install_git_hook(repo_root)
         if git_hook:
             print(f"Installed git pre-commit hook in {git_hook}")
-
-    # Cursor hooks (user-level, only if ~/.cursor exists — matching MCP detect)
-    if not skip_hooks and target in ("all", "cursor") and PLATFORMS["cursor"]["detect"]():
-        try:
-            hooks_path = install_cursor_hooks()
-            print(f"Installed Cursor hooks in {hooks_path}")
-        except Exception as exc:
-            logger.warning("Could not install Cursor hooks: %s", exc)
 
     # OpenCode plugin (user-level, gated by same detect() as MCP config)
     if not skip_hooks and target in ("all", "opencode") and PLATFORMS["opencode"]["detect"]():

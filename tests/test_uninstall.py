@@ -208,63 +208,6 @@ def test_jsonc_comments_trailing_commas_and_https_survive(
     assert _read_jsonc(path)[spec["key"]]["other"]["url"].startswith("https://")
 
 
-def test_cursor_shared_hooks_directory_keeps_unrelated_scripts(
-    fake_repo: Path,
-    fake_home: Path,
-) -> None:
-    cursor_dir = fake_home / ".cursor"
-    config = skills.generate_cursor_hooks_config()
-    config["hooks"]["sessionStart"].append({"command": "user-session-hook"})
-    _write_json(cursor_dir / "hooks.json", config)
-    for filename in skills._cursor_hook_scripts():
-        _write(cursor_dir / "hooks" / filename, "#!/bin/sh\n")
-    _write(cursor_dir / "hooks" / "my-company-hook.sh", "#!/bin/sh\n")
-
-    uninstall.run(repo=fake_repo, keep_data=True)
-
-    assert (cursor_dir / "hooks").is_dir()
-    assert (cursor_dir / "hooks" / "my-company-hook.sh").exists()
-    for filename in skills._cursor_hook_scripts():
-        assert not (cursor_dir / "hooks" / filename).exists()
-    data = _read_jsonc(cursor_dir / "hooks.json")
-    assert data["hooks"]["sessionStart"] == [{"command": "user-session-hook"}]
-
-
-def test_hook_cleanup_handles_owned_entries_and_mixed_nested_groups(
-    fake_repo: Path,
-    fake_home: Path,
-) -> None:
-    owned = skills.generate_cursor_hooks_config()["hooks"]["sessionStart"][0]["command"]
-    hooks_path = fake_home / ".cursor" / "hooks.json"
-    _write_json(
-        hooks_path,
-        {
-            "hooks": {
-                "sessionStart": [
-                    {"command": owned},
-                    {
-                        "matcher": "",
-                        "hooks": [
-                            {"command": owned},
-                            {"command": "user-session-hook"},
-                        ],
-                    },
-                ]
-            }
-        },
-    )
-
-    uninstall.run(repo=fake_repo, keep_data=True)
-
-    assert _read_jsonc(hooks_path) == {
-        "hooks": {
-            "sessionStart": [
-                {"matcher": "", "hooks": [{"command": "user-session-hook"}]}
-            ]
-        }
-    }
-
-
 def test_source_pr_legacy_hook_commands_are_removed_exactly(
     fake_repo: Path,
     fake_home: Path,
@@ -581,7 +524,7 @@ def test_malformed_config_is_unchanged_and_other_cleanup_continues(
     fake_repo: Path,
     fake_home: Path,
 ) -> None:
-    malformed = fake_repo / ".cursor" / "mcp.json"
+    malformed = fake_repo / ".kiro" / "settings" / "mcp.json"
     _write(malformed, '{"mcpServers": { this is not JSON')
     malformed_toml = fake_home / ".codex" / "config.toml"
     _write(
