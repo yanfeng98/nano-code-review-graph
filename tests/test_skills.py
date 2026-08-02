@@ -671,7 +671,7 @@ class TestInjectPlatformInstructionsFiltering:
     def test_all_writes_every_file(self, tmp_path):
         updated = inject_platform_instructions(tmp_path, target="all")
         assert set(updated) == {
-            "AGENTS.md", "GEMINI.md", ".windsurfrules",
+            "AGENTS.md", "GEMINI.md",
             "QODER.md",
             ".github/instructions/code-review-graph.instructions.md",
             "CODEBUDDY.md",
@@ -680,7 +680,7 @@ class TestInjectPlatformInstructionsFiltering:
     def test_default_is_all(self, tmp_path):
         updated = inject_platform_instructions(tmp_path)
         assert set(updated) == {
-            "AGENTS.md", "GEMINI.md", ".windsurfrules",
+            "AGENTS.md", "GEMINI.md",
             "QODER.md",
             ".github/instructions/code-review-graph.instructions.md",
             "CODEBUDDY.md",
@@ -691,7 +691,6 @@ class TestInjectPlatformInstructionsFiltering:
         assert updated == []
         assert not (tmp_path / "AGENTS.md").exists()
         assert not (tmp_path / "GEMINI.md").exists()
-        assert not (tmp_path / ".windsurfrules").exists()
         assert not (tmp_path / "QODER.md").exists()
         assert not (
             tmp_path
@@ -699,10 +698,6 @@ class TestInjectPlatformInstructionsFiltering:
             / "instructions"
             / "code-review-graph.instructions.md"
         ).exists()
-
-    def test_windsurf_writes_only_windsurfrules(self, tmp_path):
-        updated = inject_platform_instructions(tmp_path, target="windsurf")
-        assert updated == [".windsurfrules"]
 
     def test_antigravity_writes_agents_and_gemini(self, tmp_path):
         updated = inject_platform_instructions(tmp_path, target="antigravity")
@@ -716,7 +711,6 @@ class TestInjectPlatformInstructionsFiltering:
         updated = inject_platform_instructions(tmp_path, target="codex")
         assert updated == ["AGENTS.md"]
         assert not (tmp_path / "GEMINI.md").exists()
-        assert not (tmp_path / ".windsurfrules").exists()
         assert not (tmp_path / "QODER.md").exists()
         content = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
         assert _CLAUDE_MD_SECTION_MARKER in content
@@ -726,7 +720,6 @@ class TestInjectPlatformInstructionsFiltering:
         assert updated == ["QODER.md"]
         assert not (tmp_path / "AGENTS.md").exists()
         assert not (tmp_path / "GEMINI.md").exists()
-        assert not (tmp_path / ".windsurfrules").exists()
 
     def test_codebuddy_writes_only_codebuddy_md_and_is_idempotent(self, tmp_path):
         first = inject_platform_instructions(tmp_path, target="codebuddy")
@@ -973,28 +966,6 @@ class TestInstallPlatformConfigs:
             install_platform_configs(tmp_path, target="codex")
         assert codex_config.read_text().count("[mcp_servers.code-review-graph]") == 1
 
-    def test_install_windsurf_config(self, tmp_path):
-        windsurf_dir = tmp_path / ".codeium" / "windsurf"
-        windsurf_dir.mkdir(parents=True)
-        config_path = windsurf_dir / "mcp_config.json"
-        with patch.dict(
-            PLATFORMS,
-            {
-                "windsurf": {
-                    **PLATFORMS["windsurf"],
-                    "config_path": lambda root: config_path,
-                    "detect": lambda: True,
-                },
-            },
-        ):
-            configured = install_platform_configs(tmp_path, target="windsurf")
-        assert "Windsurf" in configured
-        data = json.loads(config_path.read_text())
-        entry = data["mcpServers"]["code-review-graph"]
-        assert "type" not in entry
-        expected_cmd, _ = _detect_serve_command()
-        assert entry["command"] == expected_cmd
-
     def test_install_zed_config(self, tmp_path):
         zed_settings = tmp_path / "zed" / "settings.json"
         zed_settings.parent.mkdir(parents=True)
@@ -1104,7 +1075,6 @@ class TestInstallPlatformConfigs:
                 },
                 "claude": {**PLATFORMS["claude"], "detect": lambda: True},
                 "opencode": {**PLATFORMS["opencode"], "detect": lambda: True},
-                "windsurf": {**PLATFORMS["windsurf"], "detect": lambda: False},
                 "zed": {**PLATFORMS["zed"], "detect": lambda: False},
                 "continue": {**PLATFORMS["continue"], "detect": lambda: False},
                 "antigravity": {**PLATFORMS["antigravity"], "detect": lambda: False},
@@ -1269,7 +1239,6 @@ class TestCopilotPlatform:
         ]
         assert not (tmp_path / "AGENTS.md").exists()
         assert not (tmp_path / "GEMINI.md").exists()
-        assert not (tmp_path / ".windsurfrules").exists()
         assert not (tmp_path / "QODER.md").exists()
 
     def test_copilot_included_in_all_when_detected(self, tmp_path):
@@ -1998,11 +1967,6 @@ class TestInstallSkillsRespectTargetPlatform:
                 crg_cli._handle_init(args)
         return (tmp_path / ".claude" / "skills").is_dir()
 
-    def test_cursor_install_does_not_create_claude_skills(self, tmp_path):
-        assert self._run_install(tmp_path, "cursor") is False
-
-    def test_windsurf_install_does_not_create_claude_skills(self, tmp_path):
-        assert self._run_install(tmp_path, "windsurf") is False
 
     def test_claude_install_creates_skills(self, tmp_path):
         assert self._run_install(tmp_path, "claude") is True

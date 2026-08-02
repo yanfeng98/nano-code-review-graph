@@ -323,5 +323,5 @@ MIT。詳細は [LICENSE](LICENSE) を参照してください。
 <br>
 <a href="https://code-review-graph.com">code-review-graph.com</a><br><br>
 <code>pip install code-review-graph && code-review-graph install</code><br>
-<sub>Codex、Claude Code、Windsurf、Zed、Continue、OpenCode、Antigravity、Qoder、GitHub Copilotなど、対応するAIコーディングツールを自動検出して設定</sub>
+<sub>Codex、Claude Code、Zed、Continue、OpenCode、Antigravity、Qoder、GitHub Copilotなど、対応するAIコーディングツールを自動検出して設定</sub>
 </p>

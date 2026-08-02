@@ -45,9 +45,7 @@ body:
       description: Which AI coding tool were you using when you hit the bug?
       options:
         - claude-code
-        - cursor
         - codex
-        - windsurf
         - zed
         - opencode
         - copilot

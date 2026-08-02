@@ -593,7 +593,6 @@ def d8():
         # Row 1 (7)
         ("Claude Code",     ".mcp.json",                                BLU, BLU_BG),
         ("Codex",           "~/.codex/config.toml",                     PRP, PRP_BG),
-        ("Windsurf",        "~/.codeium/windsurf/mcp_config.json",      GRN, GRN_BG),
         ("Zed",             "Zed settings.json",                        YLW, YLW_BG),
         ("Continue",        "~/.continue/config.json",                  RED, RED_BG),
         ("OpenCode",        ".opencode.json",                           BLU, PRP_BG),
