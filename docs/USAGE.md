@@ -27,15 +27,7 @@ code-review-graph install --platform codebuddy
 |----------|-------------|
 | **Codex** | `~/.codex/config.toml` + `~/.codex/hooks.json` |
 | **Claude Code** | `.mcp.json` + `.claude/settings.json` |
-| **CodeBuddy Code** | `.mcp.json` + `CODEBUDDY.md` + `.codebuddy/settings.json` + `.codebuddy/skills/<name>/SKILL.md` |
 | **OpenCode** | `opencode.jsonc` (preferred) or `opencode.json` |
-
-The CodeBuddy project layout follows its official documentation for
-[MCP configuration](https://www.codebuddy.ai/docs/cli/mcp),
-[skills](https://www.codebuddy.ai/docs/cli/skills), and
-[hooks](https://www.codebuddy.ai/docs/cli/hooks). The shared `.mcp.json` is
-merged with JSONC awareness, while hook commands resolve the repository at
-runtime so committed settings do not contain one developer's checkout path.
 
 ## Core Workflow
 

@@ -1044,15 +1044,8 @@ def _process_repo(
         report,
         dry_run=dry_run,
     )
-    _remove_hooks(
-        repo_root / ".codebuddy" / "settings.json",
-        hook_commands,
-        repo_root,
-        report,
-        dry_run=dry_run,
-    )
 
-    for root_name in (".claude", ".gemini", ".codebuddy"):
+    for root_name in (".claude", ".gemini"):
         for slug in _generated_skill_slugs():
             _remove_skill_file(
                 repo_root / root_name / "skills" / slug / "SKILL.md",

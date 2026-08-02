@@ -57,14 +57,6 @@ PLATFORMS: dict[str, dict[str, Any]] = {
         "format": "object",
         "needs_type": False,
     },
-    "codebuddy": {
-        "name": "CodeBuddy Code",
-        "config_path": lambda root: root / ".mcp.json",
-        "key": "mcpServers",
-        "detect": lambda: True,
-        "format": "object",
-        "needs_type": True,
-    },
 }
 
 
@@ -328,26 +320,8 @@ def install_platform_configs(
     Returns:
         List of platform names that were configured.
     """
-    shared_aliases: dict[str, tuple[str, ...]] = {}
     if target == "all":
         platforms_to_install = {k: v for k, v in PLATFORMS.items() if v["detect"]()}
-        # Claude Code and CodeBuddy intentionally share the official project
-        # .mcp.json/mcpServers contract. Process that exact pair once, but do
-        # not deduplicate arbitrary clients merely because a config path
-        # happens to match: their keys or entry schemas may differ.
-        claude = platforms_to_install.get("claude")
-        codebuddy = platforms_to_install.get("codebuddy")
-        if claude is not None and codebuddy is not None:
-            same_contract = (
-                claude["config_path"](repo_root) == codebuddy["config_path"](repo_root)
-                and all(
-                    claude[field] == codebuddy[field]
-                    for field in ("key", "format", "needs_type")
-                )
-            )
-            if same_contract:
-                shared_aliases["claude"] = ("codebuddy",)
-                del platforms_to_install["codebuddy"]
     else:
         if target not in PLATFORMS:
             logger.error("Unknown platform: %s", target)
@@ -358,7 +332,6 @@ def install_platform_configs(
 
     def _record_configured(key: str, plat: dict[str, Any]) -> None:
         configured.append(plat["name"])
-        configured.extend(PLATFORMS[alias]["name"] for alias in shared_aliases.get(key, ()))
 
     for key, plat in platforms_to_install.items():
         if key == "opencode":
@@ -859,25 +832,6 @@ def install_hooks(repo_root: Path, platform: str = "claude") -> None:
     _merge_hooks_into_settings(settings_dir, generate_hooks_config(repo_root))
 
 
-def install_codebuddy_hooks(repo_root: Path) -> Path:
-    """Install runtime-resolved POSIX hooks in .codebuddy/settings.json.
-
-    CodeBuddy uses the same nested hook schema and POSIX-shell execution
-    model as the existing project hooks. The shared generator deliberately
-    resolves the checkout at hook runtime instead of embedding the installer's
-    absolute path, so committed settings work for every collaborator.
-    """
-    hooks_config = generate_hooks_config(repo_root)
-    # CodeBuddy's Bash tool can create or rewrite files without going through
-    # Edit/Write, so its PostToolUse contract also observes Bash. The command
-    # itself still resolves the repository dynamically at hook runtime.
-    hooks_config["hooks"]["PostToolUse"][0]["matcher"] = "Edit|Write|Bash"
-    return _merge_hooks_into_settings(
-        repo_root / ".codebuddy",
-        hooks_config,
-    )
-
-
 def install_codex_hooks(repo_root: Path) -> Path:
     """Write native Codex hooks config to ~/.codex/hooks.json.
 
@@ -1021,35 +975,11 @@ def inject_claude_md(repo_root: Path) -> None:
 # whose owner set includes the target (or "all") are written.
 _PLATFORM_INSTRUCTION_FILES: dict[str, tuple[str, ...]] = {
     "AGENTS.md": ("opencode", "codex"),
-    "CODEBUDDY.md": ("codebuddy",),
 }
 
 # Superseded paths written by older releases. Kept as empty dict for
 # backward-compatible uninstall iteration.
 _LEGACY_PLATFORM_INSTRUCTION_FILES: dict[str, tuple[str, ...]] = {}
-
-
-def install_codebuddy_skills(repo_root: Path) -> Path:
-    """Install project skills in .codebuddy/skills/<name>/SKILL.md."""
-    skills_root = repo_root / ".codebuddy" / "skills"
-    skills_root.mkdir(parents=True, exist_ok=True)
-
-    for filename, skill in _SKILLS.items():
-        slug = filename.rsplit(".", 1)[0]
-        skill_dir = skills_root / slug
-        skill_dir.mkdir(parents=True, exist_ok=True)
-        skill_path = skill_dir / "SKILL.md"
-        content = (
-            "---\n"
-            f"name: {slug}\n"
-            f"description: {skill['description']}\n"
-            "---\n\n"
-            f"{skill['body']}\n"
-        )
-        skill_path.write_text(content, encoding="utf-8")
-        logger.info("Wrote CodeBuddy skill: %s", skill_path)
-
-    return skills_root
 
 
 def inject_platform_instructions(repo_root: Path, target: str = "all") -> list[str]:

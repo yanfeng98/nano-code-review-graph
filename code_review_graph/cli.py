@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 # Shared platform choices for install and init commands
 _PLATFORM_CHOICES = [
     "codex", "claude", "claude-code",
-    "opencode", "codebuddy", "all",
+    "opencode", "all",
 ]
 
 
@@ -307,8 +307,6 @@ def _handle_init(args: argparse.Namespace) -> None:
         generate_skills,
         inject_claude_md,
         inject_platform_instructions,
-        install_codebuddy_hooks,
-        install_codebuddy_skills,
         install_codex_hooks,
         install_git_hook,
         install_hooks,
@@ -320,11 +318,6 @@ def _handle_init(args: argparse.Namespace) -> None:
         if target in ("claude", "all"):
             skills_dir = generate_skills(repo_root)
             print(f"Generated Claude Code skills in {skills_dir}")
-
-        # CodeBuddy discovers project skills under .codebuddy/skills/.
-        if target in ("codebuddy", "all"):
-            codebuddy_skills_dir = install_codebuddy_skills(repo_root)
-            print(f"Installed CodeBuddy skills in {codebuddy_skills_dir}")
 
     # Confirm before writing instruction files (#173). --yes skips the
     # prompt; --no-instructions skips the whole block.
@@ -347,12 +340,6 @@ def _handle_init(args: argparse.Namespace) -> None:
         print("Skipped instruction injection (--no-instructions).")
 
 
-    if not skip_hooks and target in ("codebuddy", "all"):
-        try:
-            codebuddy_settings = install_codebuddy_hooks(repo_root)
-            print(f"Installed CodeBuddy hooks in {codebuddy_settings}")
-        except Exception as exc:
-            logger.warning("Could not install CodeBuddy hooks: %s", exc)
     if not skip_hooks and target in ("codex", "all"):
         hooks_path = install_codex_hooks(repo_root)
         print(f"Installed Codex hooks in {hooks_path}")

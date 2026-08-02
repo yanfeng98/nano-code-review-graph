@@ -648,14 +648,12 @@ class TestInjectPlatformInstructionsFiltering:
         updated = inject_platform_instructions(tmp_path, target="all")
         assert set(updated) == {
             "AGENTS.md",
-            "CODEBUDDY.md",
         }
 
     def test_default_is_all(self, tmp_path):
         updated = inject_platform_instructions(tmp_path)
         assert set(updated) == {
             "AGENTS.md",
-            "CODEBUDDY.md",
         }
 
     def test_claude_writes_nothing(self, tmp_path):
@@ -678,175 +676,6 @@ class TestInjectPlatformInstructionsFiltering:
         assert updated == ["AGENTS.md"]
         content = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
         assert _CLAUDE_MD_SECTION_MARKER in content
-    def test_codebuddy_writes_only_codebuddy_md_and_is_idempotent(self, tmp_path):
-        first = inject_platform_instructions(tmp_path, target="codebuddy")
-        second = inject_platform_instructions(tmp_path, target="codebuddy")
-
-        assert first == ["CODEBUDDY.md"]
-        assert second == []
-        content = (tmp_path / "CODEBUDDY.md").read_text(encoding="utf-8")
-        assert content.count(_CLAUDE_MD_SECTION_MARKER) == 1
-        assert "detect_changes_tool" in content
-        assert not (tmp_path / "CLAUDE.md").exists()
-        assert not (tmp_path / "AGENTS.md").exists()
-
-
-class TestCodeBuddyPlatform:
-    def test_platform_uses_official_project_mcp_contract(self):
-        assert "codebuddy" in PLATFORMS
-        platform = PLATFORMS["codebuddy"]
-
-        assert platform["name"] == "CodeBuddy Code"
-        assert platform["config_path"](Path("/tmp/project")) == Path(
-            "/tmp/project/.mcp.json"
-        )
-        assert platform["key"] == "mcpServers"
-        assert platform["format"] == "object"
-        assert platform["needs_type"] is True
-
-    def test_install_preserves_jsonc_content(self, tmp_path):
-        mcp_path = tmp_path / ".mcp.json"
-        mcp_path.write_text(
-            "{\n"
-            "  // CodeBuddy supports JSONC in project MCP files\n"
-            '  "dashboard": "https://example.test/a,b",\n'
-            '  "mcpServers": {\n'
-            '    "existing": {"command": "existing"},\n'
-            "  },\n"
-            "}\n",
-            encoding="utf-8",
-        )
-
-        configured = install_platform_configs(tmp_path, target="codebuddy")
-
-        assert configured == ["CodeBuddy Code"]
-        data = json.loads(mcp_path.read_text(encoding="utf-8"))
-        assert data["dashboard"] == "https://example.test/a,b"
-        assert data["mcpServers"]["existing"]["command"] == "existing"
-        assert data["mcpServers"]["code-review-graph"]["type"] == "stdio"
-
-    def test_all_dedupes_only_claude_and_codebuddy_shared_contract(
-        self, tmp_path, capsys
-    ):
-        shared_path = tmp_path / ".mcp.json"
-        other_platform = {
-            "name": "Other shared client",
-            "config_path": lambda root: shared_path,
-            "key": "servers",
-            "detect": lambda: True,
-            "format": "object",
-            "needs_type": False,
-        }
-        with patch.dict(
-            PLATFORMS,
-            {
-                "claude": {**PLATFORMS["claude"], "detect": lambda: True},
-                "codebuddy": {**PLATFORMS["codebuddy"], "detect": lambda: True},
-                "other-shared": other_platform,
-            },
-            clear=True,
-        ):
-            configured = install_platform_configs(tmp_path, target="all")
-
-        assert configured == ["Claude Code", "CodeBuddy Code", "Other shared client"]
-        data = json.loads(shared_path.read_text(encoding="utf-8"))
-        assert "code-review-graph" in data["mcpServers"]
-        assert "code-review-graph" in data["servers"]
-        # Claude and CodeBuddy share one exact contract/write. A different
-        # contract that happens to share the path must still be processed.
-        assert capsys.readouterr().out.count(f"configured {shared_path}") == 2
-
-    def test_all_does_not_credit_shared_alias_when_write_is_unsafe(
-        self, tmp_path, capsys
-    ):
-        original = "{ this is not valid JSONC }\n"
-        (tmp_path / ".mcp.json").write_text(original, encoding="utf-8")
-        with patch.dict(
-            PLATFORMS,
-            {
-                "claude": {**PLATFORMS["claude"], "detect": lambda: True},
-                "codebuddy": {**PLATFORMS["codebuddy"], "detect": lambda: True},
-            },
-            clear=True,
-        ):
-            configured = install_platform_configs(tmp_path, target="all")
-
-        assert configured == []
-        assert (tmp_path / ".mcp.json").read_text(encoding="utf-8") == original
-        assert "skipping to avoid data loss" in capsys.readouterr().out
-
-    def test_project_skills_use_uppercase_skill_file(self, tmp_path):
-        from code_review_graph.skills import install_codebuddy_skills
-
-        skills_root = install_codebuddy_skills(tmp_path)
-
-        assert skills_root == tmp_path / ".codebuddy" / "skills"
-        assert {path.name for path in skills_root.iterdir()} == {
-            "debug-issue",
-            "explore-codebase",
-            "refactor-safely",
-            "review-changes",
-        }
-        for skill_dir in skills_root.iterdir():
-            content = (skill_dir / "SKILL.md").read_text(encoding="utf-8")
-            assert content.startswith("---\n")
-            assert f"name: {skill_dir.name}\n" in content
-            assert "description:" in content
-            assert "get_minimal_context" in content
-
-    def test_project_hooks_preserve_user_settings_and_resolve_repo_at_runtime(
-        self, tmp_path
-    ):
-        from code_review_graph.skills import install_codebuddy_hooks
-
-        repo_root = tmp_path / "repo with spaces"
-        settings_path = repo_root / ".codebuddy" / "settings.json"
-        settings_path.parent.mkdir(parents=True)
-        user_hook = {
-            "matcher": "Read",
-            "hooks": [{"type": "command", "command": "echo user"}],
-        }
-        settings_path.write_text(
-            json.dumps(
-                {
-                    "model": "custom-model",
-                    "hooks": {"PostToolUse": [user_hook]},
-                }
-            ),
-            encoding="utf-8",
-        )
-
-        result = install_codebuddy_hooks(repo_root)
-
-        assert result == settings_path
-        assert settings_path.with_suffix(".json.bak").exists()
-        data = json.loads(settings_path.read_text(encoding="utf-8"))
-        assert data["model"] == "custom-model"
-        assert user_hook in data["hooks"]["PostToolUse"]
-        installed = [
-            hook
-            for entries in data["hooks"].values()
-            for entry in entries
-            for hook in entry["hooks"]
-            if "code-review-graph" in hook.get("command", "")
-        ]
-        assert installed
-        for hook in installed:
-            command = hook["command"]
-            assert "command -v code-review-graph" in command
-            assert "git rev-parse --show-toplevel" in command
-            assert str(repo_root) not in command
-
-        crg_entry = next(
-            entry
-            for entry in data["hooks"]["PostToolUse"]
-            if any("code-review-graph" in hook.get("command", "") for hook in entry["hooks"])
-        )
-        assert crg_entry["matcher"] == "Edit|Write|Bash"
-
-        first = settings_path.read_text(encoding="utf-8")
-        install_codebuddy_hooks(repo_root)
-        assert settings_path.read_text(encoding="utf-8") == first
 
 
 class TestInstallPlatformConfigs:
