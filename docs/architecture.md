@@ -14,7 +14,7 @@
 │  ├── Codex                └── incremental update             │
 │  ├── Claude Code, CodeBuddy Code                             │
 │  ├── Zed, Continue                         │
-│  └── Qoder, Copilot, OpenCode              │
+│  └── Qoder, OpenCode              │
 │          │                        │                          │
 │          ▼                        ▼                          │
 │  ┌────────────────────────────────────────────┐              │

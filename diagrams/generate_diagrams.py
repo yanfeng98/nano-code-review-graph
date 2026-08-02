@@ -598,8 +598,6 @@ def d8():
         ("OpenCode",        ".opencode.json",                           BLU, PRP_BG),
         # Row 2 (7)
         ("Qoder",           ".qoder/mcp.json",                          YLW, GRN_BG),
-        ("GitHub Copilot",  ".vscode/mcp.json",                         RED, RED_BG),
-        ("Copilot CLI",     "~/.copilot/mcp-config.json",               PRP, GRN_BG),
     ]
 
     # Central "install" node

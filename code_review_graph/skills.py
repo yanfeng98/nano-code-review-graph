@@ -30,93 +30,6 @@ def _zed_settings_path() -> Path:
         return Path.home() / "Library" / "Application Support" / "Zed" / "settings.json"
     return Path.home() / ".config" / "zed" / "settings.json"
 
-
-def _copilot_vscode_detected() -> bool:
-    """Return whether a GitHub Copilot extension is installed for VS Code."""
-    home = Path.home()
-    extension_dirs = [
-        home / ".vscode" / "extensions",
-        home / ".vscode-insiders" / "extensions",
-    ]
-
-    system = platform.system()
-    if system == "Darwin":
-        for applications_dir in (Path("/Applications"), home / "Applications"):
-            for app_name in (
-                "Visual Studio Code.app",
-                "Visual Studio Code - Insiders.app",
-            ):
-                extension_dirs.append(
-                    applications_dir
-                    / app_name
-                    / "Contents"
-                    / "Resources"
-                    / "app"
-                    / "extensions"
-                )
-    elif system == "Windows":
-        for env_name in ("LOCALAPPDATA", "PROGRAMFILES", "PROGRAMFILES(X86)"):
-            if install_root := os.environ.get(env_name):
-                for app_name in ("Microsoft VS Code", "Microsoft VS Code Insiders"):
-                    extension_dirs.append(
-                        Path(install_root)
-                        / app_name
-                        / "resources"
-                        / "app"
-                        / "extensions"
-                    )
-    elif system == "Linux":
-        extension_dirs.extend(
-            [
-                Path("/usr/share/code/resources/app/extensions"),
-                Path("/usr/share/code-insiders/resources/app/extensions"),
-                Path("/usr/lib/code/resources/app/extensions"),
-                Path("/opt/visual-studio-code/resources/app/extensions"),
-                Path("/snap/code/current/usr/share/code/resources/app/extensions"),
-            ]
-        )
-
-    for command in ("code", "code-insiders"):
-        if executable := shutil.which(command):
-            try:
-                parents = Path(executable).resolve().parents[:6]
-            except OSError:
-                continue
-            for parent in parents:
-                extension_dirs.extend(
-                    [
-                        parent / "extensions",
-                        parent / "resources" / "app" / "extensions",
-                        parent / "Resources" / "app" / "extensions",
-                    ]
-                )
-
-    for extensions_dir in dict.fromkeys(extension_dirs):
-        try:
-            extension_paths = list(extensions_dir.iterdir())
-        except OSError:
-            continue
-        for extension_path in extension_paths:
-            name = extension_path.name.lower()
-            if name.startswith("github.copilot-"):
-                return True
-            if "copilot" not in name:
-                continue
-            try:
-                manifest = json.loads(
-                    (extension_path / "package.json").read_text(encoding="utf-8")
-                )
-            except (OSError, json.JSONDecodeError):
-                continue
-            if (
-                str(manifest.get("publisher", "")).lower() == "github"
-                and str(manifest.get("name", "")).lower()
-                in {"copilot", "copilot-chat"}
-            ):
-                return True
-    return False
-
-
 def _opencode_config_path(repo_root: Path) -> Path:
     """Return OpenCode's existing project config, preferring JSONC."""
     for name in ("opencode.jsonc", "opencode.json"):
@@ -174,28 +87,6 @@ PLATFORMS: dict[str, dict[str, Any]] = {
         "detect": lambda: True,
         "format": "object",
         "needs_type": True,
-    },
-    "copilot": {
-        "name": "GitHub Copilot",
-        "config_path": lambda root: root / ".vscode" / "mcp.json",
-        "key": "servers",
-        "detect": _copilot_vscode_detected,
-        "format": "object",
-        "needs_type": True,
-    },
-    "copilot-cli": {
-        "name": "GitHub Copilot CLI",
-        "config_path": lambda root: Path.home() / ".copilot" / "mcp-config.json",
-        # Copilot CLI reads "mcpServers"; releases before #616 wrote
-        # "servers", which the client silently ignores.
-        "key": "mcpServers",
-        "legacy_keys": ("servers",),
-        "detect": lambda: (Path.home() / ".copilot").exists(),
-        "format": "object",
-        "needs_type": True,
-        # Validated with the released Copilot CLI in #658.
-        "server_type": "local",
-        "entry_fields": {"tools": ["*"]},
     },
     "codebuddy": {
         "name": "CodeBuddy Code",
@@ -1121,66 +1012,9 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 4. Use `query_graph_tool` pattern=\"tests_for\" to check coverage.
 """
 
-# Copilot-specific instruction file content: uses VS Code tool references and
-# includes YAML front matter so Copilot Chat applies it across the workspace.
-_COPILOT_SECTION = f"""---
-applyTo: '**'
-description: >-
-  Use code-review-graph MCP tools for token-efficient
-  codebase exploration and code review.
----
-
-{_CLAUDE_MD_SECTION_MARKER}
-## MCP Tools: code-review-graph
-
-**IMPORTANT: This project has a knowledge graph. ALWAYS use the
-code-review-graph MCP tools BEFORE using file/search tools to
-explore the codebase.** The graph is faster, cheaper (fewer
-tokens), and gives you structural context (callers, dependents,
-test coverage) that file scanning cannot.
-
-### When to use graph tools FIRST
-
-- **Exploring code**: `semantic_search_nodes_tool` or `query_graph_tool`
-- **Understanding impact**: `get_impact_radius_tool`
-- **Code review**: `detect_changes_tool` + `get_review_context_tool`
-- **Finding relationships**: `query_graph_tool` callers_of/callees_of
-- **Architecture questions**: `get_architecture_overview_tool`
-
-Fall back to file/search tools **only** when the graph doesn't
-cover what you need.
-
-### Key Tools
-
-| Tool | Use when |
-| ------ | ---------- |
-| `detect_changes_tool` | Risk-scored change analysis |
-| `get_review_context_tool` | Token-efficient source snippets |
-| `get_impact_radius_tool` | Blast radius of a change |
-| `get_affected_flows_tool` | Impacted execution paths |
-| `query_graph_tool` | Trace callers, callees, imports, tests |
-| `semantic_search_nodes_tool` | Find functions/classes by keyword |
-| `get_architecture_overview_tool` | High-level structure |
-| `refactor_tool` | Rename planning, dead code |
-
-### Workflow
-
-1. The graph auto-updates on file changes (via hooks).
-2. Use `detect_changes_tool` for code review.
-3. Use `get_affected_flows_tool` to understand impact.
-4. Use `query_graph_tool` pattern=\"tests_for\" to check coverage.
-"""
-
 # Maps instruction file path → (marker, section) for files that need content
-# different from the default _CLAUDE_MD_SECTION. Legacy paths remain here so
-# uninstall can identify sections written by older releases.
-_PLATFORM_INSTRUCTION_CUSTOM_SECTIONS: dict[str, tuple[str, str]] = {
-    ".github/instructions/code-review-graph.instructions.md": (
-        _CLAUDE_MD_SECTION_MARKER,
-        _COPILOT_SECTION,
-    ),
-    ".github/code-review-graph.instruction.md": (_CLAUDE_MD_SECTION_MARKER, _COPILOT_SECTION),
-}
+# different from the default _CLAUDE_MD_SECTION.
+_PLATFORM_INSTRUCTION_CUSTOM_SECTIONS: dict[str, tuple[str, str]] = {}
 
 
 def _inject_instructions(file_path: Path, marker: str, section: str) -> bool:
@@ -1222,35 +1056,12 @@ def inject_claude_md(repo_root: Path) -> None:
 _PLATFORM_INSTRUCTION_FILES: dict[str, tuple[str, ...]] = {
     "AGENTS.md": ("opencode", "codex"),
     "QODER.md": ("qoder",),
-    ".github/instructions/code-review-graph.instructions.md": ("copilot", "copilot-cli"),
     "CODEBUDDY.md": ("codebuddy",),
 }
 
-# Superseded paths written by older releases. Reinstall removes only the exact
-# generated section and leaves any user-authored content intact.
-_LEGACY_PLATFORM_INSTRUCTION_FILES: dict[str, tuple[str, ...]] = {
-    ".github/code-review-graph.instruction.md": ("copilot", "copilot-cli"),
-}
-
-
-def _remove_legacy_instruction_file(path: Path) -> None:
-    """Strip an exact generated section from a superseded instruction file."""
-    if not path.exists():
-        return
-    content = path.read_text(encoding="utf-8", errors="replace")
-    if _CLAUDE_MD_SECTION_MARKER not in content:
-        return
-    for section in (_COPILOT_SECTION, _CLAUDE_MD_SECTION):
-        content = content.replace(section, "")
-    if _CLAUDE_MD_SECTION_MARKER in content:
-        return
-    if content.strip():
-        path.write_text(content.rstrip() + "\n", encoding="utf-8")
-        logger.info("Removed legacy instruction section from %s", path)
-    else:
-        path.unlink()
-        logger.info("Removed legacy instruction file %s", path)
-
+# Superseded paths written by older releases. Kept as empty dict for
+# backward-compatible uninstall iteration.
+_LEGACY_PLATFORM_INSTRUCTION_FILES: dict[str, tuple[str, ...]] = {}
 
 
 def install_codebuddy_skills(repo_root: Path) -> Path:
@@ -1299,10 +1110,6 @@ def inject_platform_instructions(repo_root: Path, target: str = "all") -> list[s
             marker, section = _CLAUDE_MD_SECTION_MARKER, _CLAUDE_MD_SECTION
         if _inject_instructions(path, marker, section):
             updated.append(filename)
-    for filename, owners in _LEGACY_PLATFORM_INSTRUCTION_FILES.items():
-        if target != "all" and target not in owners:
-            continue
-        _remove_legacy_instruction_file(repo_root / filename)
     return updated
 
 

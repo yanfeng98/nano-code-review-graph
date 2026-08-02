@@ -32,8 +32,6 @@ code-review-graph install --platform codebuddy
 | **Continue** | `.continue/config.json` |
 | **OpenCode** | `opencode.jsonc` (preferred) or `opencode.json` |
 | **Qoder** | `.qoder/mcp.json` |
-| **GitHub Copilot** | `.vscode/mcp.json` |
-| **GitHub Copilot CLI** | `~/.copilot/mcp-config.json` |
 
 The CodeBuddy project layout follows its official documentation for
 [MCP configuration](https://www.codebuddy.ai/docs/cli/mcp),
