@@ -600,8 +600,6 @@ def d8():
         ("OpenCode",        ".opencode.json",                           BLU, PRP_BG),
         # Row 2 (7)
         ("Antigravity",     "~/.gemini/antigravity/mcp_config.json",    GRY, GRY_BG),
-        ("Gemini CLI",      ".gemini/settings.json",                    PRP, BLU_BG),
-        ("Qwen Code",       "~/.qwen/settings.json",                    ORG, YLW_BG),
         ("Kiro",            ".kiro/settings/mcp.json",                  GRN, ORG_BG),
         ("Qoder",           ".qoder/mcp.json",                          YLW, GRN_BG),
         ("GitHub Copilot",  ".vscode/mcp.json",                         RED, RED_BG),

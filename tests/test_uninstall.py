@@ -208,62 +208,6 @@ def test_jsonc_comments_trailing_commas_and_https_survive(
     assert _read_jsonc(path)[spec["key"]]["other"]["url"].startswith("https://")
 
 
-def test_gemini_shared_settings_removes_mcp_and_owned_hooks(
-    fake_repo: Path,
-    fake_home: Path,
-) -> None:
-    settings = fake_repo / ".gemini" / "settings.json"
-    _write_json(
-        settings,
-        {
-            "mcpServers": {
-                "code-review-graph": {"command": "code-review-graph"},
-                "other": {"command": "other"},
-            },
-            "hooks": {
-                "SessionStart": [
-                    {
-                        "matcher": "",
-                        "hooks": [
-                            {
-                                "type": "command",
-                                "command": "bash .gemini/hooks/crg-session-start.sh",
-                            }
-                        ],
-                    },
-                    {"matcher": "", "hooks": [{"command": "user-session-hook"}]},
-                ],
-                "AfterTool": [
-                    {
-                        "matcher": "write_file|replace",
-                        "hooks": [
-                            {
-                                "type": "command",
-                                "command": "bash .gemini/hooks/crg-update.sh",
-                            }
-                        ],
-                    }
-                ],
-            },
-            "theme": "dark",
-        },
-    )
-    for filename in ("crg-session-start.sh", "crg-update.sh"):
-        _write(fake_repo / ".gemini" / "hooks" / filename, "#!/bin/sh\n")
-
-    uninstall.run(repo=fake_repo, keep_data=True)
-
-    data = _read_jsonc(settings)
-    assert set(data["mcpServers"]) == {"other"}
-    assert data["hooks"]["SessionStart"] == [
-        {"matcher": "", "hooks": [{"command": "user-session-hook"}]}
-    ]
-    assert "AfterTool" not in data["hooks"]
-    assert data["theme"] == "dark"
-    assert not (fake_repo / ".gemini" / "hooks" / "crg-session-start.sh").exists()
-    assert not (fake_repo / ".gemini" / "hooks" / "crg-update.sh").exists()
-
-
 def test_cursor_shared_hooks_directory_keeps_unrelated_scripts(
     fake_repo: Path,
     fake_home: Path,
@@ -709,7 +653,7 @@ def test_keep_flags_preserve_data_and_user_configuration(
     user_data = fake_home / ".code-review-graph"
     user_data.mkdir()
     (user_data / "registry.json").write_text("{}", encoding="utf-8")
-    user_config = fake_home / ".qwen" / "settings.json"
+    user_config = fake_home / ".kiro" / "settings" / "mcp.json"
     _write_json(user_config, {"mcpServers": {"code-review-graph": {}}})
 
     uninstall.run(

@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 # Shared platform choices for install and init commands
 _PLATFORM_CHOICES = [
     "codex", "claude", "claude-code", "cursor", "windsurf", "zed",
-    "continue", "opencode", "antigravity", "gemini-cli", "qwen", "kiro", "qoder",
+    "continue", "opencode", "antigravity", "kiro", "qoder",
     "copilot", "copilot-cli", "codebuddy", "all",
 ]
 
@@ -312,8 +312,6 @@ def _handle_init(args: argparse.Namespace) -> None:
         install_codebuddy_skills,
         install_codex_hooks,
         install_cursor_hooks,
-        install_gemini_cli_hooks,
-        install_gemini_cli_skills,
         install_git_hook,
         install_hooks,
         install_opencode_plugin,
@@ -325,11 +323,6 @@ def _handle_init(args: argparse.Namespace) -> None:
         if target in ("claude", "all"):
             skills_dir = generate_skills(repo_root)
             print(f"Generated Claude Code skills in {skills_dir}")
-
-        # Gemini CLI skills are workspace-scoped under .gemini/.
-        if target in ("gemini-cli", "all"):
-            gemini_skills_dir = install_gemini_cli_skills(repo_root)
-            print(f"Installed Gemini CLI skills in {gemini_skills_dir}")
 
         # CodeBuddy discovers project skills under .codebuddy/skills/.
         if target in ("codebuddy", "all"):
@@ -390,13 +383,6 @@ def _handle_init(args: argparse.Namespace) -> None:
             print(f"Installed Cursor hooks in {hooks_path}")
         except Exception as exc:
             logger.warning("Could not install Cursor hooks: %s", exc)
-
-    if not skip_hooks and target in ("gemini-cli", "all"):
-        try:
-            gemini_settings = install_gemini_cli_hooks(repo_root)
-            print(f"Installed Gemini CLI hooks in {gemini_settings}")
-        except Exception as exc:
-            logger.warning("Could not install Gemini CLI hooks: %s", exc)
 
     # OpenCode plugin (user-level, gated by same detect() as MCP config)
     if not skip_hooks and target in ("all", "opencode") and PLATFORMS["opencode"]["detect"]():

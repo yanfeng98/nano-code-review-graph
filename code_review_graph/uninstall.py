@@ -1059,23 +1059,6 @@ def _process_repo(
         dry_run=dry_run,
     )
 
-    gemini_script_names = skills._GEMINI_CLI_HOOK_FILENAMES
-    gemini_commands = {f"bash .gemini/hooks/{name}" for name in gemini_script_names}
-    _remove_hooks(
-        repo_root / ".gemini" / "settings.json",
-        gemini_commands,
-        repo_root,
-        report,
-        dry_run=dry_run,
-    )
-    for name in gemini_script_names:
-        _remove_file(
-            repo_root / ".gemini" / "hooks" / name,
-            repo_root,
-            report,
-            dry_run=dry_run,
-        )
-
     for root_name in (".claude", ".gemini", ".codebuddy"):
         for slug in _generated_skill_slugs():
             _remove_skill_file(

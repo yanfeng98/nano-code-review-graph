@@ -34,8 +34,6 @@ from code_review_graph.skills import (
     inject_platform_instructions,
     install_codex_hooks,
     install_cursor_hooks,
-    install_gemini_cli_hooks,
-    install_gemini_cli_skills,
     install_git_hook,
     install_hooks,
     install_opencode_plugin,
@@ -721,14 +719,6 @@ class TestInjectPlatformInstructionsFiltering:
         updated = inject_platform_instructions(tmp_path, target="antigravity")
         assert set(updated) == {"AGENTS.md", "GEMINI.md"}
 
-    def test_gemini_cli_writes_only_gemini_md(self, tmp_path):
-        updated = inject_platform_instructions(tmp_path, target="gemini-cli")
-        assert updated == ["GEMINI.md"]
-        assert not (tmp_path / "AGENTS.md").exists()
-        assert not (tmp_path / ".cursorrules").exists()
-        assert not (tmp_path / ".windsurfrules").exists()
-        assert not (tmp_path / "QODER.md").exists()
-
     def test_opencode_writes_only_agents(self, tmp_path):
         updated = inject_platform_instructions(tmp_path, target="opencode")
         assert updated == ["AGENTS.md"]
@@ -1129,68 +1119,6 @@ class TestInstallPlatformConfigs:
         assert legacy.exists()
         assert (tmp_path / "opencode.jsonc").exists()
 
-    def test_install_gemini_cli_config(self, tmp_path):
-        gemini_config = tmp_path / ".gemini" / "settings.json"
-        with patch.dict(
-            PLATFORMS,
-            {
-                "gemini-cli": {
-                    **PLATFORMS["gemini-cli"],
-                    "config_path": lambda root: gemini_config,
-                    "detect": lambda: True,
-                },
-            },
-        ):
-            configured = install_platform_configs(tmp_path, target="gemini-cli")
-        assert "Gemini CLI" in configured
-        data = json.loads(gemini_config.read_text())
-        entry = data["mcpServers"]["code-review-graph"]
-        assert "type" not in entry
-        assert entry["args"][-1] == "serve"
-
-    def test_install_qwen_config(self, tmp_path):
-        """Qwen Code uses ~/.qwen/settings.json with mcpServers (see #83)."""
-        qwen_config = tmp_path / ".qwen" / "settings.json"
-        with patch.dict(
-            PLATFORMS,
-            {
-                "qwen": {
-                    **PLATFORMS["qwen"],
-                    "config_path": lambda root: qwen_config,
-                    "detect": lambda: True,
-                },
-            },
-        ):
-            configured = install_platform_configs(tmp_path, target="qwen")
-        assert "Qwen Code" in configured
-        data = json.loads(qwen_config.read_text())
-        entry = data["mcpServers"]["code-review-graph"]
-        assert entry["type"] == "stdio"
-        assert entry["args"][-1] == "serve"
-
-    def test_install_qwen_preserves_existing_servers(self, tmp_path):
-        """Adding qwen should merge with, not clobber, existing mcpServers."""
-        qwen_config = tmp_path / ".qwen" / "settings.json"
-        qwen_config.parent.mkdir(parents=True)
-        qwen_config.write_text(
-            json.dumps({"mcpServers": {"other-server": {"command": "other"}}}),
-            encoding="utf-8",
-        )
-        with patch.dict(
-            PLATFORMS,
-            {
-                "qwen": {
-                    **PLATFORMS["qwen"],
-                    "config_path": lambda root: qwen_config,
-                    "detect": lambda: True,
-                },
-            },
-        ):
-            install_platform_configs(tmp_path, target="qwen")
-        data = json.loads(qwen_config.read_text())
-        assert "other-server" in data["mcpServers"]
-        assert "code-review-graph" in data["mcpServers"]
-
     def test_install_all_detected(self, tmp_path):
         """Installing 'all' configures auto-detected platforms."""
         codex_config = tmp_path / ".codex" / "config.toml"
@@ -1209,7 +1137,6 @@ class TestInstallPlatformConfigs:
                 "zed": {**PLATFORMS["zed"], "detect": lambda: False},
                 "continue": {**PLATFORMS["continue"], "detect": lambda: False},
                 "antigravity": {**PLATFORMS["antigravity"], "detect": lambda: False},
-                "gemini-cli": {**PLATFORMS["gemini-cli"], "detect": lambda: False},
             },
         ):
             with patch("code_review_graph.skills.Path.home", return_value=tmp_path):
@@ -1282,41 +1209,6 @@ class TestInstallPlatformConfigs:
         assert data["mcpServers"]["code-review-graph"]["type"] == "stdio"
         expected_cmd, _ = _detect_serve_command()
         assert data["mcpServers"]["code-review-graph"]["command"] == expected_cmd
-
-
-class TestGeminiCLIInstall:
-    def test_install_gemini_cli_hooks_creates_settings_and_scripts(self, tmp_path):
-        settings_dir = tmp_path / ".gemini"
-        settings_dir.mkdir(parents=True, exist_ok=True)
-        settings_path = settings_dir / "settings.json"
-        settings_path.write_text(json.dumps({"customSetting": True}) + "\n", encoding="utf-8")
-
-        out_path = install_gemini_cli_hooks(tmp_path)
-        assert out_path == settings_path
-        assert (settings_dir / "settings.json.bak").exists()
-
-        data = json.loads(settings_path.read_text(encoding="utf-8"))
-        assert data["customSetting"] is True
-        assert "hooks" in data
-        assert "SessionStart" in data["hooks"]
-        assert "AfterTool" in data["hooks"]
-
-        session_start = settings_dir / "hooks" / "crg-session-start.sh"
-        update = settings_dir / "hooks" / "crg-update.sh"
-        assert session_start.exists()
-        assert update.exists()
-        assert os.access(session_start, os.X_OK)
-        assert os.access(update, os.X_OK)
-
-    def test_install_gemini_cli_skills_writes_skill_dirs(self, tmp_path):
-        skills_root = install_gemini_cli_skills(tmp_path)
-        assert skills_root == tmp_path / ".gemini" / "skills"
-        skill_path = skills_root / "explore-codebase" / "SKILL.md"
-        assert skill_path.exists()
-        text = skill_path.read_text(encoding="utf-8")
-        assert text.startswith("---\n")
-        assert "name: explore-codebase" in text
-        assert "description:" in text
 
 
 class TestCursorHooksConfig:
@@ -2453,19 +2345,6 @@ class TestNonAsciiConfigPreservation:
         install_codex_hooks(tmp_path / "repo")
 
         raw = (codex_dir / "hooks.json").read_text(encoding="utf-8")
-        assert self.NON_ASCII in raw
-        assert "\\u" not in raw
-
-    def test_install_gemini_cli_hooks_preserves_non_ascii_field(self, tmp_path):
-        settings_dir = tmp_path / ".gemini"
-        settings_dir.mkdir()
-        (settings_dir / "settings.json").write_text(
-            json.dumps({"customSetting": self.NON_ASCII}), encoding="utf-8",
-        )
-
-        install_gemini_cli_hooks(tmp_path)
-
-        raw = (settings_dir / "settings.json").read_text(encoding="utf-8")
         assert self.NON_ASCII in raw
         assert "\\u" not in raw
 
