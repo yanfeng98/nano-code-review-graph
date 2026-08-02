@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 # Shared platform choices for install and init commands
 _PLATFORM_CHOICES = [
     "codex", "claude", "claude-code", "zed",
-    "continue", "opencode", "antigravity", "qoder",
+    "continue", "opencode", "qoder",
     "copilot", "copilot-cli", "codebuddy", "all",
 ]
 

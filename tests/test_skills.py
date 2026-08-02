@@ -671,7 +671,7 @@ class TestInjectPlatformInstructionsFiltering:
     def test_all_writes_every_file(self, tmp_path):
         updated = inject_platform_instructions(tmp_path, target="all")
         assert set(updated) == {
-            "AGENTS.md", "GEMINI.md",
+            "AGENTS.md",
             "QODER.md",
             ".github/instructions/code-review-graph.instructions.md",
             "CODEBUDDY.md",
@@ -680,7 +680,7 @@ class TestInjectPlatformInstructionsFiltering:
     def test_default_is_all(self, tmp_path):
         updated = inject_platform_instructions(tmp_path)
         assert set(updated) == {
-            "AGENTS.md", "GEMINI.md",
+            "AGENTS.md",
             "QODER.md",
             ".github/instructions/code-review-graph.instructions.md",
             "CODEBUDDY.md",
@@ -690,7 +690,6 @@ class TestInjectPlatformInstructionsFiltering:
         updated = inject_platform_instructions(tmp_path, target="claude")
         assert updated == []
         assert not (tmp_path / "AGENTS.md").exists()
-        assert not (tmp_path / "GEMINI.md").exists()
         assert not (tmp_path / "QODER.md").exists()
         assert not (
             tmp_path
@@ -699,10 +698,6 @@ class TestInjectPlatformInstructionsFiltering:
             / "code-review-graph.instructions.md"
         ).exists()
 
-    def test_antigravity_writes_agents_and_gemini(self, tmp_path):
-        updated = inject_platform_instructions(tmp_path, target="antigravity")
-        assert set(updated) == {"AGENTS.md", "GEMINI.md"}
-
     def test_opencode_writes_only_agents(self, tmp_path):
         updated = inject_platform_instructions(tmp_path, target="opencode")
         assert updated == ["AGENTS.md"]
@@ -710,7 +705,6 @@ class TestInjectPlatformInstructionsFiltering:
     def test_codex_writes_only_agents(self, tmp_path):
         updated = inject_platform_instructions(tmp_path, target="codex")
         assert updated == ["AGENTS.md"]
-        assert not (tmp_path / "GEMINI.md").exists()
         assert not (tmp_path / "QODER.md").exists()
         content = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
         assert _CLAUDE_MD_SECTION_MARKER in content
@@ -719,7 +713,6 @@ class TestInjectPlatformInstructionsFiltering:
         updated = inject_platform_instructions(tmp_path, target="qoder")
         assert updated == ["QODER.md"]
         assert not (tmp_path / "AGENTS.md").exists()
-        assert not (tmp_path / "GEMINI.md").exists()
 
     def test_codebuddy_writes_only_codebuddy_md_and_is_idempotent(self, tmp_path):
         first = inject_platform_instructions(tmp_path, target="codebuddy")
@@ -1077,7 +1070,6 @@ class TestInstallPlatformConfigs:
                 "opencode": {**PLATFORMS["opencode"], "detect": lambda: True},
                 "zed": {**PLATFORMS["zed"], "detect": lambda: False},
                 "continue": {**PLATFORMS["continue"], "detect": lambda: False},
-                "antigravity": {**PLATFORMS["antigravity"], "detect": lambda: False},
             },
         ):
             with patch("code_review_graph.skills.Path.home", return_value=tmp_path):
@@ -1238,7 +1230,6 @@ class TestCopilotPlatform:
             ".github/instructions/code-review-graph.instructions.md"
         ]
         assert not (tmp_path / "AGENTS.md").exists()
-        assert not (tmp_path / "GEMINI.md").exists()
         assert not (tmp_path / "QODER.md").exists()
 
     def test_copilot_included_in_all_when_detected(self, tmp_path):

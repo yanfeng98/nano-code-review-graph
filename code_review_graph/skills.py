@@ -167,14 +167,6 @@ PLATFORMS: dict[str, dict[str, Any]] = {
         "format": "object",
         "needs_type": False,
     },
-    "antigravity": {
-        "name": "Antigravity",
-        "config_path": lambda root: Path.home() / ".gemini" / "antigravity" / "mcp_config.json",
-        "key": "mcpServers",
-        "detect": lambda: (Path.home() / ".gemini" / "antigravity").exists(),
-        "format": "object",
-        "needs_type": False,
-    },
     "qoder": {
         "name": "Qoder",
         "config_path": lambda root: root / ".qoder" / "mcp.json",
@@ -1228,8 +1220,7 @@ def inject_claude_md(repo_root: Path) -> None:
 # Used to filter writes when the user passes --platform <X>: only files
 # whose owner set includes the target (or "all") are written.
 _PLATFORM_INSTRUCTION_FILES: dict[str, tuple[str, ...]] = {
-    "AGENTS.md": ("opencode", "antigravity", "codex"),
-    "GEMINI.md": ("antigravity",),
+    "AGENTS.md": ("opencode", "codex"),
     "QODER.md": ("qoder",),
     ".github/instructions/code-review-graph.instructions.md": ("copilot", "copilot-cli"),
     "CODEBUDDY.md": ("codebuddy",),
@@ -1288,12 +1279,12 @@ def install_codebuddy_skills(repo_root: Path) -> Path:
 def inject_platform_instructions(repo_root: Path, target: str = "all") -> list[str]:
     """Inject 'use graph first' instructions into platform rule files.
 
-    Writes AGENTS.md, GEMINI.md depending on ``target``:
+    Writes AGENTS.md depending on ``target``:
 
     - ``"all"`` (default): writes every file — matches pre-filter behavior.
     - ``"claude"``: writes nothing (CLAUDE.md is handled by ``inject_claude_md``).
-    - any other platform key (``antigravity``,
-      ``opencode``, ``codex``): writes only the files associated with that platform.
+    - any other platform key (``opencode``, ``codex``): writes only the files
+      associated with that platform.
 
     Returns list of filenames that were created or updated.
     """
