@@ -138,7 +138,7 @@ def test_source_pr_legacy_mcp_paths_remain_supported(
         assert _read_jsonc(path) == {"mcpServers": {"other": {}}}
 
 
-@pytest.mark.parametrize("platform_name", ["zed", "opencode"])
+@pytest.mark.parametrize("platform_name", ["opencode"])
 def test_jsonc_comments_trailing_commas_and_https_survive(
     platform_name: str,
     fake_repo: Path,

@@ -13,7 +13,7 @@
 │  MCP clients              Hooks / watch mode                 │
 │  ├── Codex                └── incremental update             │
 │  ├── Claude Code, CodeBuddy Code                             │
-│  ├── Zed, Continue                         │
+│  ├── Continue                         │
 │  └── Qoder, OpenCode              │
 │          │                        │                          │
 │          ▼                        ▼                          │

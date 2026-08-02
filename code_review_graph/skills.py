@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import platform
 import shutil
 import subprocess
 import sys
@@ -23,12 +22,6 @@ logger = logging.getLogger(__name__)
 
 # --- Multi-platform MCP install ---
 
-
-def _zed_settings_path() -> Path:
-    """Return the Zed settings.json path for the current OS."""
-    if platform.system() == "Darwin":
-        return Path.home() / "Library" / "Application Support" / "Zed" / "settings.json"
-    return Path.home() / ".config" / "zed" / "settings.json"
 
 def _opencode_config_path(repo_root: Path) -> Path:
     """Return OpenCode's existing project config, preferring JSONC."""
@@ -55,14 +48,6 @@ PLATFORMS: dict[str, dict[str, Any]] = {
         "detect": lambda: True,
         "format": "object",
         "needs_type": True,
-    },
-    "zed": {
-        "name": "Zed",
-        "config_path": lambda root: _zed_settings_path(),
-        "key": "context_servers",
-        "detect": lambda: _zed_settings_path().parent.exists(),
-        "format": "object",
-        "needs_type": False,
     },
     "continue": {
         "name": "Continue",

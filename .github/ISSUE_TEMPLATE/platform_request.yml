@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        code-review-graph already configures Claude Code, Codex, Zed,
+        code-review-graph already configures Claude Code, Codex,
         Continue, OpenCode, and Qoder.
         Use this form to request support for another AI coding tool.
   - type: input

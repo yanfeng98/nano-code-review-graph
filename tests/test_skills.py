@@ -956,25 +956,6 @@ class TestInstallPlatformConfigs:
             install_platform_configs(tmp_path, target="codex")
         assert codex_config.read_text().count("[mcp_servers.code-review-graph]") == 1
 
-    def test_install_zed_config(self, tmp_path):
-        zed_settings = tmp_path / "zed" / "settings.json"
-        zed_settings.parent.mkdir(parents=True)
-        with patch.dict(
-            PLATFORMS,
-            {
-                "zed": {
-                    **PLATFORMS["zed"],
-                    "config_path": lambda root: zed_settings,
-                    "detect": lambda: True,
-                },
-            },
-        ):
-            configured = install_platform_configs(tmp_path, target="zed")
-        assert "Zed" in configured
-        data = json.loads(zed_settings.read_text())
-        assert "context_servers" in data
-        assert "code-review-graph" in data["context_servers"]
-
     def test_install_continue_config(self, tmp_path):
         continue_dir = tmp_path / ".continue"
         continue_dir.mkdir()
@@ -1065,7 +1046,6 @@ class TestInstallPlatformConfigs:
                 },
                 "claude": {**PLATFORMS["claude"], "detect": lambda: True},
                 "opencode": {**PLATFORMS["opencode"], "detect": lambda: True},
-                "zed": {**PLATFORMS["zed"], "detect": lambda: False},
                 "continue": {**PLATFORMS["continue"], "detect": lambda: False},
             },
         ):
@@ -1420,19 +1400,6 @@ class TestInstallConfigDataLoss:
       so a fresh install on an empty file silently did nothing.
     """
 
-    def _run_zed(self, settings_path: Path, root: Path):
-        with patch.dict(
-            PLATFORMS,
-            {
-                "zed": {
-                    **PLATFORMS["zed"],
-                    "config_path": lambda r: settings_path,
-                    "detect": lambda: True,
-                },
-            },
-        ):
-            return install_platform_configs(root, target="zed")
-
     def _run_continue(self, settings_path: Path, root: Path):
         with patch.dict(
             PLATFORMS,
@@ -1445,68 +1412,6 @@ class TestInstallConfigDataLoss:
             },
         ):
             return install_platform_configs(root, target="continue")
-
-    def test_malformed_json_is_preserved_not_overwritten(self, tmp_path, capsys):
-        settings = tmp_path / "zed" / "settings.json"
-        settings.parent.mkdir(parents=True)
-        original = "{ this is not valid json }\n"
-        settings.write_text(original, encoding="utf-8")
-
-        configured = self._run_zed(settings, tmp_path)
-
-        assert "Zed" not in configured
-        assert settings.read_text(encoding="utf-8") == original
-        assert "unparseable" in capsys.readouterr().out
-
-    def test_top_level_array_does_not_crash_and_is_preserved(self, tmp_path, capsys):
-        """The actual residual bug: a top-level array crashed install with
-        ``AttributeError: 'list' object has no attribute 'get'``."""
-        settings = tmp_path / "zed" / "settings.json"
-        settings.parent.mkdir(parents=True)
-        original = '["not", "an", "object"]'
-        settings.write_text(original, encoding="utf-8")
-
-        # Must not raise.
-        configured = self._run_zed(settings, tmp_path)
-
-        assert "Zed" not in configured
-        assert settings.read_text(encoding="utf-8") == original
-        out = capsys.readouterr().out
-        assert "not a top-level object" in out
-
-    def test_empty_file_is_treated_as_fresh_config(self, tmp_path):
-        """An empty settings.json is a valid empty config, not a parse
-        failure — install should write a fresh config rather than skip."""
-        settings = tmp_path / "zed" / "settings.json"
-        settings.parent.mkdir(parents=True)
-        settings.write_text("", encoding="utf-8")
-
-        configured = self._run_zed(settings, tmp_path)
-
-        assert "Zed" in configured
-        data = json.loads(settings.read_text(encoding="utf-8"))
-        assert "code-review-graph" in data["context_servers"]
-
-    def test_jsonc_comments_still_supported(self, tmp_path):
-        """Guard: the empty-file / array checks must not regress main's
-        JSONC support — a comment-bearing Zed config must still merge."""
-        settings = tmp_path / "zed" / "settings.json"
-        settings.parent.mkdir(parents=True)
-        settings.write_text(
-            "{\n"
-            '  // user theme preference\n'
-            '  "theme": "One Dark",\n'
-            "}\n",
-            encoding="utf-8",
-        )
-
-        configured = self._run_zed(settings, tmp_path)
-
-        assert "Zed" in configured
-        data = json.loads(settings.read_text(encoding="utf-8"))
-        # User's existing setting preserved AND our server added.
-        assert data["theme"] == "One Dark"
-        assert "code-review-graph" in data["context_servers"]
 
     def test_array_platform_preserves_wrong_typed_server_collection(
         self, tmp_path, capsys
@@ -1524,24 +1429,6 @@ class TestInstallConfigDataLoss:
         assert "mcpServers" in out
         assert "expected a JSON array" in out
         assert "skipping to avoid data loss" in out
-
-    def test_object_platform_preserves_wrong_typed_server_collection(
-        self, tmp_path, capsys
-    ):
-        settings = tmp_path / "zed" / "settings.json"
-        settings.parent.mkdir(parents=True)
-        original = '{\n  "context_servers": ["legacy-server"]\n}\n'
-        settings.write_text(original, encoding="utf-8")
-
-        configured = self._run_zed(settings, tmp_path)
-
-        assert "Zed" not in configured
-        assert settings.read_text(encoding="utf-8") == original
-        out = capsys.readouterr().out
-        assert "context_servers" in out
-        assert "expected a JSON object" in out
-        assert "skipping to avoid data loss" in out
-
 
 class TestGeneratedHooksGuardGitRepo:
     """Regression coverage for #312: generated Claude Code hooks must guard
