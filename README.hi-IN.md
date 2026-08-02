@@ -321,5 +321,5 @@ MIT। [LICENSE](LICENSE) देखें।
 <br>
 <a href="https://code-review-graph.com">code-review-graph.com</a><br><br>
 <code>pip install code-review-graph && code-review-graph install</code><br>
-<sub>Codex, Claude Code, Continue, OpenCode, और Qoder सहित समर्थित AI कोडिंग टूल्स को स्वचालित रूप से पहचानता और कॉन्फ़िगर करता है</sub>
+<sub>Codex, Claude Code, Continue, और OpenCode सहित समर्थित AI कोडिंग टूल्स को स्वचालित रूप से पहचानता और कॉन्फ़िगर करता है</sub>
 </p>

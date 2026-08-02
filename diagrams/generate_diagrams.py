@@ -596,7 +596,6 @@ def d8():
         ("Continue",        "~/.continue/config.json",                  RED, RED_BG),
         ("OpenCode",        ".opencode.json",                           BLU, PRP_BG),
         # Row 2 (7)
-        ("Qoder",           ".qoder/mcp.json",                          YLW, GRN_BG),
     ]
 
     # Central "install" node

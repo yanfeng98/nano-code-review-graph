@@ -30,7 +30,6 @@ code-review-graph install --platform codebuddy
 | **CodeBuddy Code** | `.mcp.json` + `CODEBUDDY.md` + `.codebuddy/settings.json` + `.codebuddy/skills/<name>/SKILL.md` |
 | **Continue** | `.continue/config.json` |
 | **OpenCode** | `opencode.jsonc` (preferred) or `opencode.json` |
-| **Qoder** | `.qoder/mcp.json` |
 
 The CodeBuddy project layout follows its official documentation for
 [MCP configuration](https://www.codebuddy.ai/docs/cli/mcp),

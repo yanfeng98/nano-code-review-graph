@@ -1045,13 +1045,6 @@ def _process_repo(
         dry_run=dry_run,
     )
     _remove_hooks(
-        repo_root / ".qoder" / "settings.json",
-        hook_commands,
-        repo_root,
-        report,
-        dry_run=dry_run,
-    )
-    _remove_hooks(
         repo_root / ".codebuddy" / "settings.json",
         hook_commands,
         repo_root,
@@ -1067,22 +1060,6 @@ def _process_repo(
                 report,
                 dry_run=dry_run,
             )
-    source_skills = repo_root / "skills"
-    if source_skills.is_dir() and not source_skills.is_symlink():
-        try:
-            candidates = list(source_skills.iterdir())
-        except OSError as exc:
-            report.errors.append(f"{source_skills}: list failed ({exc})")
-        else:
-            for candidate in candidates:
-                if candidate.is_dir() and (candidate / "SKILL.md").is_file():
-                    _remove_skill_file(
-                        repo_root / ".qoder" / "skills" / candidate.name / "SKILL.md",
-                        repo_root,
-                        report,
-                        dry_run=dry_run,
-                    )
-
     instruction_sections = {
         "CLAUDE.md": skills._CLAUDE_MD_SECTION,
         **{

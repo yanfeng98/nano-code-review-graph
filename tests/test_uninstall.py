@@ -219,20 +219,12 @@ def test_shared_skill_directories_keep_user_files_and_unrelated_skills(
         _write(root / generated_slug / "notes.txt", "keep\n")
         _write(root / "user-skill" / "SKILL.md", "keep\n")
 
-    _write(fake_repo / "skills" / "project-skill" / "SKILL.md", "source\n")
-    _write(fake_repo / ".qoder" / "skills" / "project-skill" / "SKILL.md", "copy\n")
-    _write(fake_repo / ".qoder" / "skills" / "project-skill" / "notes.txt", "keep\n")
-    _write(fake_repo / ".qoder" / "skills" / "user-skill" / "SKILL.md", "keep\n")
-
     uninstall.run(repo=fake_repo, keep_data=True)
 
     for root in generated_roots:
         assert not (root / generated_slug / "SKILL.md").exists()
         assert (root / generated_slug / "notes.txt").exists()
         assert (root / "user-skill" / "SKILL.md").exists()
-    assert not (fake_repo / ".qoder" / "skills" / "project-skill" / "SKILL.md").exists()
-    assert (fake_repo / ".qoder" / "skills" / "project-skill" / "notes.txt").exists()
-    assert (fake_repo / ".qoder" / "skills" / "user-skill" / "SKILL.md").exists()
 
 
 def test_instruction_inventory_and_git_hook_are_surgical(
@@ -467,7 +459,7 @@ def test_malformed_config_is_unchanged_and_other_cleanup_continues(
     fake_repo: Path,
     fake_home: Path,
 ) -> None:
-    malformed = fake_repo / ".qoder" / "mcp.json"
+    malformed = fake_home / ".continue" / "config.json"
     _write(malformed, '{"mcpServers": { this is not JSON')
     malformed_toml = fake_home / ".codex" / "config.toml"
     _write(
@@ -539,7 +531,7 @@ def test_keep_flags_preserve_data_and_user_configuration(
     user_data = fake_home / ".code-review-graph"
     user_data.mkdir()
     (user_data / "registry.json").write_text("{}", encoding="utf-8")
-    user_config = fake_home / ".qoder" / "mcp.json"
+    user_config = fake_home / ".continue" / "config.json"
     _write_json(user_config, {"mcpServers": {"code-review-graph": {}}})
 
     uninstall.run(

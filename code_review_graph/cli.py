@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 # Shared platform choices for install and init commands
 _PLATFORM_CHOICES = [
     "codex", "claude", "claude-code",
-    "continue", "opencode", "qoder",
+    "continue", "opencode",
     "codebuddy", "all",
 ]
 
@@ -314,7 +314,6 @@ def _handle_init(args: argparse.Namespace) -> None:
         install_git_hook,
         install_hooks,
         install_opencode_plugin,
-        install_qoder_skills,
     )
 
     if not skip_skills:
@@ -349,11 +348,6 @@ def _handle_init(args: argparse.Namespace) -> None:
         print("Skipped instruction injection (--no-instructions).")
 
 
-    # Install Qoder skills (global user-level skills directory)
-    if not skip_skills and target in ("qoder", "all"):
-        qoder_skills_dir = install_qoder_skills(repo_root)
-        if qoder_skills_dir:
-            print(f"Installed Qoder skills to {qoder_skills_dir}")
     if not skip_hooks and target in ("codebuddy", "all"):
         try:
             codebuddy_settings = install_codebuddy_hooks(repo_root)
@@ -366,8 +360,8 @@ def _handle_init(args: argparse.Namespace) -> None:
         git_hook = install_git_hook(repo_root)
         if git_hook:
             print(f"Installed git pre-commit hook in {git_hook}")
-    if not skip_hooks and target in ("claude", "qoder", "all"):
-        platforms_to_install = [target] if target != "all" else ["claude", "qoder"]
+    if not skip_hooks and target in ("claude", "all"):
+        platforms_to_install = [target] if target != "all" else ["claude"]
         for plat in platforms_to_install:
             install_hooks(repo_root, platform=plat)
             print(f"Installed hooks in {repo_root / f'.{plat}' / 'settings.json'}")

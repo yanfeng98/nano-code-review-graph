@@ -65,14 +65,6 @@ PLATFORMS: dict[str, dict[str, Any]] = {
         "format": "object",
         "needs_type": False,
     },
-    "qoder": {
-        "name": "Qoder",
-        "config_path": lambda root: root / ".qoder" / "mcp.json",
-        "key": "mcpServers",
-        "detect": lambda: True,
-        "format": "object",
-        "needs_type": True,
-    },
     "codebuddy": {
         "name": "CodeBuddy Code",
         "config_path": lambda root: root / ".mcp.json",
@@ -869,12 +861,9 @@ def install_hooks(repo_root: Path, platform: str = "claude") -> None:
 
     Args:
         repo_root: Repository root directory.
-        platform: Target platform ("claude" or "qoder").
+        platform: Target platform ("claude").
     """
-    if platform == "qoder":
-        settings_dir = repo_root / ".qoder"
-    else:
-        settings_dir = repo_root / ".claude"
+    settings_dir = repo_root / ".claude"
     _merge_hooks_into_settings(settings_dir, generate_hooks_config(repo_root))
 
 
@@ -1040,7 +1029,6 @@ def inject_claude_md(repo_root: Path) -> None:
 # whose owner set includes the target (or "all") are written.
 _PLATFORM_INSTRUCTION_FILES: dict[str, tuple[str, ...]] = {
     "AGENTS.md": ("opencode", "codex"),
-    "QODER.md": ("qoder",),
     "CODEBUDDY.md": ("codebuddy",),
 }
 
@@ -1097,45 +1085,6 @@ def inject_platform_instructions(repo_root: Path, target: str = "all") -> list[s
             updated.append(filename)
     return updated
 
-
-def install_qoder_skills(repo_root: Path) -> Path | None:
-    """Install skills to Qoder's project-level skills directory.
-
-    Qoder expects skills in .qoder/skills/{skillName}/SKILL.md format within the project.
-    This function copies the project's skills/ directory contents to that location.
-
-    Args:
-        repo_root: Repository root directory (where the skills/ folder is located).
-
-    Returns:
-        Path to the Qoder skills directory, or None if installation failed.
-    """
-    # Qoder skills directory (project-level)
-    qoder_skills_dir = repo_root / ".qoder" / "skills"
-    qoder_skills_dir.mkdir(parents=True, exist_ok=True)
-
-    # Source skills directory in the project
-    source_skills_dir = repo_root / "skills"
-    if not source_skills_dir.exists():
-        logger.warning("No skills/ directory found in %s", repo_root)
-        return None
-
-    installed_count = 0
-    for skill_dir in source_skills_dir.iterdir():
-        if skill_dir.is_dir():
-            skill_file = skill_dir / "SKILL.md"
-            if skill_file.exists():
-                target_dir = qoder_skills_dir / skill_dir.name
-                target_dir.mkdir(parents=True, exist_ok=True)
-                target_file = target_dir / "SKILL.md"
-                target_file.write_text(skill_file.read_text(encoding="utf-8"), encoding="utf-8")
-                logger.info("Installed Qoder skill: %s", skill_dir.name)
-                installed_count += 1
-
-    if installed_count > 0:
-        logger.info("Installed %d skill(s) to %s", installed_count, qoder_skills_dir)
-        return qoder_skills_dir
-    return None
 
 
 # --- OpenCode plugin ---
