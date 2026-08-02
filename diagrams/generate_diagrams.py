@@ -599,7 +599,6 @@ def d8():
         ("OpenCode",        ".opencode.json",                           BLU, PRP_BG),
         # Row 2 (7)
         ("Antigravity",     "~/.gemini/antigravity/mcp_config.json",    GRY, GRY_BG),
-        ("Kiro",            ".kiro/settings/mcp.json",                  GRN, ORG_BG),
         ("Qoder",           ".qoder/mcp.json",                          YLW, GRN_BG),
         ("GitHub Copilot",  ".vscode/mcp.json",                         RED, RED_BG),
         ("Copilot CLI",     "~/.copilot/mcp-config.json",               PRP, GRN_BG),

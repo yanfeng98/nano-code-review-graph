@@ -183,14 +183,6 @@ PLATFORMS: dict[str, dict[str, Any]] = {
         "format": "object",
         "needs_type": False,
     },
-    "kiro": {
-        "name": "Kiro",
-        "config_path": lambda root: root / ".kiro" / "settings" / "mcp.json",
-        "key": "mcpServers",
-        "detect": lambda: (Path.home() / ".kiro").exists(),
-        "format": "object",
-        "needs_type": True,
-    },
     "qoder": {
         "name": "Qoder",
         "config_path": lambda root: root / ".qoder" / "mcp.json",
@@ -495,10 +487,6 @@ def install_platform_configs(
     shared_aliases: dict[str, tuple[str, ...]] = {}
     if target == "all":
         platforms_to_install = {k: v for k, v in PLATFORMS.items() if v["detect"]()}
-        # Workspace-level Kiro detection
-        if "kiro" not in platforms_to_install and (repo_root / ".kiro").is_dir():
-            platforms_to_install["kiro"] = PLATFORMS["kiro"]
-
         # Claude Code and CodeBuddy intentionally share the official project
         # .mcp.json/mcpServers contract. Process that exact pair once, but do
         # not deduplicate arbitrary clients merely because a config path
@@ -1252,7 +1240,6 @@ _PLATFORM_INSTRUCTION_FILES: dict[str, tuple[str, ...]] = {
     "GEMINI.md": ("antigravity",),
     ".windsurfrules": ("windsurf",),
     "QODER.md": ("qoder",),
-    ".kiro/steering/code-review-graph.md": ("kiro",),
     ".github/instructions/code-review-graph.instructions.md": ("copilot", "copilot-cli"),
     "CODEBUDDY.md": ("codebuddy",),
 }

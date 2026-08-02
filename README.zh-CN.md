@@ -56,7 +56,6 @@ code-review-graph build            # 解析代码库
 code-review-graph install --platform codex       # 仅配置 Codex
 code-review-graph install --platform cursor      # 仅配置 Cursor
 code-review-graph install --platform claude-code  # 仅配置 Claude Code
-code-review-graph install --platform kiro         # 仅配置 Kiro
 ```
 
 需要 Python 3.10+。为获得最佳体验，建议安装 [uv](https://docs.astral.sh/uv/)（如果可用，MCP 配置将使用 `uvx`，否则直接使用 `code-review-graph` 命令）。
@@ -322,5 +321,5 @@ MIT。详见 [LICENSE](LICENSE)。
 <br>
 <a href="https://code-review-graph.com">code-review-graph.com</a><br><br>
 <code>pip install code-review-graph && code-review-graph install</code><br>
-<sub>自动检测并配置支持的 AI 编码工具，包括 Codex、Claude Code、Windsurf、Zed、Continue、OpenCode、Antigravity、Kiro、Qoder 和 GitHub Copilot</sub>
+<sub>自动检测并配置支持的 AI 编码工具，包括 Codex、Claude Code、Windsurf、Zed、Continue、OpenCode、Antigravity、Qoder 和 GitHub Copilot</sub>
 </p>

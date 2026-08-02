@@ -56,7 +56,6 @@ code-review-graph build            # 코드베이스 파싱
 code-review-graph install --platform codex       # Codex만 설정
 code-review-graph install --platform cursor      # Cursor만 설정
 code-review-graph install --platform claude-code  # Claude Code만 설정
-code-review-graph install --platform kiro         # Kiro만 설정
 ```
 
 Python 3.10 이상이 필요합니다. 최상의 경험을 위해 [uv](https://docs.astral.sh/uv/)를 설치하세요 (MCP 설정은 `uvx`가 있으면 이를 사용하고, 없으면 `code-review-graph` 명령을 직접 사용합니다).
@@ -324,5 +323,5 @@ MIT. [LICENSE](LICENSE)를 참조하세요.
 <br>
 <a href="https://code-review-graph.com">code-review-graph.com</a><br><br>
 <code>pip install code-review-graph && code-review-graph install</code><br>
-<sub>Codex, Claude Code, Windsurf, Zed, Continue, OpenCode, Antigravity, Kiro, Qoder, GitHub Copilot 등 지원되는 AI 코딩 도구를 자동 감지하고 설정합니다</sub>
+<sub>Codex, Claude Code, Windsurf, Zed, Continue, OpenCode, Antigravity, Qoder, GitHub Copilot 등 지원되는 AI 코딩 도구를 자동 감지하고 설정합니다</sub>
 </p>

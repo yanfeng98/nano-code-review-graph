@@ -56,7 +56,6 @@ code-review-graph build            # अपना कोडबेस पार�
 code-review-graph install --platform codex       # केवल Codex कॉन्फ़िगर करें
 code-review-graph install --platform cursor      # केवल Cursor कॉन्फ़िगर करें
 code-review-graph install --platform claude-code  # केवल Claude Code कॉन्फ़िगर करें
-code-review-graph install --platform kiro         # केवल Kiro कॉन्फ़िगर करें
 ```
 
 Python 3.10+ आवश्यक है। सबसे अच्छे अनुभव के लिए [uv](https://docs.astral.sh/uv/) इंस्टॉल करें (MCP कॉन्फ़िग उपलब्ध होने पर `uvx` का उपयोग करेगा, अन्यथा सीधे `code-review-graph` कमांड पर फ़ॉलबैक करेगा)।
@@ -322,5 +321,5 @@ MIT। [LICENSE](LICENSE) देखें।
 <br>
 <a href="https://code-review-graph.com">code-review-graph.com</a><br><br>
 <code>pip install code-review-graph && code-review-graph install</code><br>
-<sub>Codex, Claude Code, Windsurf, Zed, Continue, OpenCode, Antigravity, Kiro, Qoder, और GitHub Copilot सहित समर्थित AI कोडिंग टूल्स को स्वचालित रूप से पहचानता और कॉन्फ़िगर करता है</sub>
+<sub>Codex, Claude Code, Windsurf, Zed, Continue, OpenCode, Antigravity, Qoder, और GitHub Copilot सहित समर्थित AI कोडिंग टूल्स को स्वचालित रूप से पहचानता और कॉन्फ़िगर करता है</sub>
 </p>

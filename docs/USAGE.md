@@ -33,7 +33,6 @@ code-review-graph install --platform codebuddy
 | **Continue** | `.continue/config.json` |
 | **OpenCode** | `opencode.jsonc` (preferred) or `opencode.json` |
 | **Antigravity** | `~/.gemini/antigravity/mcp_config.json` |
-| **Kiro** | `.kiro/settings/mcp.json` |
 | **Qoder** | `.qoder/mcp.json` |
 | **GitHub Copilot** | `.vscode/mcp.json` |
 | **GitHub Copilot CLI** | `~/.copilot/mcp-config.json` |

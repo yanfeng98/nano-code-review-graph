@@ -56,7 +56,6 @@ code-review-graph build            # コードベースを解析
 code-review-graph install --platform codex       # Codexのみ設定
 code-review-graph install --platform cursor      # Cursorのみ設定
 code-review-graph install --platform claude-code  # Claude Codeのみ設定
-code-review-graph install --platform kiro         # Kiroのみ設定
 ```
 
 Python 3.10以上が必要です。最良の体験のためには [uv](https://docs.astral.sh/uv/) のインストールを推奨します（MCP設定は利用可能な場合 `uvx` を使用し、そうでない場合は `code-review-graph` コマンドに直接フォールバックします）。
@@ -324,5 +323,5 @@ MIT。詳細は [LICENSE](LICENSE) を参照してください。
 <br>
 <a href="https://code-review-graph.com">code-review-graph.com</a><br><br>
 <code>pip install code-review-graph && code-review-graph install</code><br>
-<sub>Codex、Claude Code、Windsurf、Zed、Continue、OpenCode、Antigravity、Kiro、Qoder、GitHub Copilotなど、対応するAIコーディングツールを自動検出して設定</sub>
+<sub>Codex、Claude Code、Windsurf、Zed、Continue、OpenCode、Antigravity、Qoder、GitHub Copilotなど、対応するAIコーディングツールを自動検出して設定</sub>
 </p>

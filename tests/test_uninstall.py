@@ -524,7 +524,7 @@ def test_malformed_config_is_unchanged_and_other_cleanup_continues(
     fake_repo: Path,
     fake_home: Path,
 ) -> None:
-    malformed = fake_repo / ".kiro" / "settings" / "mcp.json"
+    malformed = fake_repo / ".qoder" / "mcp.json"
     _write(malformed, '{"mcpServers": { this is not JSON')
     malformed_toml = fake_home / ".codex" / "config.toml"
     _write(
@@ -596,7 +596,7 @@ def test_keep_flags_preserve_data_and_user_configuration(
     user_data = fake_home / ".code-review-graph"
     user_data.mkdir()
     (user_data / "registry.json").write_text("{}", encoding="utf-8")
-    user_config = fake_home / ".kiro" / "settings" / "mcp.json"
+    user_config = fake_home / ".qoder" / "mcp.json"
     _write_json(user_config, {"mcpServers": {"code-review-graph": {}}})
 
     uninstall.run(
