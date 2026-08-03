@@ -147,7 +147,7 @@ DEFAULT_IGNORE_PATTERNS = [
     "/public/build/**",
     # Ruby / Bundler
     "**/.bundle/**",
-    # Kotlin / Gradle
+    # Gradle
     "**/.gradle/**",
     "*.jar",
     # Dart / Flutter

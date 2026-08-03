@@ -725,7 +725,6 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".h": "c",
     ".hpp": "cpp",
     ".hh": "cpp",
-    ".kt": "kotlin",
     ".swift": "swift",
     ".php": "php",
     ".scala": "scala",
@@ -916,7 +915,6 @@ _CLASS_TYPES: dict[str, list[str]] = {
     "ruby": ["class", "module"],
     "r": [],  # Classes detected via call pattern-matching, not AST node types
     "perl": ["package_statement", "class_statement", "role_statement"],
-    "kotlin": ["class_declaration", "object_declaration"],
     "swift": ["class_declaration", "struct_declaration", "protocol_declaration"],
     "php": [
         "class_declaration", "interface_declaration",
@@ -991,7 +989,6 @@ _FUNCTION_TYPES: dict[str, list[str]] = {
     "ruby": ["method", "singleton_method"],
     "r": ["function_definition"],
     "perl": ["subroutine_declaration_statement", "method_declaration_statement"],
-    "kotlin": ["function_declaration"],
     # Swift: initializers, deinitializers and subscripts are separate node
     # types, not `function_declaration`s, so they need listing alongside it —
     # Their names come
@@ -1060,7 +1057,6 @@ _IMPORT_TYPES: dict[str, list[str]] = {
     "ruby": ["call"],  # require/require_relative
     "r": ["call"],  # library(), require(), source() — filtered downstream
     "perl": ["use_statement", "require_expression"],
-    "kotlin": ["import_header"],
     "swift": ["import_declaration"],
     "php": ["namespace_use_declaration"],
     "scala": ["import_declaration"],
@@ -1114,7 +1110,6 @@ _CALL_TYPES: dict[str, list[str]] = {
         "function_call_expression", "method_call_expression",
         "ambiguous_function_call_expression",
     ],
-    "kotlin": ["call_expression"],
     "swift": ["call_expression"],
     "php": [
         "function_call_expression",
@@ -1200,7 +1195,6 @@ _TEST_FILE_PATTERNS = [
     re.compile(r".*_test\.dart$"),
     re.compile(r"test[_-].*\.[rR]$"),
     re.compile(r"tests/testthat/"),
-    re.compile(r".*Test\.kt$"),
     re.compile(r".*_test\.resi?$"),
     re.compile(r".*\.test\.resi?$"),
     re.compile(r"test/runtests\.jl$"),
@@ -1817,9 +1811,8 @@ def _strip_block_doc_comment(text: str) -> str:
 def _modifier_annotation_names(node) -> list[str]:
     """Return annotation names from a ``modifiers`` child of *node*.
 
-    Covers Kotlin where annotations live inside a ``modifiers``
-    node as ``annotation`` / ``marker_annotation`` children. The leading
-    ``@`` is stripped. See: #295
+    Annotations live inside a ``modifiers`` node as ``annotation`` /
+    ``marker_annotation`` children. The leading ``@`` is stripped. See: #295
     """
     names: list[str] = []
     for sub in node.children:
@@ -4838,7 +4831,7 @@ class CodeParser:
         return resolved
 
     _TYPED_CALL_LANGUAGES = frozenset({
-        "python", "kotlin", "javascript", "typescript", "tsx", "php",
+        "python", "javascript", "typescript", "tsx", "php",
     })
     _TRANSPARENT_TYPE_WRAPPERS = frozenset({"Annotated", "Optional", "Type"})
     _NON_RECEIVER_TYPE_NAMES = frozenset({
@@ -4872,7 +4865,6 @@ class CodeParser:
         function_types = set(self._function_types.get(language, []))
         call_types = set(self._call_types.get(language, []))
         block_types = {
-            "kotlin": {"statements"},
             "javascript": {"statement_block"},
             "typescript": {"statement_block"},
             "tsx": {"statement_block"},
@@ -5002,7 +4994,6 @@ class CodeParser:
         bindings: dict[str, str] = {}
         parameter_types = {
             "python": {"typed_parameter", "typed_default_parameter"},
-            "kotlin": {"parameter"},
             "javascript": {"required_parameter", "optional_parameter"},
             "typescript": {"required_parameter", "optional_parameter"},
             "tsx": {"required_parameter", "optional_parameter"},
@@ -5072,27 +5063,6 @@ class CodeParser:
                     None,
                 )
             type_node = node.child_by_field_name("type")
-            self._store_typed_binding(result, name_node, type_node)
-
-        elif language == "kotlin" and node.type in (
-            "class_parameter", "parameter", "variable_declaration",
-        ):
-            name_node = next(
-                (
-                    child
-                    for child in node.children
-                    if child.type == "simple_identifier"
-                ),
-                None,
-            )
-            type_node = next(
-                (
-                    child
-                    for child in node.children
-                    if child.type in ("user_type", "nullable_type")
-                ),
-                None,
-            )
             self._store_typed_binding(result, name_node, type_node)
 
         elif language in ("javascript", "typescript", "tsx") and node.type in (
@@ -8587,8 +8557,7 @@ class CodeParser:
                 extra["swift_kind"] = "protocol"
 
         # Class-level annotation persistence for all annotation-bearing
-        # languages.  Kotlin (@HiltViewModel, @AndroidEntryPoint) lost this
-        # metadata entirely. Stored in ``modifiers`` (string)
+        # languages. Stored in ``modifiers`` (string)
         # and ``extra["decorators"]`` (list).  See: #295
         class_decorators = _modifier_annotation_names(child)
         if language == "python":
@@ -8690,7 +8659,7 @@ class CodeParser:
         decorators: tuple[str, ...] = ()
         deco_list: list[str] = []
         for sub in child.children:
-            # Kotlin: annotations inside a modifiers child
+            # Annotations inside a modifiers child
             if sub.type == "modifiers":
                 for mod in sub.children:
                     if mod.type in ("annotation", "marker_annotation"):
@@ -9183,29 +9152,6 @@ class CodeParser:
             callee = node.children[0]
         if callee is None:
             return None, None
-
-        if language == "kotlin" and callee.type == "navigation_expression":
-            receiver = next(
-                (
-                    child.text.decode("utf-8", errors="replace")
-                    for child in callee.children
-                    if child.type == "simple_identifier"
-                ),
-                None,
-            )
-            method = None
-            for child in callee.children:
-                if child.type != "navigation_suffix":
-                    continue
-                method = next(
-                    (
-                        part.text.decode("utf-8", errors="replace")
-                        for part in child.children
-                        if part.type == "simple_identifier"
-                    ),
-                    None,
-                )
-            return receiver, method
 
         if callee.type not in ("attribute", "member_expression"):
             return None, None
@@ -11034,16 +10980,6 @@ class CodeParser:
         for child in root.children:
             node_type = child.type
 
-            # Kotlin groups top-level imports under an ``import_list`` node,
-            # while the generic import table contains ``import_header``.
-            if language == "kotlin" and node_type == "import_list":
-                for import_node in child.children:
-                    if import_node.type == "import_header":
-                        self._collect_import_names(
-                            import_node, language, source, import_map,
-                        )
-                continue
-
             # Unwrap decorator wrappers to reach the inner definition
             target = child
             if node_type in decorator_wrappers:
@@ -11542,18 +11478,6 @@ class CodeParser:
                         if module_name and real_name and alias:
                             import_map[alias] = f"{module_name}.{real_name}"
 
-        elif language == "kotlin":
-            text = node.text.decode("utf-8", errors="replace").strip()
-            if not text.startswith("import "):
-                return
-            imported = text[len("import "):].rstrip(";").strip()
-            if imported.startswith("static ") or imported.endswith(".*"):
-                return
-            original, separator, alias = imported.partition(" as ")
-            local_name = alias.strip() if separator else original.rsplit(".", 1)[-1]
-            if local_name:
-                import_map[local_name] = original.strip()
-
         elif language == "php":
             import_map.update(self._php_import_bindings(node))
 
@@ -11762,20 +11686,6 @@ class CodeParser:
 
         elif language == "rust":
             return self._resolve_rust_module_file(module, file_path)
-
-        elif language == "kotlin":
-            if module.endswith(".*"):
-                return None
-            relative = module.replace(".", "/")
-            current = caller_dir
-            while True:
-                for suffix in (".kt", ".kts"):
-                    target = current / f"{relative}{suffix}"
-                    if target.is_file():
-                        return str(target.resolve())
-                if current == current.parent:
-                    break
-                current = current.parent
 
         elif language == "php":
             composer_resolved = self._resolve_php_composer_module(
@@ -13094,16 +13004,6 @@ class CodeParser:
                     for arg in child.children:
                         if arg.type in ("identifier", "attribute"):
                             bases.append(arg.text.decode("utf-8", errors="replace"))
-        elif language == "kotlin":
-            # Look for superclass/interfaces in extends/implements clauses
-            for child in node.children:
-                if child.type in (
-                    "superclass", "super_interfaces", "extends_type",
-                    "implements_type", "type_identifier", "supertype",
-                    "delegation_specifier",
-                ):
-                    text = child.text.decode("utf-8", errors="replace")
-                    bases.append(text)
         elif language == "scala":
             for child in node.children:
                 if child.type == "extends_clause":
@@ -13626,7 +13526,6 @@ class CodeParser:
             return None  # method child not found
 
         # Simple call: func_name(args)
-        # Kotlin uses "simple_identifier" instead of "identifier".
         if first.type in ("identifier", "simple_identifier"):
             return first.text.decode("utf-8", errors="replace")
 
@@ -13645,7 +13544,6 @@ class CodeParser:
             return None
 
         # Method call: obj.method(args)
-        # Kotlin uses "navigation_expression" for member access (obj.method).
         member_types = (
             "attribute", "member_expression",
             "field_expression", "selector_expression",
@@ -13654,7 +13552,6 @@ class CodeParser:
         )
         if first.type in member_types:
             # Get the rightmost identifier (the method name)
-            # Kotlin navigation_expression uses navigation_suffix > simple_identifier.
             for child in reversed(first.children):
                 if child.type in (
                     "identifier", "property_identifier", "field_identifier",

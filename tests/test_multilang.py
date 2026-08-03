@@ -1,4 +1,4 @@
-"""Tests for Go, Rust, C, C++, Ruby, PHP, Kotlin, Swift, Solidity, and Vue parsing."""
+"""Tests for Go, Rust, C, C++, Ruby, PHP, Swift, Solidity, and Vue parsing."""
 
 from pathlib import Path
 
@@ -581,85 +581,6 @@ class TestPHPImportResolution:
         assert (base / "Entity/Job.php").resolve().as_posix() in targets
         assert (base / "Model/Status.php").resolve().as_posix() in targets
         assert len(targets) == 2
-
-
-class TestKotlinParsing:
-    def setup_method(self):
-        self.parser = CodeParser()
-        self.nodes, self.edges = self.parser.parse_file(FIXTURES / "sample.kt")
-
-    def test_detects_language(self):
-        assert self.parser.detect_language(Path("Main.kt")) == "kotlin"
-
-    def test_finds_classes(self):
-        classes = [n for n in self.nodes if n.kind == "Class"]
-        names = {c.name for c in classes}
-        assert "User" in names or "InMemoryRepo" in names
-
-    def test_finds_functions(self):
-        funcs = [n for n in self.nodes if n.kind == "Function"]
-        names = {f.name for f in funcs}
-        assert "createUser" in names or "findById" in names or "save" in names
-
-    def test_finds_calls(self):
-        calls = [e for e in self.edges if e.kind == "CALLS"]
-        targets = {c.target for c in calls}
-        # Simple call: println(...)
-        assert "println" in targets
-        # Method call: repo.save(user)
-        assert any("save" in t for t in targets)
-
-
-class TestKotlinAnnotations:
-    """Regression tests for #295: Kotlin nodes must persist annotation
-    metadata in both ``modifiers`` (comma-joined string) and
-    ``extra['decorators']`` (list) so consumers can filter queries like
-    "show me all @Composable functions" or "find @HiltViewModel classes".
-    """
-
-    def _parse(self, source: str, tmp_path):
-        p = tmp_path / "x.kt"
-        p.write_text(source, encoding="utf-8")
-        return CodeParser().parse_file(p)
-
-    def test_hilt_viewmodel_annotation_on_class(self, tmp_path):
-        nodes, _ = self._parse(
-            "package com.example\n@HiltViewModel\nclass MyVM {\n    fun noop() {}\n}\n",
-            tmp_path,
-        )
-        vm = next(n for n in nodes if n.kind == "Class" and n.name == "MyVM")
-        assert vm.modifiers == "HiltViewModel"
-        assert vm.extra.get("decorators") == ["HiltViewModel"]
-
-    def test_composable_annotation_on_function(self, tmp_path):
-        nodes, _ = self._parse(
-            "package com.example\n@Composable\nfun Greeting(n: String) {\n"
-            "    println(n)\n}\n",
-            tmp_path,
-        )
-        fn = next(n for n in nodes if n.kind == "Function" and n.name == "Greeting")
-        assert fn.modifiers == "Composable"
-        assert fn.extra.get("decorators") == ["Composable"]
-
-    def test_unannotated_function_has_none_modifiers(self, tmp_path):
-        """Guard: adding annotation support must not leak an empty string
-        or empty list onto unannotated nodes."""
-        nodes, _ = self._parse(
-            "package com.example\nfun bare() { println(1) }\n", tmp_path,
-        )
-        fn = next(n for n in nodes if n.kind == "Function" and n.name == "bare")
-        assert fn.modifiers is None
-        assert "decorators" not in fn.extra
-
-    def test_test_annotation_still_triggers_test_kind(self, tmp_path):
-        """Guard: annotation persistence must not break the pre-existing
-        @Test -> Test-kind promotion."""
-        nodes, _ = self._parse(
-            "package com.example\nclass T {\n    @Test\n    fun testX() { println(1) }\n}\n",
-            tmp_path,
-        )
-        t = next(n for n in nodes if n.kind == "Test" and n.name == "testX")
-        assert t.extra.get("decorators") == ["Test"]
 
 
 class TestSwiftParsing:

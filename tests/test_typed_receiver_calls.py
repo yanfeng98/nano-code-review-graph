@@ -107,39 +107,6 @@ def test_container_annotation_is_not_mistaken_for_element_type(
     assert _calls_from(edges, "::run") == ["append"]
 
 
-def test_kotlin_generic_parameter_local_and_field_types_resolve(tmp_path: Path) -> None:
-    pkg = tmp_path / "pkg"
-    app = tmp_path / "app"
-    pkg.mkdir()
-    app.mkdir()
-    service = pkg / "Service.kt"
-    service.write_text(
-        "package pkg\nclass Service<T> {\n  fun work() {}\n  fun done() {}\n  fun save() {}\n}\n",
-        encoding="utf-8",
-    )
-    consumer = app / "Consumer.kt"
-    consumer.write_text(
-        "package app\n"
-        "import pkg.Service\n"
-        "class Consumer(private val field: Service<String>) {\n"
-        "  fun run(param: Service<Int>) {\n"
-        "    val local: Service<Long> = param\n"
-        "    local.work()\n"
-        "    param.done()\n"
-        "    field.save()\n"
-        "  }\n"
-        "}\n",
-        encoding="utf-8",
-    )
-
-    _, edges = CodeParser(repo_root=tmp_path).parse_file(consumer)
-
-    targets = _calls_from(edges, "::Consumer.run")
-    assert f"{service.resolve().as_posix()}::Service.work" in targets
-    assert f"{service.resolve().as_posix()}::Service.done" in targets
-    assert f"{service.resolve().as_posix()}::Service.save" in targets
-
-
 def test_typescript_generic_parameter_local_and_field_types_resolve(
     tmp_path: Path,
 ) -> None:
