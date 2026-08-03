@@ -303,7 +303,7 @@ class TestIgnorePatterns:
         # Laravel/PHP
         assert _should_ignore("vendor/autoload.php", patterns)
         assert _should_ignore("bootstrap/cache/packages.php", patterns)
-        # Gradle/Java
+        # Gradle
         assert _should_ignore(".gradle/caches/jars.bin", patterns)
         assert _should_ignore("build/libs/app.jar", patterns)
         # Flutter/Dart

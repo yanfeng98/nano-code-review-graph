@@ -28,7 +28,6 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - Python 3.10
     import tomli as tomllib  # type: ignore[import-not-found,no-redef]
 
-from .config_keys import is_spring_config_path, normalize_spring_config_key
 from .custom_languages import CustomLanguage, load_custom_languages
 
 try:
@@ -718,7 +717,6 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".tsx": "tsx",
     ".go": "go",
     ".rs": "rust",
-    ".java": "java",
     ".rb": "ruby",
     ".cpp": "cpp",
     ".cc": "cpp",
@@ -899,7 +897,7 @@ _CLASS_TYPES: dict[str, list[str]] = {
     "javascript": ["class_declaration", "class"],
     # TS types are declarations, not just runtime classes: an interface or type
     # alias is the thing callers depend on, so it needs a node of its own the way
-    # Java/PHP interfaces do. Without them a types-only module (types.ts,
+    # PHP interfaces do. Without them a types-only module (types.ts,
     # *.d.ts) contributes zero symbol nodes and its blast radius collapses to
     # whole-file IMPORTS_FROM fan-out. See: #737
     "typescript": [
@@ -914,7 +912,6 @@ _CLASS_TYPES: dict[str, list[str]] = {
     # impl_item is a scope for methods, not a second type definition. It is
     # dispatched separately so repeated impl blocks cannot overwrite structs.
     "rust": ["struct_item", "enum_item", "trait_item"],
-    "java": ["class_declaration", "interface_declaration", "enum_declaration"],
     "c": ["struct_specifier", "type_definition"],
     "cpp": ["class_specifier", "struct_specifier"],
     "ruby": ["class", "module"],
@@ -994,7 +991,6 @@ _FUNCTION_TYPES: dict[str, list[str]] = {
     "tsx": ["function_declaration", "method_definition", "arrow_function"],
     "go": ["function_declaration", "method_declaration"],
     "rust": ["function_item", "function_signature_item"],
-    "java": ["method_declaration", "constructor_declaration"],
     "c": ["function_definition"],
     "cpp": ["function_definition", "declaration", "field_declaration"],
     "ruby": ["method", "singleton_method"],
@@ -1003,7 +999,7 @@ _FUNCTION_TYPES: dict[str, list[str]] = {
     "kotlin": ["function_declaration"],
     # Swift: initializers, deinitializers and subscripts are separate node
     # types, not `function_declaration`s, so they need listing alongside it —
-    # the same way java lists `constructor_declaration`. Their names come
+    # Their names come
     # from the `_get_name` Swift branch (the grammar has no usable name field).
     "swift": [
         "function_declaration",
@@ -1068,7 +1064,6 @@ _IMPORT_TYPES: dict[str, list[str]] = {
     "tsx": ["import_statement"],
     "go": ["import_declaration"],
     "rust": ["use_declaration"],
-    "java": ["import_declaration"],
     "c": ["preproc_include"],
     "cpp": ["preproc_include"],
     "ruby": ["call"],  # require/require_relative
@@ -1123,7 +1118,6 @@ _CALL_TYPES: dict[str, list[str]] = {
     "tsx": ["call_expression", "new_expression"],
     "go": ["call_expression"],
     "rust": ["call_expression", "macro_invocation"],
-    "java": ["method_invocation", "object_creation_expression", "method_reference"],
     "c": ["call_expression"],
     "cpp": ["call_expression"],
     "ruby": ["call", "method_call"],
@@ -1222,7 +1216,6 @@ _TEST_FILE_PATTERNS = [
     re.compile(r"test[_-].*\.[rR]$"),
     re.compile(r"tests/testthat/"),
     re.compile(r".*Test\.kt$"),
-    re.compile(r".*Test\.java$"),
     re.compile(r".*_test\.resi?$"),
     re.compile(r".*\.test\.resi?$"),
     re.compile(r"test/runtests\.jl$"),
@@ -1237,76 +1230,16 @@ _TEST_RUNNER_NAMES = frozenset({
     "suite",
 })
 
-# Annotations/decorators that mark test methods (JUnit, TestNG, etc.)
+# Annotations/decorators that mark test methods
 _TEST_ANNOTATIONS = frozenset({
-    "Test", "ParameterizedTest", "RepeatedTest", "TestFactory",
-    "org.junit.Test", "org.junit.jupiter.api.Test",
+    "Test",
     # Rust: built-in `#[test]` plus common async-runtime + framework
     # variants. Stripped of the `#[ ]` wrapper before lookup.
     "test", "tokio::test", "async_std::test",
     "rstest", "rstest::rstest", "proptest",
 })
 
-# Spring stereotype annotations that mark classes as managed beans
-_SPRING_STEREOTYPE_ANNOTATIONS = frozenset({
-    "Component", "Service", "Repository", "Controller", "RestController",
-    "Configuration", "Indexed", "ControllerAdvice", "RestControllerAdvice",
-    "EventListener",
-})
-
-# Spring DI injection annotations (field/setter/constructor-level)
-_SPRING_INJECT_ANNOTATIONS = frozenset({
-    "Autowired", "Inject", "Resource",
-})
-_SPRING_PLACEHOLDER_RE = re.compile(r"\$\{([^{}]+)\}")
-
-# Temporal workflow/activity interface markers
-_TEMPORAL_INTERFACE_ANNOTATIONS = frozenset({
-    "WorkflowInterface", "ActivityInterface",
-})
-
-# Temporal method-level markers
-_TEMPORAL_METHOD_ANNOTATIONS = frozenset({
-    "WorkflowMethod", "ActivityMethod", "SignalMethod", "QueryMethod",
-})
-
-# Kafka consumer annotations (annotation-based pattern)
-_KAFKA_LISTENER_ANNOTATIONS = frozenset({"KafkaListener", "KafkaHandler"})
-
-# Kafka consumer field types (reactive / imperative)
-_KAFKA_CONSUMER_TYPES = frozenset({
-    "KafkaReceiver",
-    "ReactiveKafkaConsumerTemplate",
-    "MessageListenerContainer",
-    "ConcurrentMessageListenerContainer",
-})
-
-# Kafka producer field types
-_KAFKA_PRODUCER_TYPES = frozenset({
-    "KafkaTemplate",
-    "KafkaOperations",
-    "ReactiveKafkaProducerTemplate",
-    "KafkaSender",
-})
-
-# Spring scheduling annotations. ``Scheduled`` is repeatable; ``Schedules``
-# is its explicit Java container form.
-_SPRING_SCHEDULED_ANNOTATIONS = frozenset({"Scheduled", "Schedules"})
-
-_SPRING_EVENT_LISTENER_ANNOTATIONS = frozenset({"EventListener"})
-_SPRING_EVENT_PUBLISH_METHODS = frozenset({"publishEvent"})
-_JAVA_PACKAGE_KEY = "__crg_java_package__"
-_SPRING_REQUEST_PREFIX_KEY = "__crg_spring_request_prefix__:"
 _JS_IMPORT_ORIGINAL_PREFIX_KEY = "__crg_js_import_original__:"
-_SPRING_REQUEST_MAPPINGS = {
-    "DeleteMapping": ("DELETE",),
-    "GetMapping": ("GET",),
-    "PatchMapping": ("PATCH",),
-    "PostMapping": ("POST",),
-    "PutMapping": ("PUT",),
-    "RequestMapping": (),
-}
-_SPRING_WEBFLUX_HTTP_VERBS = frozenset({"DELETE", "GET", "PATCH", "POST", "PUT"})
 _HTTP_REQUEST_METHODS = frozenset({
     "CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE",
 })
@@ -1899,7 +1832,7 @@ def _strip_block_doc_comment(text: str) -> str:
 def _modifier_annotation_names(node) -> list[str]:
     """Return annotation names from a ``modifiers`` child of *node*.
 
-    Covers Java/Kotlin where annotations live inside a ``modifiers``
+    Covers Kotlin where annotations live inside a ``modifiers``
     node as ``annotation`` / ``marker_annotation`` children. The leading
     ``@`` is stripped. See: #295
     """
@@ -2427,8 +2360,6 @@ class CodeParser:
         lang = self._extension_map.get(suffix)
         if lang == "yaml" and _is_ansible_path(path):
             return "ansible"
-        if lang in ("properties", "yaml") and is_spring_config_path(path):
-            return "spring_config"
         if lang == "properties":
             return None
         if lang is not None:
@@ -2605,15 +2536,6 @@ class CodeParser:
             if file_type in ("vars", "meta") or _is_ansible_content(source):
                 return self._parse_ansible(path, source)
             return [], []
-
-        # Spring configuration: only conventional application files reach
-        # this branch. Generic YAML and arbitrary .properties files stay out.
-        if language == "spring_config":
-            if _yaml is None:
-                return [], []
-            if path.suffix.lower() in (".yaml", ".yml") and _is_ansible_content(source):
-                return self._parse_ansible(path, source)
-            return self._parse_spring_config(path, source)
 
         # Generic YAML: no tree-sitter grammar bundled; skip.
         if language == "yaml":
@@ -4931,7 +4853,7 @@ class CodeParser:
         return resolved
 
     _TYPED_CALL_LANGUAGES = frozenset({
-        "python", "kotlin", "java", "javascript", "typescript", "tsx", "php",
+        "python", "kotlin", "javascript", "typescript", "tsx", "php",
     })
     _TRANSPARENT_TYPE_WRAPPERS = frozenset({"Annotated", "Optional", "Type"})
     _NON_RECEIVER_TYPE_NAMES = frozenset({
@@ -4965,7 +4887,6 @@ class CodeParser:
         function_types = set(self._function_types.get(language, []))
         call_types = set(self._call_types.get(language, []))
         block_types = {
-            "java": {"block"},
             "kotlin": {"statements"},
             "javascript": {"statement_block"},
             "typescript": {"statement_block"},
@@ -5097,7 +5018,6 @@ class CodeParser:
         parameter_types = {
             "python": {"typed_parameter", "typed_default_parameter"},
             "kotlin": {"parameter"},
-            "java": {"formal_parameter", "spread_parameter"},
             "javascript": {"required_parameter", "optional_parameter"},
             "typescript": {"required_parameter", "optional_parameter"},
             "tsx": {"required_parameter", "optional_parameter"},
@@ -5189,27 +5109,6 @@ class CodeParser:
                 None,
             )
             self._store_typed_binding(result, name_node, type_node)
-
-        elif language == "java" and node.type in (
-            "formal_parameter", "spread_parameter",
-        ):
-            self._store_typed_binding(
-                result,
-                node.child_by_field_name("name"),
-                node.child_by_field_name("type"),
-            )
-
-        elif language == "java" and node.type in (
-            "field_declaration", "local_variable_declaration",
-        ):
-            type_node = node.child_by_field_name("type")
-            for child in node.children:
-                if child.type == "variable_declarator":
-                    self._store_typed_binding(
-                        result,
-                        child.child_by_field_name("name"),
-                        type_node,
-                    )
 
         elif language in ("javascript", "typescript", "tsx") and node.type in (
             "required_parameter", "optional_parameter", "variable_declarator",
@@ -5403,207 +5302,6 @@ class CodeParser:
                         return normalized
         return None
 
-    # -----------------------------------------------------------------------
-    # Spring application configuration parser
-    # -----------------------------------------------------------------------
-
-    @staticmethod
-    def _spring_config_file_node(path: Path, source: bytes, language: str) -> NodeInfo:
-        file_path = normalize_file_path(path)
-        return NodeInfo(
-            kind="File",
-            name=file_path,
-            file_path=file_path,
-            line_start=1,
-            line_end=source.count(b"\n") + 1,
-            language=language,
-            extra={"config_format": path.suffix.lower().lstrip(".")},
-        )
-
-    def _parse_spring_config(
-        self,
-        path: Path,
-        source: bytes,
-    ) -> tuple[list[NodeInfo], list[EdgeInfo]]:
-        """Index Spring property names while deliberately discarding values."""
-        if path.suffix.lower() == ".properties":
-            return self._parse_spring_properties(path, source)
-        return self._parse_spring_yaml(path, source)
-
-    def _parse_spring_yaml(
-        self,
-        path: Path,
-        source: bytes,
-    ) -> tuple[list[NodeInfo], list[EdgeInfo]]:
-        """Flatten Spring YAML keys using PyYAML's syntax tree, never values."""
-        try:
-            documents = list(_yaml.compose_all(source.decode("utf-8", errors="replace")))
-        except _yaml.YAMLError as exc:
-            logger.debug("Spring YAML parse error in %s: %s", path, exc)
-            return [], []
-
-        if self._is_non_spring_yaml(documents):
-            return [], []
-
-        file_path = normalize_file_path(path)
-        nodes = [self._spring_config_file_node(path, source, "yaml")]
-        emitted: set[str] = set()
-
-        def emit(raw_key: str, value_node: object, document_index: int) -> None:
-            key = normalize_spring_config_key(raw_key)
-            if not key or key in emitted:
-                return
-            emitted.add(key)
-            tag = str(getattr(value_node, "tag", ""))
-            value_type = tag.rsplit(":", 1)[-1]
-            if value_type not in {"bool", "float", "int", "null", "str", "timestamp"}:
-                value_type = "scalar"
-            nodes.append(NodeInfo(
-                kind="ConfigProperty",
-                name=key,
-                file_path=file_path,
-                line_start=_yaml_line(value_node),
-                line_end=_yaml_end_line(value_node),
-                language="yaml",
-                extra={
-                    "document_index": document_index,
-                    "raw_key": raw_key,
-                    "source_file": path.name,
-                    "value_type": value_type,
-                },
-            ))
-
-        def visit(
-            node: object,
-            prefix: str,
-            document_index: int,
-            ancestors: frozenset[int],
-        ) -> None:
-            node_id = id(node)
-            if node_id in ancestors:
-                return
-            nested_ancestors = ancestors | {node_id}
-            if isinstance(node, _YamlMapping):
-                for key_node, value_node in node.value:
-                    raw_segment = _yaml_scalar(key_node)
-                    if not raw_segment or raw_segment == "<<":
-                        continue
-                    raw_key = f"{prefix}.{raw_segment}" if prefix else raw_segment
-                    if isinstance(value_node, _YamlScalar):
-                        emit(raw_key, value_node, document_index)
-                    else:
-                        visit(value_node, raw_key, document_index, nested_ancestors)
-            elif isinstance(node, _YamlSequence):
-                for index, item in enumerate(node.value):
-                    raw_key = f"{prefix}[{index}]"
-                    if isinstance(item, _YamlScalar):
-                        emit(raw_key, item, document_index)
-                    else:
-                        visit(item, raw_key, document_index, nested_ancestors)
-
-        for document_index, document in enumerate(documents):
-            if document is not None:
-                visit(document, "", document_index, frozenset())
-        return nodes, []
-
-    @staticmethod
-    def _is_non_spring_yaml(documents: list[object]) -> bool:
-        """Reject clear CI, deployment, and API manifests despite their filename."""
-        signatures = (
-            frozenset({"apiVersion", "kind"}),
-            frozenset({"jobs", "on"}),
-            frozenset({"openapi", "paths"}),
-            frozenset({"paths", "swagger"}),
-            frozenset({"services", "version"}),
-            frozenset({"AWSTemplateFormatVersion", "Resources"}),
-        )
-        for document in documents:
-            if document is None:
-                continue
-            if not isinstance(document, _YamlMapping):
-                return True
-            top_level_keys = {
-                key
-                for key_node, _ in document.value
-                if (key := _yaml_scalar(key_node)) is not None
-            }
-            if any(signature <= top_level_keys for signature in signatures):
-                return True
-        return False
-
-    @staticmethod
-    def _spring_property_logical_lines(text: str) -> list[tuple[int, str]]:
-        """Join Java-properties continuation lines while retaining start lines."""
-        logical: list[tuple[int, str]] = []
-        buffer = ""
-        start_line = 1
-        for line_number, physical in enumerate(text.splitlines(), start=1):
-            if not buffer:
-                start_line = line_number
-            buffer += physical.lstrip() if buffer else physical
-            backslashes = len(buffer) - len(buffer.rstrip("\\"))
-            if backslashes % 2:
-                buffer = buffer[:-1]
-                continue
-            logical.append((start_line, buffer))
-            buffer = ""
-        if buffer:
-            logical.append((start_line, buffer))
-        return logical
-
-    @staticmethod
-    def _spring_property_key(line: str) -> Optional[str]:
-        """Extract the unescaped key portion of one Java-properties entry."""
-        stripped = line.lstrip()
-        if not stripped or stripped.startswith(("#", "!")):
-            return None
-        escaped = False
-        boundary = len(stripped)
-        for index, char in enumerate(stripped):
-            if char == "\\":
-                escaped = not escaped
-                continue
-            if not escaped and (char in "=:" or char.isspace()):
-                boundary = index
-                break
-            escaped = False
-        key = stripped[:boundary]
-        for escaped_char in (" ", ":", "=", "#", "!"):
-            key = key.replace(f"\\{escaped_char}", escaped_char)
-        return key or None
-
-    def _parse_spring_properties(
-        self,
-        path: Path,
-        source: bytes,
-    ) -> tuple[list[NodeInfo], list[EdgeInfo]]:
-        """Index Spring .properties keys without retaining their values."""
-        text = source.decode("utf-8", errors="replace")
-        file_path = normalize_file_path(path)
-        nodes = [self._spring_config_file_node(path, source, "properties")]
-        emitted: set[str] = set()
-        for line_number, line in self._spring_property_logical_lines(text):
-            raw_key = self._spring_property_key(line)
-            if raw_key is None:
-                continue
-            key = normalize_spring_config_key(raw_key)
-            if not key or key in emitted:
-                continue
-            emitted.add(key)
-            nodes.append(NodeInfo(
-                kind="ConfigProperty",
-                name=key,
-                file_path=file_path,
-                line_start=line_number,
-                line_end=line_number,
-                language="properties",
-                extra={
-                    "raw_key": raw_key,
-                    "source_file": path.name,
-                    "value_type": "scalar",
-                },
-            ))
-        return nodes, []
 
     # -----------------------------------------------------------------------
     # Ansible YAML parser
@@ -8746,1122 +8444,6 @@ class CodeParser:
         parts.append(current.text.decode("utf-8", errors="replace"))
         return ".".join(reversed(parts))
 
-    @staticmethod
-    def _get_java_annotations(class_node) -> list[str]:
-        """Return annotation names from the modifiers child of a Java class/method node."""
-        names: list[str] = []
-        for child in class_node.children:
-            if child.type != "modifiers":
-                continue
-            for mod in child.children:
-                if mod.type in ("marker_annotation", "annotation"):
-                    for sub in mod.children:
-                        if sub.type == "identifier":
-                            names.append(sub.text.decode("utf-8", errors="replace"))
-                            break
-        return names
-
-    @staticmethod
-    def _spring_config_annotation_name(annotation_node) -> Optional[str]:
-        """Return the simple name of a Java annotation node."""
-        for child in annotation_node.children:
-            if child.type == "identifier":
-                return child.text.decode("utf-8", errors="replace")
-            if child.type in ("scoped_identifier", "qualified_name"):
-                return child.text.decode("utf-8", errors="replace").rsplit(".", 1)[-1]
-        return None
-
-    @staticmethod
-    def _spring_config_string_literals(node) -> list[str]:
-        values: list[str] = []
-        if node.type == "string_literal":
-            text = node.text.decode("utf-8", errors="replace")
-            if len(text) >= 2:
-                values.append(text[1:-1])
-            return values
-        for child in node.children:
-            values.extend(CodeParser._spring_config_string_literals(child))
-        return values
-
-    def _spring_config_annotation_values(
-        self,
-        annotation_node,
-        accepted_keys: frozenset[str],
-    ) -> list[str]:
-        """Read selected string arguments from a parsed Java annotation."""
-        values: list[str] = []
-        for child in annotation_node.children:
-            if child.type != "annotation_argument_list":
-                continue
-            for argument in child.children:
-                if argument.type == "element_value_pair":
-                    named = [part for part in argument.children if part.is_named]
-                    if len(named) < 2:
-                        continue
-                    key = named[0].text.decode("utf-8", errors="replace")
-                    if key in accepted_keys:
-                        values.extend(self._spring_config_string_literals(named[-1]))
-                elif argument.is_named and "value" in accepted_keys:
-                    values.extend(self._spring_config_string_literals(argument))
-        return values
-
-    def _emit_spring_config_edges(
-        self,
-        class_node,
-        class_name: str,
-        enclosing_class: Optional[str],
-        file_path: str,
-        edges: list[EdgeInfo],
-    ) -> None:
-        """Emit Spring config dependencies while retaining no literal values."""
-        source = self._qualify(class_name, file_path, enclosing_class)
-
-        for child in class_node.children:
-            if child.type != "modifiers":
-                continue
-            for annotation in child.children:
-                if self._spring_config_annotation_name(annotation) != "ConfigurationProperties":
-                    continue
-                prefixes = self._spring_config_annotation_values(
-                    annotation,
-                    frozenset({"prefix", "value"}),
-                )
-                for prefix in prefixes:
-                    key = normalize_spring_config_key(prefix)
-                    if not key:
-                        continue
-                    edges.append(EdgeInfo(
-                        kind="DEPENDS_ON_CONFIG",
-                        source=source,
-                        target=f"config:{key}.*",
-                        file_path=file_path,
-                        line=annotation.start_point[0] + 1,
-                        extra={
-                            "config_key": key,
-                            "resolution": "configuration_properties",
-                        },
-                    ))
-
-        for child in class_node.children:
-            if child.type != "class_body":
-                continue
-            for member in child.children:
-                if member.type != "field_declaration":
-                    continue
-                for modifiers in member.children:
-                    if modifiers.type != "modifiers":
-                        continue
-                    for annotation in modifiers.children:
-                        if self._spring_config_annotation_name(annotation) != "Value":
-                            continue
-                        expressions = self._spring_config_annotation_values(
-                            annotation,
-                            frozenset({"value"}),
-                        )
-                        for expression in expressions:
-                            for match in _SPRING_PLACEHOLDER_RE.finditer(expression):
-                                raw_key = match.group(1).split(":", 1)[0].strip()
-                                key = normalize_spring_config_key(raw_key)
-                                if not key:
-                                    continue
-                                edges.append(EdgeInfo(
-                                    kind="DEPENDS_ON_CONFIG",
-                                    source=source,
-                                    target=f"config:{key}",
-                                    file_path=file_path,
-                                    line=annotation.start_point[0] + 1,
-                                    extra={
-                                        "config_key": key,
-                                        "resolution": "value_annotation",
-                                    },
-                                ))
-
-    def _emit_spring_injections(
-        self,
-        class_node,
-        class_name: str,
-        class_annotations: list[str],
-        language: str,
-        file_path: str,
-        edges: list[EdgeInfo],
-    ) -> None:
-        """Emit INJECTS edges for Spring DI injection points in a Java class.
-
-        Handles four patterns:
-        - @Autowired / @Inject / @Resource field injection
-        - @Autowired constructor injection
-        - Lombok @RequiredArgsConstructor with uninitialized final / @NonNull fields
-        - Lombok @AllArgsConstructor with every non-static field
-        """
-        if language != "java":
-            return
-
-        has_required_args = "RequiredArgsConstructor" in class_annotations
-        has_all_args = "AllArgsConstructor" in class_annotations
-        qualified_source = self._qualify(class_name, file_path, None)
-
-        # Find the class body
-        for node in class_node.children:
-            if node.type != "class_body":
-                continue
-            for member in node.children:
-                if member.type == "field_declaration":
-                    self._emit_spring_field_injection(
-                        member, qualified_source, file_path,
-                        edges, has_required_args, has_all_args,
-                    )
-                elif member.type == "constructor_declaration":
-                    self._emit_spring_constructor_injection(
-                        member, qualified_source, file_path, edges,
-                    )
-
-    def _emit_spring_field_injection(
-        self,
-        field_node,
-        qualified_source: str,
-        file_path: str,
-        edges: list[EdgeInfo],
-        has_required_args: bool,
-        has_all_args: bool,
-    ) -> None:
-        """Emit one INJECTS edge per field selected by Spring/Lombok."""
-        field_annotations: list[str] = []
-        has_final = False
-        has_static = False
-        field_type: Optional[str] = None
-        declarators: list[tuple[str, bool]] = []
-
-        for child in field_node.children:
-            if child.type == "modifiers":
-                for mod in child.children:
-                    text = mod.text.decode("utf-8", errors="replace")
-                    if text == "final":
-                        has_final = True
-                    elif text == "static":
-                        has_static = True
-                    elif mod.type in ("marker_annotation", "annotation"):
-                        for sub in mod.children:
-                            if sub.type == "identifier":
-                                field_annotations.append(
-                                    sub.text.decode("utf-8", errors="replace")
-                                )
-                                break
-            elif child.type in ("type_identifier", "generic_type", "array_type"):
-                # Use outermost type name for generic types like List<Foo>
-                if child.type == "type_identifier":
-                    field_type = child.text.decode("utf-8", errors="replace")
-                elif child.type == "generic_type":
-                    for sub in child.children:
-                        if sub.type == "type_identifier":
-                            field_type = sub.text.decode("utf-8", errors="replace")
-                            break
-                elif child.type == "array_type":
-                    for sub in child.children:
-                        if sub.type == "type_identifier":
-                            field_type = sub.text.decode("utf-8", errors="replace")
-                            break
-            elif child.type == "variable_declarator":
-                field_name: Optional[str] = None
-                for sub in child.children:
-                    if sub.type == "identifier":
-                        field_name = sub.text.decode("utf-8", errors="replace")
-                        break
-                if field_name:
-                    has_initializer = child.child_by_field_name("value") is not None
-                    declarators.append((field_name, has_initializer))
-
-        if not field_type or has_static or not declarators:
-            return
-
-        has_inject_annotation = any(a in _SPRING_INJECT_ANNOTATIONS for a in field_annotations)
-        has_non_null = "NonNull" in field_annotations
-
-        for field_name, has_initializer in declarators:
-            if has_inject_annotation:
-                injection_type = "field"
-            elif has_all_args:
-                injection_type = "constructor_lombok_all"
-            elif has_required_args and not has_initializer and (has_final or has_non_null):
-                injection_type = "constructor_lombok"
-            else:
-                continue
-
-            edges.append(EdgeInfo(
-                kind="INJECTS",
-                source=qualified_source,
-                target=field_type,
-                file_path=file_path,
-                line=field_node.start_point[0] + 1,
-                extra={
-                    "injection_type": injection_type,
-                    "field_name": field_name,
-                },
-            ))
-
-    def _emit_spring_constructor_injection(
-        self,
-        ctor_node,
-        qualified_source: str,
-        file_path: str,
-        edges: list[EdgeInfo],
-    ) -> None:
-        """Emit INJECTS edges for @Autowired constructor parameters."""
-        ctor_annotations = self._get_java_annotations(ctor_node)
-        if not any(a in _SPRING_INJECT_ANNOTATIONS for a in ctor_annotations):
-            return
-
-        for child in ctor_node.children:
-            if child.type != "formal_parameters":
-                continue
-            for param in child.children:
-                if param.type != "formal_parameter":
-                    continue
-                param_type: Optional[str] = None
-                param_name: Optional[str] = None
-                for sub in param.children:
-                    if sub.type == "type_identifier" and param_type is None:
-                        param_type = sub.text.decode("utf-8", errors="replace")
-                    elif sub.type == "identifier":
-                        param_name = sub.text.decode("utf-8", errors="replace")
-                if param_type:
-                    extra: dict = {"injection_type": "constructor"}
-                    if param_name:
-                        extra["field_name"] = param_name
-                    edges.append(EdgeInfo(
-                        kind="INJECTS",
-                        source=qualified_source,
-                        target=param_type,
-                        file_path=file_path,
-                        line=param.start_point[0] + 1,
-                        extra=extra,
-                    ))
-
-    @staticmethod
-    def _java_annotation_name(annotation_node) -> Optional[str]:
-        """Return the simple name of a Java annotation AST node."""
-        for child in annotation_node.children:
-            if child.type == "identifier":
-                return child.text.decode("utf-8", errors="replace")
-            if child.type in ("scoped_identifier", "qualified_name"):
-                return child.text.decode("utf-8", errors="replace").rsplit(".", 1)[-1]
-        return None
-
-    def _scheduled_annotations(self, method_node) -> list:
-        """Collect direct and ``@Schedules``-contained ``@Scheduled`` nodes."""
-        found: list = []
-
-        def visit(node) -> None:
-            if node.type == "annotation":
-                name = self._java_annotation_name(node)
-                if name == "Scheduled":
-                    found.append(node)
-                    return
-                if name != "Schedules":
-                    return
-            for child in node.children:
-                visit(child)
-
-        for child in method_node.children:
-            if child.type == "modifiers":
-                visit(child)
-        return found
-
-    @staticmethod
-    def _java_annotation_attributes(annotation_node) -> dict[str, str]:
-        """Extract named Java annotation arguments without evaluating them."""
-        attributes: dict[str, str] = {}
-        for child in annotation_node.children:
-            if child.type != "annotation_argument_list":
-                continue
-            for pair in child.children:
-                if pair.type != "element_value_pair":
-                    continue
-                named = [part for part in pair.children if part.is_named]
-                if len(named) < 2 or named[0].type != "identifier":
-                    continue
-                key = named[0].text.decode("utf-8", errors="replace")
-                value_node = named[-1]
-                value = value_node.text.decode("utf-8", errors="replace")
-                if value_node.type == "string_literal" and len(value) >= 2:
-                    value = value[1:-1]
-                attributes[key] = value
-        return attributes
-
-    @staticmethod
-    def _java_string_literal_values(node) -> list[str]:
-        """Return string values nested below one Java annotation argument."""
-        values: list[str] = []
-        if node.type == "string_literal":
-            value = node.text.decode("utf-8", errors="replace")
-            if len(value) >= 2:
-                values.append(value[1:-1])
-            return values
-        for child in node.children:
-            values.extend(CodeParser._java_string_literal_values(child))
-        return values
-
-    def _spring_mapping_paths(self, annotation_node) -> list[str]:
-        """Extract only ``value``/``path`` route arguments from a mapping."""
-        paths: list[str] = []
-        for child in annotation_node.children:
-            if child.type != "annotation_argument_list":
-                continue
-            for argument in child.children:
-                if argument.type == "element_value_pair":
-                    named = [part for part in argument.children if part.is_named]
-                    if len(named) < 2:
-                        continue
-                    key = named[0].text.decode("utf-8", errors="replace")
-                    if key not in ("path", "value"):
-                        continue
-                    paths.extend(self._java_string_literal_values(named[-1]))
-                elif argument.is_named:
-                    paths.extend(self._java_string_literal_values(argument))
-        return paths or [""]
-
-    def _spring_mapping_methods(self, annotation_node, name: str) -> list[str]:
-        """Extract HTTP verbs from composed mappings or RequestMethod values."""
-        composed = _SPRING_REQUEST_MAPPINGS[name]
-        if composed:
-            return list(composed)
-
-        methods: list[str] = []
-        for child in annotation_node.children:
-            if child.type != "annotation_argument_list":
-                continue
-            for argument in child.children:
-                if argument.type != "element_value_pair":
-                    continue
-                named = [part for part in argument.children if part.is_named]
-                if len(named) < 2:
-                    continue
-                key = named[0].text.decode("utf-8", errors="replace")
-                if key != "method":
-                    continue
-                value_node = named[-1]
-                for value in self._descendants_of_type(value_node, "identifier"):
-                    method = value.text.decode("utf-8", errors="replace")
-                    if method in _HTTP_REQUEST_METHODS and method not in methods:
-                        methods.append(method)
-        return methods or ["ANY"]
-
-    @staticmethod
-    def _join_spring_route(prefix: str, path: str) -> str:
-        """Join class and method mappings into one normalized route."""
-        parts = [part.strip("/") for part in (prefix, path) if part.strip("/")]
-        return "/" + "/".join(parts) if parts else "/"
-
-    def _emit_spring_endpoint_nodes(
-        self,
-        method_node,
-        method_name: str,
-        class_name: Optional[str],
-        file_path: str,
-        import_map: dict[str, str],
-        nodes: list[NodeInfo],
-        edges: list[EdgeInfo],
-    ) -> int:
-        """Emit addressable endpoints and HANDLES edges for Spring mappings."""
-        annotations = self._java_annotations_named(
-            method_node,
-            frozenset(_SPRING_REQUEST_MAPPINGS),
-        )
-        if not annotations:
-            return 0
-
-        prefixes = [""]
-        encoded_prefixes = import_map.get(
-            f"{_SPRING_REQUEST_PREFIX_KEY}{class_name or ''}",
-        )
-        if encoded_prefixes:
-            try:
-                parsed_prefixes = json.loads(encoded_prefixes)
-            except (TypeError, ValueError):
-                parsed_prefixes = None
-            if isinstance(parsed_prefixes, list) and all(
-                isinstance(prefix, str) for prefix in parsed_prefixes
-            ):
-                prefixes = parsed_prefixes or [""]
-
-        source = self._qualify(method_name, file_path, class_name)
-        emitted = 0
-        for annotation_index, annotation in enumerate(annotations):
-            annotation_name = self._java_annotation_name(annotation)
-            if annotation_name is None:
-                continue
-            paths = self._spring_mapping_paths(annotation)
-            methods = self._spring_mapping_methods(annotation, annotation_name)
-            for prefix in prefixes:
-                for path in paths:
-                    route = self._join_spring_route(prefix, path)
-                    for method in methods:
-                        endpoint_name = (
-                            f"{method_name}@{annotation_name}"
-                            f"[{annotation_index}:{emitted}] {method} {route}"
-                        )
-                        metadata = {
-                            "annotation": annotation_name,
-                            "handler": method_name,
-                            "http_method": method,
-                            "route": route,
-                        }
-                        nodes.append(NodeInfo(
-                            kind="Endpoint",
-                            name=endpoint_name,
-                            file_path=file_path,
-                            line_start=annotation.start_point[0] + 1,
-                            line_end=annotation.end_point[0] + 1,
-                            language="java",
-                            parent_name=class_name,
-                            extra=metadata,
-                        ))
-                        edges.append(EdgeInfo(
-                            kind="HANDLES",
-                            source=source,
-                            target=self._qualify(endpoint_name, file_path, class_name),
-                            file_path=file_path,
-                            line=annotation.start_point[0] + 1,
-                            extra=metadata,
-                        ))
-                        emitted += 1
-        return emitted
-
-    def _java_invocation_chain_has_route(self, invocation) -> bool:
-        """Return whether a fluent Java invocation is rooted at ``route()``."""
-        current = invocation
-        for _ in range(32):
-            if current.type != "method_invocation":
-                return False
-            method, _ = self._get_java_method_and_receiver(current)
-            if method == "route":
-                return True
-            current = next(
-                (
-                    child for child in current.children
-                    if child.type == "method_invocation"
-                ),
-                None,
-            )
-            if current is None:
-                return False
-        return False
-
-    @staticmethod
-    def _webflux_route_arguments(invocation) -> tuple[Optional[str], Optional[object]]:
-        """Return a literal route and method-reference handler from one call."""
-        arguments = next(
-            (
-                child for child in invocation.children
-                if child.type == "argument_list"
-            ),
-            None,
-        )
-        if arguments is None:
-            return None, None
-        named = [child for child in arguments.children if child.is_named]
-        if len(named) < 2 or named[0].type != "string_literal":
-            return None, None
-        route_literal = named[0].text.decode("utf-8", errors="replace")
-        if len(route_literal) < 2:
-            return None, None
-        route = route_literal[1:-1]
-        if not route.startswith("/"):
-            return None, None
-        handler = next(
-            (child for child in named[1:] if child.type == "method_reference"),
-            None,
-        )
-        return route, handler
-
-    def _resolve_java_method_reference_target(
-        self,
-        reference,
-        file_path: str,
-        enclosing_class: Optional[str],
-        import_map: dict[str, str],
-        defined_names: set[str],
-    ) -> Optional[str]:
-        """Resolve a WebFlux handler reference from lexical Java type evidence."""
-        receiver, method = self._get_member_call_receiver_method(reference, "java")
-        if not receiver or not method:
-            return None
-        if receiver == "this" and enclosing_class:
-            return self._qualify(method, file_path, enclosing_class)
-
-        function_types = set(self._function_types.get("java", []))
-        class_types = set(self._class_types.get("java", []))
-        bindings: dict[str, str] = {}
-        function_node = None
-        class_node = None
-        ancestor = reference.parent
-        while ancestor is not None:
-            if function_node is None and ancestor.type in function_types:
-                function_node = ancestor
-            if ancestor.type in class_types:
-                class_node = ancestor
-                break
-            ancestor = ancestor.parent
-        if function_node is not None:
-            bindings.update(
-                self._collect_function_typed_parameters(function_node, "java"),
-            )
-        if class_node is not None:
-            bindings.update(
-                self._collect_class_typed_fields(
-                    class_node,
-                    "java",
-                    function_types,
-                    class_types,
-                ),
-            )
-
-        type_name = bindings.get(receiver)
-        if type_name is None and receiver[:1].isupper():
-            if receiver in import_map or receiver in defined_names:
-                type_name = receiver
-        if type_name is None:
-            return None
-        return self._resolve_typed_method_target(
-            type_name,
-            method,
-            file_path,
-            "java",
-            import_map,
-            defined_names,
-        )
-
-    def _emit_spring_webflux_endpoint(
-        self,
-        invocation,
-        source: bytes,
-        method: str,
-        file_path: str,
-        enclosing_class: Optional[str],
-        import_map: dict[str, str],
-        defined_names: set[str],
-        nodes: list[NodeInfo],
-        edges: list[EdgeInfo],
-    ) -> bool:
-        """Link a direct functional WebFlux route to its actual handler."""
-        if (
-            method not in _SPRING_WEBFLUX_HTTP_VERBS
-            or b"org.springframework.web.reactive.function.server" not in source
-            or not self._java_invocation_chain_has_route(invocation)
-        ):
-            return False
-
-        ancestor = invocation.parent
-        while ancestor is not None and ancestor.type not in self._function_types.get(
-            "java", []
-        ):
-            if ancestor.type == "lambda_expression":
-                return False
-            ancestor = ancestor.parent
-
-        route, handler_reference = self._webflux_route_arguments(invocation)
-        if route is None or handler_reference is None:
-            return False
-        handler_target = self._resolve_java_method_reference_target(
-            handler_reference,
-            file_path,
-            enclosing_class,
-            import_map,
-            defined_names,
-        )
-        if handler_target is None:
-            return False
-        _, handler_method = self._get_member_call_receiver_method(
-            handler_reference,
-            "java",
-        )
-        if handler_method is None:
-            return False
-
-        line = invocation.start_point[0] + 1
-        endpoint_name = f"{handler_method}@WebFlux[{line}] {method} {route}"
-        endpoint_target = self._qualify(endpoint_name, file_path, enclosing_class)
-        metadata = {
-            "handler": handler_method,
-            "handler_qualified": handler_target,
-            "http_method": method,
-            "mapping_style": "webflux_functional",
-            "route": route,
-        }
-        nodes.append(NodeInfo(
-            kind="Endpoint",
-            name=endpoint_name,
-            file_path=file_path,
-            line_start=line,
-            line_end=invocation.end_point[0] + 1,
-            language="java",
-            parent_name=enclosing_class,
-            extra=metadata,
-        ))
-        edges.append(EdgeInfo(
-            kind="HANDLES",
-            source=handler_target,
-            target=endpoint_target,
-            file_path=file_path,
-            line=line,
-            extra=metadata,
-        ))
-        return True
-
-    @staticmethod
-    def _spring_schedule_kind(attributes: dict[str, str]) -> str:
-        """Classify one Spring schedule by the trigger attribute it uses."""
-        for key, kind in (
-            ("cron", "cron"),
-            ("fixedRate", "fixedRate"),
-            ("fixedRateString", "fixedRate"),
-            ("fixedDelay", "fixedDelay"),
-            ("fixedDelayString", "fixedDelay"),
-            ("initialDelay", "initialDelay"),
-            ("initialDelayString", "initialDelay"),
-        ):
-            if key in attributes:
-                return kind
-        return "scheduled"
-
-    def _emit_scheduled_nodes_from_method(
-        self,
-        method_node,
-        method_name: str,
-        class_name: Optional[str],
-        file_path: str,
-        nodes: list[NodeInfo],
-        edges: list[EdgeInfo],
-    ) -> int:
-        """Emit one addressable Scheduler node and TRIGGERS edge per schedule."""
-        annotations = self._scheduled_annotations(method_node)
-        target = self._qualify(method_name, file_path, class_name)
-        for index, annotation in enumerate(annotations):
-            attributes = self._java_annotation_attributes(annotation)
-            schedule_kind = self._spring_schedule_kind(attributes)
-            schedule_name = f"{method_name}@Scheduled[{index}]:{schedule_kind}"
-            metadata = {
-                "annotation": "Scheduled",
-                "schedule_kind": schedule_kind,
-                **attributes,
-            }
-            nodes.append(NodeInfo(
-                kind="Scheduler",
-                name=schedule_name,
-                file_path=file_path,
-                line_start=annotation.start_point[0] + 1,
-                line_end=annotation.end_point[0] + 1,
-                language="java",
-                parent_name=class_name,
-                extra=metadata,
-            ))
-            edges.append(EdgeInfo(
-                kind="TRIGGERS",
-                source=self._qualify(schedule_name, file_path, class_name),
-                target=target,
-                file_path=file_path,
-                line=annotation.start_point[0] + 1,
-                extra=metadata,
-            ))
-        return len(annotations)
-
-    def _java_annotations_named(self, method_node, names: frozenset[str]) -> list:
-        """Return direct Java method annotations whose simple names match."""
-        matches: list = []
-        for child in method_node.children:
-            if child.type != "modifiers":
-                continue
-            for annotation in child.children:
-                if annotation.type not in ("annotation", "marker_annotation"):
-                    continue
-                if self._java_annotation_name(annotation) in names:
-                    matches.append(annotation)
-        return matches
-
-    @staticmethod
-    def _java_type_name(node) -> Optional[str]:
-        """Extract the outer Java reference type from a type-bearing AST node."""
-        if node.type in ("type_identifier", "scoped_type_identifier"):
-            return node.text.decode("utf-8", errors="replace")
-        for child in node.children:
-            found = CodeParser._java_type_name(child)
-            if found:
-                return found
-        return None
-
-    @staticmethod
-    def _resolve_java_type_identity(
-        type_name: str,
-        import_map: dict[str, str],
-    ) -> str:
-        """Resolve a Java type to a stable package-qualified identity."""
-        normalized = type_name.strip()
-        if not normalized:
-            return normalized
-        head, separator, tail = normalized.partition(".")
-        imported = import_map.get(head)
-        if imported:
-            return f"{imported}.{tail}" if separator else imported
-        if separator and head[:1].islower():
-            return normalized
-        package = import_map.get(_JAVA_PACKAGE_KEY, "")
-        return f"{package}.{normalized}" if package else normalized
-
-    @staticmethod
-    def _descendants_of_type(node, node_type: str) -> list:
-        matches: list = []
-        if node.type == node_type:
-            matches.append(node)
-        for child in node.children:
-            matches.extend(CodeParser._descendants_of_type(child, node_type))
-        return matches
-
-    def _emit_spring_event_listener_edges(
-        self,
-        method_node,
-        method_name: str,
-        class_name: Optional[str],
-        file_path: str,
-        import_map: dict[str, str],
-        edges: list[EdgeInfo],
-    ) -> int:
-        """Emit package-qualified HANDLES edges for ``@EventListener``."""
-        emitted = 0
-        source = self._qualify(method_name, file_path, class_name)
-        for annotation in self._java_annotations_named(
-            method_node,
-            _SPRING_EVENT_LISTENER_ANNOTATIONS,
-        ):
-            type_names: list[str] = []
-            for class_literal in self._descendants_of_type(annotation, "class_literal"):
-                type_name = self._java_type_name(class_literal)
-                if type_name:
-                    type_names.append(type_name)
-
-            if not type_names:
-                parameters = next(
-                    (
-                        child for child in method_node.children
-                        if child.type == "formal_parameters"
-                    ),
-                    None,
-                )
-                if parameters is not None:
-                    parameter = next(
-                        (
-                            child for child in parameters.children
-                            if child.type == "formal_parameter"
-                        ),
-                        None,
-                    )
-                    if parameter is not None:
-                        type_name = self._java_type_name(parameter)
-                        if type_name:
-                            type_names.append(type_name)
-
-            attributes = self._java_annotation_attributes(annotation)
-            seen: set[str] = set()
-            for type_name in type_names:
-                identity = self._resolve_java_type_identity(type_name, import_map)
-                if not identity or identity in seen:
-                    continue
-                seen.add(identity)
-                extra = {
-                    "event_type": identity,
-                    "resolution": "spring_event_listener",
-                }
-                for key in ("condition", "id", "defaultExecution"):
-                    if key in attributes:
-                        extra[key] = attributes[key]
-                edges.append(EdgeInfo(
-                    kind="HANDLES",
-                    source=source,
-                    target=f"event::{identity}",
-                    file_path=file_path,
-                    line=annotation.start_point[0] + 1,
-                    extra=extra,
-                ))
-                emitted += 1
-        return emitted
-
-    def _emit_spring_event_publish_edges(
-        self,
-        method_node,
-        method_name: str,
-        class_name: Optional[str],
-        file_path: str,
-        import_map: dict[str, str],
-        edges: list[EdgeInfo],
-    ) -> int:
-        """Emit PUBLISHES edges for direct ``publishEvent(new Event())`` calls."""
-        source = self._qualify(method_name, file_path, class_name)
-        emitted = 0
-
-        def visit(node) -> None:
-            nonlocal emitted
-            if node.type == "method_invocation":
-                receiver, invoked = self._get_member_call_receiver_method(node, "java")
-                if invoked in _SPRING_EVENT_PUBLISH_METHODS:
-                    arguments = next(
-                        (
-                            child for child in node.children
-                            if child.type == "argument_list"
-                        ),
-                        None,
-                    )
-                    if arguments is not None:
-                        for argument in arguments.children:
-                            if argument.type != "object_creation_expression":
-                                continue
-                            type_name = self._java_type_name(argument)
-                            if not type_name:
-                                continue
-                            identity = self._resolve_java_type_identity(
-                                type_name,
-                                import_map,
-                            )
-                            extra = {
-                                "event_type": identity,
-                                "resolution": "spring_publish_event",
-                            }
-                            if receiver:
-                                extra["receiver"] = receiver
-                            edges.append(EdgeInfo(
-                                kind="PUBLISHES",
-                                source=source,
-                                target=f"event::{identity}",
-                                file_path=file_path,
-                                line=node.start_point[0] + 1,
-                                extra=extra,
-                            ))
-                            emitted += 1
-            for child in node.children:
-                visit(child)
-
-        body = next(
-            (child for child in method_node.children if child.type == "block"),
-            None,
-        )
-        if body is not None:
-            visit(body)
-        return emitted
-
-    def _emit_temporal_stub_fields(
-        self,
-        class_node,
-        class_name: str,
-        file_path: str,
-        edges: list[EdgeInfo],
-    ) -> None:
-        """Emit TEMPORAL_STUB edges for Temporal activity/workflow stub fields.
-
-        Detects fields whose type name ends with 'Activity' or 'Workflow' —
-        the universal naming convention for Temporal interfaces. The temporal
-        resolver validates these against nodes that have temporal_role in extra.
-        Static fields are skipped (e.g. logger, constants).
-        """
-        qualified_source = self._qualify(class_name, file_path, None)
-
-        for node in class_node.children:
-            if node.type != "class_body":
-                continue
-            for member in node.children:
-                if member.type != "field_declaration":
-                    continue
-                has_static = False
-                field_type: Optional[str] = None
-                field_name: Optional[str] = None
-
-                for ch in member.children:
-                    if ch.type == "modifiers":
-                        for mod in ch.children:
-                            if mod.text and mod.text.decode("utf-8", errors="replace") == "static":
-                                has_static = True
-                    elif ch.type == "type_identifier":
-                        field_type = ch.text.decode("utf-8", errors="replace")
-                    elif ch.type == "variable_declarator":
-                        for sub in ch.children:
-                            if sub.type == "identifier":
-                                field_name = sub.text.decode("utf-8", errors="replace")
-                                break
-
-                if has_static or not field_type or not field_name:
-                    continue
-
-                # Only emit for types following the Temporal naming convention
-                if not (field_type.endswith("Activity") or field_type.endswith("Workflow")):
-                    continue
-
-                edges.append(EdgeInfo(
-                    kind="TEMPORAL_STUB",
-                    source=qualified_source,
-                    target=field_type,
-                    file_path=file_path,
-                    line=member.start_point[0] + 1,
-                    extra={"field_name": field_name, "stub_type": (
-                        "activity" if field_type.endswith("Activity") else "workflow"
-                    )},
-                ))
-
-    @staticmethod
-    def _get_kafka_annotation_topics(annotation_node) -> list[str]:
-        """Extract topic strings from @KafkaListener(topics = "...") or topics = {"a","b"}."""
-        topics: list[str] = []
-        for child in annotation_node.children:
-            if child.type != "annotation_argument_list":
-                continue
-            for pair in child.children:
-                if pair.type != "element_value_pair":
-                    continue
-                key_node = next((c for c in pair.children if c.type == "identifier"), None)
-                if key_node is None:
-                    continue
-                key = key_node.text.decode("utf-8", errors="replace")
-                if key not in ("topics", "topicPattern", "value"):
-                    continue
-                # value can be string_literal or element_value_array_initializer
-                for val in pair.children:
-                    if val.type == "string_literal":
-                        raw = val.text.decode("utf-8", errors="replace").strip('"').strip("'")
-                        if raw:
-                            topics.append(raw)
-                    elif val.type in ("array_initializer", "element_value_array_initializer"):
-                        for item in val.children:
-                            if item.type == "string_literal":
-                                txt = item.text.decode("utf-8", errors="replace")
-                                raw = txt.strip('"').strip("'")
-                                if raw:
-                                    topics.append(raw)
-        return topics
-
-    def _emit_kafka_edges_from_class(
-        self,
-        class_node,
-        class_name: str,
-        file_path: str,
-        edges: list[EdgeInfo],
-    ) -> None:
-        """Emit CONSUMES/PRODUCES edges for Kafka field declarations.
-
-        Handles:
-        - KafkaReceiver / ReactiveKafkaConsumerTemplate → CONSUMES
-        - KafkaTemplate / KafkaOperations / ReactiveKafkaProducerTemplate → PRODUCES
-        Generic value type (e.g. KafkaReceiver<String, EquipmentMove>) is
-        stored in extra.message_type for traceability.
-        """
-        qualified_source = self._qualify(class_name, file_path, None)
-
-        for node in class_node.children:
-            if node.type != "class_body":
-                continue
-            for member in node.children:
-                if member.type != "field_declaration":
-                    continue
-                has_static = False
-                outer_type: Optional[str] = None
-                value_type: Optional[str] = None   # second generic param
-                field_name: Optional[str] = None
-
-                for ch in member.children:
-                    if ch.type == "modifiers":
-                        for mod in ch.children:
-                            if mod.text and mod.text.decode("utf-8", errors="replace") == "static":
-                                has_static = True
-                    elif ch.type == "type_identifier":
-                        outer_type = ch.text.decode("utf-8", errors="replace")
-                    elif ch.type == "generic_type":
-                        # KafkaReceiver<String, EquipmentMove>
-                        type_args: list[str] = []
-                        for sub in ch.children:
-                            if sub.type == "type_identifier":
-                                if outer_type is None:
-                                    outer_type = sub.text.decode("utf-8", errors="replace")
-                            elif sub.type == "type_arguments":
-                                for arg in sub.children:
-                                    if arg.type == "type_identifier":
-                                        type_args.append(arg.text.decode("utf-8", errors="replace"))
-                        if len(type_args) >= 2:
-                            value_type = type_args[-1]  # last param is the value/message type
-                    elif ch.type == "variable_declarator":
-                        for sub in ch.children:
-                            if sub.type == "identifier":
-                                field_name = sub.text.decode("utf-8", errors="replace")
-                                break
-
-                if has_static or not outer_type or not field_name:
-                    continue
-
-                extra: dict = {"field_name": field_name}
-                if value_type:
-                    extra["message_type"] = value_type
-
-                if outer_type in _KAFKA_CONSUMER_TYPES:
-                    extra["kafka_type"] = outer_type
-                    edges.append(EdgeInfo(
-                        kind="CONSUMES",
-                        source=qualified_source,
-                        target="kafka:config",
-                        file_path=file_path,
-                        line=member.start_point[0] + 1,
-                        extra=extra,
-                    ))
-                elif outer_type in _KAFKA_PRODUCER_TYPES:
-                    extra["kafka_type"] = outer_type
-                    edges.append(EdgeInfo(
-                        kind="PRODUCES",
-                        source=qualified_source,
-                        target="kafka:config",
-                        file_path=file_path,
-                        line=member.start_point[0] + 1,
-                        extra=extra,
-                    ))
-
-    def _emit_kafka_edges_from_method(
-        self,
-        method_node,
-        method_name: str,
-        class_name: Optional[str],
-        file_path: str,
-        edges: list[EdgeInfo],
-    ) -> None:
-        """Emit CONSUMES edges for @KafkaListener / @KafkaHandler annotated methods."""
-        qualified_source = self._qualify(method_name, file_path, class_name)
-
-        for child in method_node.children:
-            if child.type != "modifiers":
-                continue
-            for mod in child.children:
-                if mod.type not in ("annotation", "marker_annotation"):
-                    continue
-                ann_name: Optional[str] = None
-                for sub in mod.children:
-                    if sub.type == "identifier":
-                        ann_name = sub.text.decode("utf-8", errors="replace")
-                        break
-                if ann_name not in _KAFKA_LISTENER_ANNOTATIONS:
-                    continue
-                # Extract topics from annotation arguments
-                topics = self._get_kafka_annotation_topics(mod)
-                if topics:
-                    for topic in topics:
-                        edges.append(EdgeInfo(
-                            kind="CONSUMES",
-                            source=qualified_source,
-                            target=f"kafka:{topic}",
-                            file_path=file_path,
-                            line=method_node.start_point[0] + 1,
-                            extra={"topic": topic, "kafka_type": "KafkaListener"},
-                        ))
-                else:
-                    # @KafkaListener without resolvable topic (config placeholder)
-                    edges.append(EdgeInfo(
-                        kind="CONSUMES",
-                        source=qualified_source,
-                        target="kafka:config",
-                        file_path=file_path,
-                        line=method_node.start_point[0] + 1,
-                        extra={"kafka_type": ann_name},
-                    ))
-
     def _get_docstring_summary(self, node, language: str) -> Optional[str]:
         """Extract a bounded documentation summary for a definition node."""
         if language == "python":
@@ -10019,47 +8601,13 @@ class CodeParser:
             elif child.type == "protocol_declaration":
                 extra["swift_kind"] = "protocol"
 
-        # Java: detect Spring stereotype annotations and store as metadata
-        class_annotations: list[str] = []
-        if language == "java":
-            class_annotations = self._get_java_annotations(child)
-            spring_stereotypes = [
-                a for a in class_annotations if a in _SPRING_STEREOTYPE_ANNOTATIONS
-            ]
-            if spring_stereotypes:
-                extra["spring_stereotype"] = spring_stereotypes[0]
-            if class_annotations:
-                extra["spring_annotations"] = class_annotations
-            temporal_roles = [
-                a for a in class_annotations if a in _TEMPORAL_INTERFACE_ANNOTATIONS
-            ]
-            if temporal_roles:
-                is_wf = "WorkflowInterface" in temporal_roles
-                role = "workflow_interface" if is_wf else "activity_interface"
-                extra["temporal_role"] = role
-            if import_map is not None:
-                request_prefixes: list[str] = []
-                for annotation in self._java_annotations_named(
-                    child,
-                    frozenset({"RequestMapping"}),
-                ):
-                    request_prefixes.extend(self._spring_mapping_paths(annotation))
-                if request_prefixes:
-                    import_map[f"{_SPRING_REQUEST_PREFIX_KEY}{name}"] = json.dumps(
-                        request_prefixes,
-                    )
-
         # Class-level annotation persistence for all annotation-bearing
         # languages.  Kotlin (@HiltViewModel, @AndroidEntryPoint) lost this
-        # metadata entirely; Java reuses the list already gathered above.
-        # Stored in ``modifiers`` (string)
+        # metadata entirely. Stored in ``modifiers`` (string)
         # and ``extra["decorators"]`` (list).  See: #295
-        if language == "java":
-            class_decorators = list(class_annotations)
-        else:
-            class_decorators = _modifier_annotation_names(child)
-            if language == "python":
-                class_decorators.extend(_python_decorator_names(child))
+        class_decorators = _modifier_annotation_names(child)
+        if language == "python":
+            class_decorators.extend(_python_decorator_names(child))
         class_modifiers: Optional[str] = (
             ",".join(class_decorators) if class_decorators else None
         )
@@ -10110,19 +8658,6 @@ class CodeParser:
                 line=child.start_point[0] + 1,
             ))
 
-        # Spring DI: emit INJECTS edges for injected dependencies
-        if language == "java":
-            self._emit_spring_injections(
-                child, name, class_annotations, language, file_path, edges,
-            )
-            self._emit_spring_config_edges(
-                child, name, enclosing_class, file_path, edges,
-            )
-            # Temporal: emit TEMPORAL_STUB edges for activity/workflow stub fields
-            self._emit_temporal_stub_fields(child, name, file_path, edges)
-            # Kafka: emit CONSUMES/PRODUCES edges for Kafka field declarations
-            self._emit_kafka_edges_from_class(child, name, file_path, edges)
-
         # Recurse into class body
         if language == "julia":
             recursive_class = self._julia_scope_join(enclosing_class, name)
@@ -10170,7 +8705,7 @@ class CodeParser:
         decorators: tuple[str, ...] = ()
         deco_list: list[str] = []
         for sub in child.children:
-            # Java/Kotlin: annotations inside a modifiers child
+            # Kotlin: annotations inside a modifiers child
             if sub.type == "modifiers":
                 for mod in sub.children:
                     if mod.type in ("annotation", "marker_annotation"):
@@ -10258,83 +8793,9 @@ class CodeParser:
         qualified = self._qualify(identity_name, file_path, parent_name)
         ret_type = self._get_return_type(child, language, source)
 
-        # Java: detect Temporal method-level annotations and Kafka listeners
         method_extra: dict = {}
         if julia_qualifier:
             method_extra["julia_module_qualifier"] = julia_qualifier
-        if language == "java" and deco_list:
-            endpoint_count = self._emit_spring_endpoint_nodes(
-                child,
-                name,
-                enclosing_class,
-                file_path,
-                import_map or {},
-                nodes,
-                edges,
-            )
-            if endpoint_count:
-                method_extra["spring_endpoint"] = True
-                method_extra["spring_endpoint_count"] = endpoint_count
-            temporal_method_annots = [
-                a for a in deco_list if a in _TEMPORAL_METHOD_ANNOTATIONS
-            ]
-            if temporal_method_annots:
-                method_extra["temporal_role"] = temporal_method_annots[0].lower()
-            if any(a.split("(")[0] in _KAFKA_LISTENER_ANNOTATIONS for a in deco_list):
-                method_extra["kafka_listener"] = True
-                self._emit_kafka_edges_from_method(
-                    child, name, enclosing_class, file_path, edges,
-                )
-            if any(
-                annotation.split("(", 1)[0] in _SPRING_SCHEDULED_ANNOTATIONS
-                for annotation in deco_list
-            ):
-                schedule_count = self._emit_scheduled_nodes_from_method(
-                    child,
-                    name,
-                    enclosing_class,
-                    file_path,
-                    nodes,
-                    edges,
-                )
-                if schedule_count:
-                    method_extra["scheduled"] = True
-                    method_extra["schedule_count"] = schedule_count
-            listener_count = self._emit_spring_event_listener_edges(
-                child,
-                name,
-                enclosing_class,
-                file_path,
-                import_map or {},
-                edges,
-            )
-            if listener_count:
-                method_extra["spring_event_listener"] = True
-                method_extra["spring_event_type_count"] = listener_count
-
-            publish_count = self._emit_spring_event_publish_edges(
-                child,
-                name,
-                enclosing_class,
-                file_path,
-                import_map or {},
-                edges,
-            )
-            if publish_count:
-                method_extra["spring_event_publisher"] = True
-                method_extra["spring_event_publish_count"] = publish_count
-        elif language == "java":
-            publish_count = self._emit_spring_event_publish_edges(
-                child,
-                name,
-                enclosing_class,
-                file_path,
-                import_map or {},
-                edges,
-            )
-            if publish_count:
-                method_extra["spring_event_publisher"] = True
-                method_extra["spring_event_publish_count"] = publish_count
 
         # Persist annotations/decorators so consumers can filter on them
         # (e.g. "show me all @Composable functions").  Stored in BOTH
@@ -10577,8 +9038,7 @@ class CodeParser:
                 caller = file_path
 
             # Preserve simple member-call receivers. Typed-receiver resolution
-            # uses this evidence during parsing, and the Spring DI resolver
-            # consumes the same metadata for Java injected fields.
+            # uses this evidence during parsing.
             call_extra: dict = {}
             if language in ("javascript", "typescript", "tsx"):
                 member_call = self._get_js_member_call_name(child)
@@ -10595,21 +9055,6 @@ class CodeParser:
                     call_name = method_name
                 if receiver:
                     call_extra["receiver"] = receiver
-                if language == "java" and child.type == "method_reference":
-                    call_extra["call_syntax"] = "method_reference"
-
-            if language == "java" and child.type == "method_invocation":
-                self._emit_spring_webflux_endpoint(
-                    child,
-                    source,
-                    call_name,
-                    file_path,
-                    enclosing_class,
-                    import_map or {},
-                    defined_names or set(),
-                    nodes,
-                    edges,
-                )
 
             # Keep Julia module qualification in the canonical target. The
             # same-file resolver can then distinguish ``run`` from ``A.B.run``.
@@ -10643,7 +9088,6 @@ class CodeParser:
 
             # When a receiver is present, skip scope-based resolution: the method
             # lives on the receiver's type, not in the current file's scope.
-            # The spring_resolver post-pass will do the correct cross-type lookup.
             receiver_name = call_extra.get("receiver")
             if receiver_name in ("self", "cls", "this") and enclosing_class:
                 target = (
@@ -10748,22 +9192,6 @@ class CodeParser:
                 receiver.text.decode("utf-8", errors="replace"),
                 method.text.decode("utf-8", errors="replace"),
             )
-
-        if language == "java" and node.type == "method_invocation":
-            method, receiver = self._get_java_method_and_receiver(node)
-            return receiver, method
-
-        if language == "java" and node.type == "method_reference":
-            named = [child for child in node.children if child.is_named]
-            if len(named) < 2:
-                return None, None
-            receiver_node = named[0]
-            method_node = named[-1]
-            if method_node.type not in ("identifier", "type_identifier"):
-                return None, None
-            receiver = receiver_node.text.decode("utf-8", errors="replace")
-            method = method_node.text.decode("utf-8", errors="replace")
-            return receiver, method
 
         callee = node.child_by_field_name("function")
         if callee is None and node.children:
@@ -11563,57 +9991,6 @@ class CodeParser:
                 "relationship": relationship,
             },
         ))
-
-    @staticmethod
-    def _get_java_method_and_receiver(node) -> tuple[Optional[str], Optional[str]]:
-        """For a Java method_invocation node, return (method_name, receiver_name).
-
-        Pattern: [receiver_identifier, '.', method_identifier, argument_list]
-        Chained: [inner_method_invocation, '.', method_identifier, argument_list]
-
-        Returns (None, None) for unrecognised shapes.
-        """
-        children = node.children
-        if (
-            len(children) == 2
-            and children[0].type == "identifier"
-            and children[-1].type == "argument_list"
-        ):
-            return (
-                children[0].text.decode("utf-8", errors="replace"),
-                None,
-            )
-        if len(children) < 3:
-            return None, None
-
-        # method_identifier is always the last identifier before argument_list
-        method_name: Optional[str] = None
-        receiver_name: Optional[str] = None
-
-        # Scan backwards for the method identifier
-        for i in range(len(children) - 1, -1, -1):
-            ch = children[i]
-            if ch.type == "argument_list":
-                continue
-            if ch.type == "identifier":
-                if method_name is None:
-                    method_name = ch.text.decode("utf-8", errors="replace")
-                else:
-                    # Second identifier scanning backwards = receiver
-                    receiver_name = ch.text.decode("utf-8", errors="replace")
-                break
-            if ch.type == "." :
-                continue
-            # Chained call or complex expression as receiver — no simple receiver
-            break
-
-        # Receiver is the first child if it's a plain identifier
-        if method_name and children[0].type == "identifier":
-            first_text = children[0].text.decode("utf-8", errors="replace")
-            if first_text != method_name:
-                receiver_name = first_text
-
-        return method_name, receiver_name
 
     def _extract_jsx_component_call(
         self,
@@ -12672,13 +11049,6 @@ class CodeParser:
         for child in root.children:
             node_type = child.type
 
-            if language == "java" and node_type == "package_declaration":
-                package = child.text.decode("utf-8", errors="replace").strip()
-                package = package.removeprefix("package ").removesuffix(";").strip()
-                if package:
-                    import_map[_JAVA_PACKAGE_KEY] = package
-                continue
-
             # Kotlin groups top-level imports under an ``import_list`` node,
             # while the generic import table contains ``import_header``.
             if language == "kotlin" and node_type == "import_list":
@@ -13187,7 +11557,7 @@ class CodeParser:
                         if module_name and real_name and alias:
                             import_map[alias] = f"{module_name}.{real_name}"
 
-        elif language in ("java", "kotlin"):
+        elif language == "kotlin":
             text = node.text.decode("utf-8", errors="replace").strip()
             if not text.startswith("import "):
                 return
@@ -13408,38 +11778,6 @@ class CodeParser:
         elif language == "rust":
             return self._resolve_rust_module_file(module, file_path)
 
-        elif language == "java":
-            # ``import com.example.pkg.ClassName;`` — convert dot-notation
-            # to a relative path and walk up from the caller's directory to
-            # find the source root.  Wildcards (``import pkg.*``) and static
-            # member imports (``import static pkg.Class.member``) that don't
-            # resolve as-is are retried after dropping the last segment
-            # (the member name).
-            if module.endswith(".*"):
-                return None  # wildcard import — can't resolve to one file
-            rel_path = module.replace(".", "/") + ".java"
-            current = caller_dir
-            while True:
-                target = current / rel_path
-                if target.is_file():
-                    return str(target.resolve())
-                if current == current.parent:
-                    break
-                current = current.parent
-            # Static import: ``pkg.Class.member`` — strip member, try again
-            dot = module.rfind(".")
-            if dot > 0:
-                class_module = module[:dot]
-                rel_path2 = class_module.replace(".", "/") + ".java"
-                current = caller_dir
-                while True:
-                    target = current / rel_path2
-                    if target.is_file():
-                        return str(target.resolve())
-                    if current == current.parent:
-                        break
-                    current = current.parent
-
         elif language == "kotlin":
             if module.endswith(".*"):
                 return None
@@ -13463,7 +11801,7 @@ class CodeParser:
 
             # ``use App\Domain\Entity\Job;`` — convert namespace separators to
             # a relative path and walk up from the caller's directory to find
-            # the file, mirroring the Java resolver. PSR-4 layouts where a
+            # the file. PSR-4 layouts where a
             # namespace segment maps to a real directory (e.g. ``App\Foo`` ->
             # ``.../App/Foo``) resolve; vendor/global classes (``\Exception``)
             # and ``use function`` / ``use const`` targets with no matching
@@ -14204,17 +12542,6 @@ class CodeParser:
                     return child.text.decode("utf-8", errors="replace")
                 if child.type == "package" and child.text != b"package":
                     return child.text.decode("utf-8", errors="replace")
-        # Java: method_declaration has return type_identifier before the method
-        # identifier — skip straight to the first plain identifier child to
-        # avoid returning the return type as the function name.
-        if language == "java" and kind == "function" and node.type in (
-            "method_declaration", "constructor_declaration",
-        ):
-            for child in node.children:
-                if child.type == "identifier":
-                    return child.text.decode("utf-8", errors="replace")
-            return None
-
         if language == "cpp" and kind == "function":
             declarator = node.child_by_field_name("declarator")
             if node.type in ("declaration", "field_declaration"):
@@ -14306,16 +12633,6 @@ class CodeParser:
         if language == "go" and node.type == "method_declaration":
             for child in node.children:
                 if child.type == "field_identifier":
-                    return child.text.decode("utf-8", errors="replace")
-        # Java methods: tree-sitter-java puts type_identifier or generic_type
-        # (return type) before identifier (method name).  Must run before
-        # the generic loop, which would match the return type's
-        # type_identifier (e.g. "String", "ConfigBean").
-        # Constructors are fine — they have no return type node.
-        # Kotlin is unaffected: its syntax places the name before the type.
-        if language == "java" and node.type == "method_declaration":
-            for child in node.children:
-                if child.type == "identifier":
                     return child.text.decode("utf-8", errors="replace")
         # Swift init/deinit/subscript: the grammar gives none of them a usable
         # name. `init_declaration`'s name field is the `init` keyword itself,
@@ -14442,7 +12759,7 @@ class CodeParser:
 
         # Config-driven custom languages make ``name_field`` authoritative.
         # Resolve it before the generic direct-child heuristic so an unrelated
-        # identifier (for example a Java return type) cannot win.
+        # identifier (for example a return type) cannot win.
         if language in self._custom_languages:
             resolved = self._resolve_custom_name(node, language)
             if resolved:
@@ -14801,22 +13118,6 @@ class CodeParser:
                     for arg in child.children:
                         if arg.type in ("identifier", "attribute"):
                             bases.append(arg.text.decode("utf-8", errors="replace"))
-        elif language == "java":
-            # Java: superclass and super_interfaces wrap the keyword
-            # (extends/implements) around type_identifier children.
-            # Taking .text would include the keyword (e.g. "implements Foo").
-            # Drill into the children to extract bare type names.
-            for child in node.children:
-                if child.type == "superclass":
-                    for sub in child.children:
-                        if sub.type in ("type_identifier", "generic_type"):
-                            bases.append(sub.text.decode("utf-8", errors="replace"))
-                elif child.type == "super_interfaces":
-                    for sub in child.children:
-                        if sub.type == "type_list":
-                            for ident in sub.children:
-                                if ident.type in ("type_identifier", "generic_type"):
-                                    bases.append(ident.text.decode("utf-8", errors="replace"))
         elif language == "kotlin":
             # Look for superclass/interfaces in extends/implements clauses
             for child in node.children:
@@ -15016,11 +13317,6 @@ class CodeParser:
                 if child.type in ("system_lib_string", "string_literal"):
                     val = child.text.decode("utf-8", errors="replace").strip("<>\"")
                     imports.append(val)
-        elif language == "java":
-            # import package.Class
-            parts = text.split()
-            if len(parts) >= 2:
-                imports.append(parts[-1].rstrip(";"))
         elif language == "solidity":
             # import "path/to/file.sol" or import {Symbol} from "path"
             for child in node.children:
@@ -15257,16 +13553,6 @@ class CodeParser:
                 field = callee.child_by_field_name("field")
                 if field is not None:
                     return field.text.decode("utf-8", errors="replace")
-
-        if language == "java":
-            if node.type == "method_invocation":
-                method, _ = self._get_java_method_and_receiver(node)
-                return method
-            if node.type == "method_reference":
-                _, method = self._get_member_call_receiver_method(node, language)
-                return method
-            if node.type == "object_creation_expression":
-                return self._java_type_name(node)
 
         # Julia macrocall: ``@test expr`` — name is inside
         # ``macro_identifier > identifier``. Prefix with ``@`` to distinguish

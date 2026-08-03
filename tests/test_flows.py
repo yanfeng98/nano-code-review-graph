@@ -151,13 +151,6 @@ class TestFlows:
         ep_names = {ep.name for ep in eps}
         assert "on_save" in ep_names
 
-    def test_detect_entry_points_spring_scheduled(self):
-        """Java Spring @Scheduled marks function as entry point."""
-        self._add_func("cleanup_job", extra={"decorators": ["Scheduled(cron='0 0 * * *')"]})
-        eps = detect_entry_points(self.store)
-        ep_names = {ep.name for ep in eps}
-        assert "cleanup_job" in ep_names
-
     def test_detect_entry_points_celery_task(self):
         """Bare @task decorator marks function as entry point."""
         self._add_func("process_data", extra={"decorators": ["task"]})

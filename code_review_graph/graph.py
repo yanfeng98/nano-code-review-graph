@@ -478,23 +478,6 @@ class GraphStore:
         for row in rows:
             yield self._row_to_edge(row)
 
-    def get_config_consumers(self, key: str) -> list[GraphEdge]:
-        """Find direct and ConfigurationProperties-prefix consumers of a key."""
-        parts = key.split(".")
-        targets = [f"config:{key}", f"config:{key}.*"]
-        targets.extend(
-            f"config:{'.'.join(parts[:index])}.*"
-            for index in range(1, len(parts))
-        )
-        rows = []
-        for target in dict.fromkeys(targets):
-            rows.extend(self._conn.execute(
-                "SELECT * FROM edges WHERE kind = 'DEPENDS_ON_CONFIG' "
-                "AND target_qualified = ? ORDER BY id",
-                (target,),
-            ).fetchall())
-        return [self._row_to_edge(row) for row in rows]
-
     def search_edges_by_target_name(
         self, name: str, kind: str = "CALLS", language: str | None = None,
     ) -> list[GraphEdge]:
@@ -1635,9 +1618,9 @@ class GraphStore:
             edges_by_kind[row["kind"]] = row["cnt"]
 
         # Derive languages from the live File inventory, not from every node
-        # row: virtual or leftover rows without a backing File node (e.g. the
-        # synthetic Spring Event nodes) must not keep a language alive in
-        # `status` after its last real file left the graph (issue #474).
+        # row: virtual or leftover rows without a backing File node must not
+        # keep a language alive in `status` after its last real file left the
+        # graph (issue #474).
         languages = [
             r["language"] for r in self._conn.execute(
                 "SELECT DISTINCT language FROM nodes WHERE kind = 'File' "

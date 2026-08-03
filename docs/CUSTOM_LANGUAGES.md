@@ -206,8 +206,8 @@ feature simple, but the generic heuristics have limits:
   written (e.g. `lists`); they are not resolved to file paths the way
   built-in languages with dedicated resolvers are.
 - **No language-specific extras**: things like decorator-based test
-  detection, framework annotations (Spring, Temporal), or SFC handling only
-  exist for built-in languages.
+  detection, framework annotations, or SFC handling only exist for
+  built-in languages.
 
 If a language needs deeper support than the generic walker can give, please
 open an issue — config-driven support is the on-ramp, not the ceiling.

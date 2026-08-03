@@ -1176,21 +1176,6 @@ class Plain:
             ]
             assert len(jsx_calls) == 1
 
-    def test_junit_annotation_marks_test(self):
-        """Java @Test annotation should mark functions as tests."""
-        nodes, _ = self.parser.parse_bytes(
-            Path("/src/MyTest.java"),
-            b"class MyTest {\n"
-            b"  @Test\n"
-            b"  void verifyBehavior() { }\n"
-            b"  void helperMethod() { }\n"
-            b"}\n",
-        )
-        test_nodes = [n for n in nodes if n.is_test]
-        test_names = {n.name for n in test_nodes}
-        assert "verifyBehavior" in test_names
-        assert "helperMethod" not in test_names
-
     def test_kotlin_test_annotation_marks_test(self):
         """Kotlin @Test annotation should mark functions as tests."""
         nodes, _ = self.parser.parse_bytes(
@@ -2219,7 +2204,7 @@ class TestTypeScriptTypeDeclarations:
 
     Before this, ``_CLASS_TYPES`` covered only ``class_declaration`` for TS, so a
     types-only module produced zero symbol nodes and its blast radius collapsed
-    to whole-file ``IMPORTS_FROM`` fan-out. Java/PHP already indexed
+    to whole-file ``IMPORTS_FROM`` fan-out. PHP already indexed
     ``interface_declaration``. See: #737
     """
 

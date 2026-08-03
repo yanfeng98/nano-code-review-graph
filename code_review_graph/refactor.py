@@ -365,7 +365,7 @@ def find_dead_code(
         if node.name.startswith("__") and node.name.endswith("__"):
             continue
 
-        # Skip JS/TS/Java constructors -- invoked via `new ClassName()`, which
+        # Skip JS/TS constructors -- invoked via `new ClassName()`, which
         # creates a CALLS edge to the class, not to `constructor`.
         if node.name == "constructor" and node.parent_name:
             continue

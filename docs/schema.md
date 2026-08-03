@@ -91,7 +91,7 @@ A class extends/inherits from another class.
 | file_path | string | File containing the child class |
 
 ### IMPLEMENTS
-A class implements an interface (Java, TypeScript, Go).
+A class implements an interface (TypeScript, Go).
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -121,13 +121,10 @@ General dependency relationship (used for non-specific dependencies).
 A value-level reference to another symbol, often used for function-as-value patterns such as callback maps, arrays, or assignment.
 
 ### INJECTS
-A dependency-injection relationship, currently used by Java/Spring enrichment for injected fields and constructor parameters.
+A dependency-injection relationship for injected fields and constructor parameters (reserved edge kind; no current producer).
 
 ### CONSUMES / PRODUCES
-Data or event flow relationships emitted by specialised parsers when a source consumes or produces a named resource.
-
-### TEMPORAL_STUB
-Temporal dependency placeholder emitted by specialised parsers when a time/order relationship is detected but cannot be resolved to a stronger edge type.
+Data or event flow relationships emitted by specialised parsers when a source consumes or produces a named resource (reserved edge kinds; no current producer).
 
 ## Qualified Name Format
 

@@ -15,7 +15,7 @@ evidence to resolve the call without changing parse-only output (GitHub #745).
 
 This module runs after the graph is built and rewrites the resolvable
 ``Class::method`` targets to the canonical qualified name of the defined
-method node, in the same style as the Spring/Temporal/ReScript resolvers.
+method node, in the same style as the ReScript resolver.
 
 It is deliberately conservative so it never fabricates an edge:
 

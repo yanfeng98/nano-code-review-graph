@@ -123,40 +123,6 @@ class TestDocumentationSummaryExtraction:
         assert documented.extra["docstring"] == "Parse a sheet."
         assert "docstring" not in inner.extra
 
-    def test_javadoc_keeps_only_the_summary_paragraph(self):
-        node = _parsed_node(
-            "Parser.java",
-            (
-                b"class Parser {\n"
-                b"  /**\n"
-                b"   * Parse a rate sheet.\n"
-                b"   *\n"
-                b"   * @param path uploaded file\n"
-                b"   */\n"
-                b"  void parse(String path) {}\n"
-                b"}\n"
-            ),
-            "parse",
-        )
-
-        assert node.extra["docstring"] == "Parse a rate sheet."
-
-    def test_javadoc_html_paragraph_boundary_excludes_details(self):
-        node = _parsed_node(
-            "Parser.java",
-            (
-                b"class Parser {\n"
-                b"  /** Parse a {@code RateSheet}.\n"
-                b"   * <p>Implementation details must not be embedded.\n"
-                b"   */\n"
-                b"  void parse() {}\n"
-                b"}\n"
-            ),
-            "parse",
-        )
-
-        assert node.extra["docstring"] == "Parse a RateSheet."
-
     def test_doxygen_comment_attaches_to_cpp_template_function(self):
         node = _parsed_node(
             "parser.cpp",

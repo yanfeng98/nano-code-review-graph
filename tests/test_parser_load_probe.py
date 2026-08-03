@@ -121,10 +121,10 @@ def test_nonzero_probe_logs_the_subprocess_failure_reason(monkeypatch, caplog):
     monkeypatch.setattr(parser_module.subprocess, "run", fake_run)
 
     with caplog.at_level("WARNING"):
-        assert not parser_module._parser_load_probe_succeeds("java")
+        assert not parser_module._parser_load_probe_succeeds("go")
 
     assert (
-        "Skipping unavailable tree-sitter parser for java: "
+        "Skipping unavailable tree-sitter parser for go: "
         "ModuleNotFoundError: No module named 'tree_sitter_language_pack'"
         in caplog.text
     )

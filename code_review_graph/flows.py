@@ -47,12 +47,6 @@ _FRAMEWORK_DECORATOR_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"(override_settings|modify_settings)", re.IGNORECASE),
     # SQLAlchemy / event systems
     re.compile(r"(event\.)?listens_for", re.IGNORECASE),
-    # Java Spring
-    re.compile(r"(Get|Post|Put|Delete|Patch|RequestMapping)Mapping", re.IGNORECASE),
-    re.compile(r"(Scheduled|EventListener|Bean|Configuration)", re.IGNORECASE),
-    re.compile(r"KafkaListener", re.IGNORECASE),
-    # Temporal Java callbacks are invoked by the workflow runtime.
-    re.compile(r"(WorkflowMethod|ActivityMethod)", re.IGNORECASE),
     # JS/TS frameworks
     re.compile(r"(Component|Injectable|Controller|Module|Guard|Pipe)", re.IGNORECASE),
     re.compile(r"(Subscribe|Mutation|Query|Resolver)", re.IGNORECASE),

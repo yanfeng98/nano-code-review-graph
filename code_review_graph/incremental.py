@@ -98,40 +98,6 @@ def _run_rescript_resolver(store: GraphStore) -> Optional[dict]:
         return None
 
 
-def _run_spring_resolver(store: GraphStore) -> Optional[dict]:
-    """Run the Spring DI call resolver, swallowing any failure so
-    build never fails because of it. Returns stats or None on error.
-    """
-    try:
-        from .spring_resolver import resolve_spring_di_calls
-        return resolve_spring_di_calls(store)
-    except Exception as exc:  # noqa: BLE001 - best-effort post-pass
-        logger.warning("Spring DI resolver failed: %s", exc)
-        return None
-
-
-def _run_spring_event_resolver(store: GraphStore) -> Optional[dict]:
-    """Run the Spring application-event resolver without failing a build."""
-    try:
-        from .event_resolver import resolve_spring_events
-        return resolve_spring_events(store)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Spring event resolver failed: %s", exc)
-        return None
-
-
-def _run_temporal_resolver(store: GraphStore) -> Optional[dict]:
-    """Run the Temporal workflow/activity call resolver, swallowing any failure so
-    build never fails because of it. Returns stats or None on error.
-    """
-    try:
-        from .temporal_resolver import resolve_temporal_calls
-        return resolve_temporal_calls(store)
-    except Exception as exc:  # noqa: BLE001 - best-effort post-pass
-        logger.warning("Temporal resolver failed: %s", exc)
-        return None
-
-
 def _run_hcl_resolver(store: GraphStore) -> Optional[dict]:
     """Run Terraform module-scope resolution without failing a build."""
     try:
@@ -181,7 +147,7 @@ DEFAULT_IGNORE_PATTERNS = [
     "/public/build/**",
     # Ruby / Bundler
     "**/.bundle/**",
-    # Java / Kotlin / Gradle
+    # Kotlin / Gradle
     "**/.gradle/**",
     "*.jar",
     # Dart / Flutter
@@ -1136,9 +1102,6 @@ def full_build(
 
     python_stats = _run_python_resolver(store)
     rescript_stats = _run_rescript_resolver(store)
-    spring_stats = _run_spring_resolver(store)
-    spring_event_stats = _run_spring_event_resolver(store)
-    temporal_stats = _run_temporal_resolver(store)
     hcl_stats = _run_hcl_resolver(store)
     scoped_stats = _run_scoped_resolver(store)
 
@@ -1150,9 +1113,6 @@ def full_build(
         "errors": errors,
         "python_resolution": python_stats,
         "rescript_resolution": rescript_stats,
-        "spring_resolution": spring_stats,
-        "event_resolution": spring_event_stats,
-        "temporal_resolution": temporal_stats,
         "hcl_resolution": hcl_stats,
         "scoped_resolution": scoped_stats,
     }
@@ -1187,9 +1147,6 @@ def incremental_update(
             "identity_rebuild": True,
             "python_resolution": rebuilt["python_resolution"],
             "rescript_resolution": rebuilt["rescript_resolution"],
-            "spring_resolution": rebuilt["spring_resolution"],
-            "event_resolution": rebuilt["event_resolution"],
-            "temporal_resolution": rebuilt["temporal_resolution"],
             "hcl_resolution": rebuilt["hcl_resolution"],
         }
 
@@ -1319,18 +1276,6 @@ def incremental_update(
         _run_rescript_resolver(store) if rescript_changed else None
     )
 
-    # Like python_changed above, include stale/missing paths so a deletion
-    # that only surfaces through reconciliation still clears derived state
-    # (e.g. virtual Spring Event nodes — issue #474).
-    spring_changed = any(
-        path.endswith(".java")
-        for path in set(all_files) | set(stale_files) | missing_paths
-    )
-    spring_stats = _run_spring_resolver(store) if spring_changed else None
-    spring_event_stats = (
-        _run_spring_event_resolver(store) if spring_changed else None
-    )
-    temporal_stats = _run_temporal_resolver(store) if spring_changed else None
     hcl_changed = any(rp.endswith((".tf", ".hcl")) for rp in all_files)
     hcl_stats = _run_hcl_resolver(store) if hcl_changed else None
     scoped_changed = any(rp.endswith((".php", ".rs")) for rp in all_files)
@@ -1346,9 +1291,6 @@ def incremental_update(
         "errors": errors,
         "python_resolution": python_stats,
         "rescript_resolution": rescript_stats,
-        "spring_resolution": spring_stats,
-        "event_resolution": spring_event_stats,
-        "temporal_resolution": temporal_stats,
         "hcl_resolution": hcl_stats,
         "scoped_resolution": scoped_stats,
     }

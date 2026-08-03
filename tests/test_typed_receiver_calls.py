@@ -140,45 +140,6 @@ def test_kotlin_generic_parameter_local_and_field_types_resolve(tmp_path: Path) 
     assert f"{service.resolve().as_posix()}::Service.save" in targets
 
 
-def test_java_generic_parameter_local_and_field_types_resolve(tmp_path: Path) -> None:
-    pkg = tmp_path / "pkg"
-    app = tmp_path / "app"
-    pkg.mkdir()
-    app.mkdir()
-    service = pkg / "Service.java"
-    service.write_text(
-        "package pkg;\n"
-        "class Service<T> {\n"
-        "  void work() {}\n"
-        "  void done() {}\n"
-        "  void save() {}\n"
-        "}\n",
-        encoding="utf-8",
-    )
-    consumer = app / "Consumer.java"
-    consumer.write_text(
-        "package app;\n"
-        "import pkg.Service;\n"
-        "class Consumer {\n"
-        "  private Service<String> field;\n"
-        "  void run(Service<Integer> param) {\n"
-        "    Service<Long> local = param;\n"
-        "    local.work();\n"
-        "    param.done();\n"
-        "    field.save();\n"
-        "  }\n"
-        "}\n",
-        encoding="utf-8",
-    )
-
-    _, edges = CodeParser(repo_root=tmp_path).parse_file(consumer)
-
-    targets = _calls_from(edges, "::Consumer.run")
-    assert f"{service.resolve().as_posix()}::Service.work" in targets
-    assert f"{service.resolve().as_posix()}::Service.done" in targets
-    assert f"{service.resolve().as_posix()}::Service.save" in targets
-
-
 def test_typescript_generic_parameter_local_and_field_types_resolve(
     tmp_path: Path,
 ) -> None:

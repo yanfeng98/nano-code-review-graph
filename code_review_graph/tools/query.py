@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import logging
-import re
 from pathlib import Path
 from typing import Any
 
-from ..config_keys import normalize_spring_config_key
 from ..context_savings import attach_context_savings, estimate_file_tokens
 from ..embeddings import EmbeddingStore
-from ..graph import GraphNode, GraphStore, _sanitize_name, edge_to_dict, node_to_dict
+from ..graph import GraphNode, _sanitize_name, edge_to_dict, node_to_dict
 from ..hints import generate_hints, get_session
 from ..incremental import get_changed_files, get_db_path, get_staged_and_unstaged
 from ..parser import normalize_file_path
@@ -38,51 +36,8 @@ _QUERY_PATTERNS = {
     "listeners_of": "Find methods that listen for an event",
     "handlers_of": "Find methods that handle an endpoint",
     "endpoints_for": "Find endpoints handled by a method",
-    "consumers_of": "Find classes that consume a Spring configuration property",
     "file_summary": "Get a summary of all nodes in a file",
 }
-
-_JAVA_FQN_PART = re.compile(r"^[A-Za-z_$][A-Za-z0-9_$]*$")
-_MAX_FQN_CANDIDATES = 100
-
-
-def _looks_like_java_method_fqn(target: str) -> bool:
-    """Return whether *target* has a package/Class/method-like shape."""
-    if "::" in target:
-        return False
-    parts = target.split(".")
-    if len(parts) < 2 or not all(_JAVA_FQN_PART.fullmatch(part) for part in parts):
-        return False
-    # Two segments are accepted only for the conventional Class.method form;
-    # this keeps ordinary dotted filenames/modules on the legacy path.
-    return len(parts) >= 3 or parts[-2][:1].isupper()
-
-
-def _java_fqn_candidates(store: GraphStore, target: str) -> list[GraphNode] | None:
-    """Resolve Java FQNs using language plus class/file evidence.
-
-    ``None`` means that the target is not Java-FQN-shaped. An empty list means
-    it is shaped like one but no safe match exists, so callers must not fall
-    back to an unrelated globally unique method name.
-    """
-    if not _looks_like_java_method_fqn(target):
-        return None
-
-    parts = target.split(".")
-    class_name, method_name = parts[-2:]
-    matches: list[GraphNode] = []
-    for candidate in store.search_nodes(method_name, limit=_MAX_FQN_CANDIDATES):
-        if candidate.language.lower() != "java" or candidate.name != method_name:
-            continue
-        parent_name = candidate.parent_name or ""
-        parent_match = parent_name.rsplit(".", 1)[-1] == class_name
-        file_match = Path(candidate.file_path).stem == class_name
-        qualified_tail = candidate.qualified_name.rsplit("::", 1)[-1]
-        qualified_match = qualified_tail.endswith(f"{class_name}.{method_name}")
-        if parent_match or file_match or qualified_match:
-            matches.append(candidate)
-    return matches
-
 
 def _rank_disambiguation_candidates(
     candidates: list[GraphNode], target: str,
@@ -239,7 +194,7 @@ def query_graph(
         pattern: Query pattern. One of: callers_of, references_to, callees_of,
                  imports_of, importers_of, children_of, tests_for, inheritors_of,
                  triggers_of, triggered_by, publishers_of, listeners_of,
-                 handlers_of, endpoints_for, consumers_of, file_summary.
+                 handlers_of, endpoints_for, file_summary.
         target: The node name, qualified name, or file path to query about.
         repo_root: Repository root path. Auto-detected if omitted.
         detail_level: "standard" (full output) or "minimal" (summary only).
@@ -301,19 +256,13 @@ def query_graph(
         # Resolve target - try as-is, then as absolute path, then search.
         # file_summary targets are paths, so skip broad node search.
         node = None
-        raw_config_target = pattern == "consumers_of" and "::" not in target
-        if pattern != "file_summary" and not raw_config_target:
+        if pattern != "file_summary":
             node = store.get_node(target)
             if not node:
                 abs_target = normalize_file_path(root / target)
                 node = store.get_node(abs_target)
             if not node:
-                java_candidates = _java_fqn_candidates(store, target)
-                candidates = (
-                    java_candidates
-                    if java_candidates is not None
-                    else store.search_nodes(target, limit=20)
-                )
+                candidates = store.search_nodes(target, limit=20)
                 if pattern == "inheritors_of" and "::" not in target:
                     exact_type_candidates = [
                         candidate
@@ -328,11 +277,7 @@ def query_graph(
                     node = candidates[0]
                     target = node.qualified_name
                 elif len(candidates) > 1:
-                    candidate_count = (
-                        len(candidates)
-                        if java_candidates is not None
-                        else store.count_search_nodes(target)
-                    )
+                    candidate_count = store.count_search_nodes(target)
                     ranked = _rank_disambiguation_candidates(candidates, target)
                     return {
                         "status": "ambiguous",
@@ -352,7 +297,7 @@ def query_graph(
                         ),
                     }
 
-        if not node and pattern not in ("consumers_of", "file_summary"):
+        if not node and pattern != "file_summary":
             return {
                 "status": "not_found",
                 "summary": f"No node found matching '{target}'.",
@@ -603,19 +548,6 @@ def query_graph(
                 if endpoint and endpoint.kind == "Endpoint":
                     add_result(node_to_dict(endpoint), edge)
                 elif endpoint is None:
-                    edges_out.append(edge_to_dict(edge))
-
-        elif pattern == "consumers_of":
-            raw_key = node.name if node else target.removeprefix("config:")
-            raw_key = raw_key.removesuffix(".*")
-            key = normalize_spring_config_key(raw_key)
-            seen_config_sources: set[str] = set()
-            for edge in store.get_config_consumers(key):
-                consumer = store.get_node(edge.source_qualified)
-                if consumer and consumer.qualified_name not in seen_config_sources:
-                    add_result(node_to_dict(consumer), edge)
-                    seen_config_sources.add(consumer.qualified_name)
-                elif consumer is None:
                     edges_out.append(edge_to_dict(edge))
 
         elif pattern == "file_summary":
