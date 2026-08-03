@@ -7,7 +7,6 @@ name = "code-review-graph"
 version = "2.3.7"
 description = "Local-first knowledge graph for token-efficient code review through MCP and CLI"
 readme = {file = "README.md", content-type = "text/markdown"}
-license = "MIT"
 requires-python = ">=3.10"
 authors = [
     { name = "Tirth" },
@@ -16,7 +15,6 @@ keywords = ["code-review", "knowledge-graph", "tree-sitter", "mcp", "ai-coding-t
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -98,7 +96,6 @@ include = [
     "skills/",
     "docs/",
     "hooks/",
-    "LICENSE",
     "README.md",
     "pyproject.toml",
 ]

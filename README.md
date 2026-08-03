@@ -625,10 +625,6 @@ pytest
 
 </details>
 
-## 许可
-
-MIT。详见 [LICENSE](LICENSE)。
-
 <p align="center">
 <br>
 <a href="https://code-review-graph.com">code-review-graph.com</a><br><br>
