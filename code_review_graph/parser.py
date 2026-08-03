@@ -741,7 +741,6 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".xs": "c",  # Perl XS: parsed as C to capture functions/structs/includes
     ".lua": "lua",
     ".luau": "luau",
-    ".m": "objc",  # Objective-C (.h still maps to C; .mm defers to C++ for simplicity)
     ".sh": "bash",
     ".bash": "bash",
     ".zsh": "bash",
@@ -934,10 +933,6 @@ _CLASS_TYPES: dict[str, list[str]] = {
     "dart": ["class_definition", "mixin_declaration", "enum_declaration"],
     "lua": [],  # Lua has no class keyword; table-based OOP handled via constructs handler
     "luau": ["type_definition"],  # Luau type aliases; table-based OOP via constructs handler
-    "objc": [
-        "class_interface", "class_implementation",
-        "category_interface", "protocol_declaration",
-    ],
     "bash": [],  # Shell has no classes
     # Elixir: `defmodule Name do ... end` is a ``call`` node whose first
     # identifier is literally "defmodule". Dispatched via
@@ -1024,10 +1019,6 @@ _FUNCTION_TYPES: dict[str, list[str]] = {
     "dart": ["function_signature"],
     "lua": ["function_declaration"],
     "luau": ["function_declaration"],
-    # Objective-C: method_definition lives inside implementation_definition
-    # inside class_implementation. C-style function_definition is also present
-    # for main() and helper functions.
-    "objc": ["method_definition", "function_definition"],
     # Bash: only function_definition; everything else is a command.
     "bash": ["function_definition"],
     # Elixir: def/defp/defmacro are all ``call`` nodes whose first
@@ -1079,9 +1070,6 @@ _IMPORT_TYPES: dict[str, list[str]] = {
     # Lua/Luau: require() is a function_call, handled via _extract_lua_constructs
     "lua": [],
     "luau": [],
-    # Objective-C: #import "..." and #include "..." both arrive as preproc_include
-    # (tree-sitter-objc doesn't distinguish via a separate preproc_import node).
-    "objc": ["preproc_include"],
     # Bash: source / . <file> is a command — handled in _extract_bash_source below.
     "bash": [],
     # Elixir: alias/import/require/use are all ``call`` nodes —
@@ -1139,9 +1127,6 @@ _CALL_TYPES: dict[str, list[str]] = {
     "solidity": ["call_expression"],
     "lua": ["function_call"],
     "luau": ["function_call"],
-    # Objective-C: [receiver message:args] produces message_expression;
-    # C-style foo(x) produces call_expression.
-    "objc": ["message_expression", "call_expression"],
     # Bash: every command invocation is a "command" node.
     "bash": ["command"],
     # Elixir: everything is a ``call`` node — dispatched via
@@ -12555,10 +12540,10 @@ class CodeParser:
             if cpp_name:
                 return cpp_name
 
-        # For C/C++/Objective-C: function names are inside
+        # For C/C++: function names are inside
         # function_declarator / pointer_declarator. Check these first to
         # avoid matching the return type_identifier as the function name.
-        if language in ("c", "cpp", "objc") and kind == "function":
+        if language in ("c", "cpp") and kind == "function":
             for child in node.children:
                 if child.type in ("function_declarator", "pointer_declarator"):
                     # Scoped names like Foo::bar use qualified_identifier; take
@@ -12610,15 +12595,6 @@ class CodeParser:
                     ):
                         return child.text.decode(
                             "utf-8", errors="replace")
-
-        # Objective-C method_definition: the method name is the first
-        # ``identifier`` child (first part of the selector). Multi-part
-        # selectors like ``- (void)add:(int)a to:(int)b`` keep ``add`` as
-        # the canonical method name; later parts are keyword arguments.
-        if language == "objc" and node.type == "method_definition":
-            for child in node.children:
-                if child.type == "identifier":
-                    return child.text.decode("utf-8", errors="replace")
 
         # Bash function_definition: ``foo() { ... }`` — tree-sitter-bash
         # stores the function name as a ``word`` child, which the generic
@@ -13608,24 +13584,6 @@ class CodeParser:
         if node.type == "instance_expression":
             for child in node.children:
                 if child.type in ("type_identifier", "identifier"):
-                    return child.text.decode("utf-8", errors="replace")
-            return None
-
-        # Objective-C: [receiver method:arg] — the method name is the
-        # SECOND identifier-like child (the first is the receiver). For
-        # multi-part selectors like `[obj add:a to:b]` we keep the first
-        # part (`add`) as the call name; later parts are keyword arguments.
-        if language == "objc" and node.type == "message_expression":
-            receiver_skipped = False
-            for child in node.children:
-                if child.type in ("[", "]"):
-                    continue
-                if not receiver_skipped:
-                    # First non-bracket child is the receiver (identifier,
-                    # message_expression for chained calls, etc.)
-                    receiver_skipped = True
-                    continue
-                if child.type == "identifier":
                     return child.text.decode("utf-8", errors="replace")
             return None
 

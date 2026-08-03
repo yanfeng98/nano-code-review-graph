@@ -655,7 +655,7 @@ def d9():
     groups = [
         ("Web",        ["TypeScript", "JavaScript", "TSX", "Vue", "Svelte"],         BLU, BLU_BG),
         ("Backend",    ["Python", "Go", "Rust", "Scala", "Elixir"],          GRN, GRN_BG),
-        ("Systems",    ["C", "C++", "Objective-C", "Zig"],                           ORG, ORG_BG),
+        ("Systems",    ["C", "C++", "Zig"],                           ORG, ORG_BG),
         ("Mobile",     ["Kotlin", "Swift", "Dart"],                                  PRP, PRP_BG),
         ("Scripting",  ["Ruby", "PHP", "Perl", "Lua", "R", "Julia"],                 YLW, YLW_BG),
         ("Shells",     ["Bash", "PowerShell"],                                       RED, RED_BG),

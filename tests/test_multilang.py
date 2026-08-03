@@ -1415,65 +1415,6 @@ class TestLuauParsing:
         assert "Animal.speak" in sources
 
 
-class TestObjectiveCParsing:
-    """Objective-C parser — closes #88."""
-
-    def setup_method(self):
-        self.parser = CodeParser()
-        self.nodes, self.edges = self.parser.parse_file(FIXTURES / "sample.m")
-
-    def test_detects_language(self):
-        assert self.parser.detect_language(Path("foo.m")) == "objc"
-
-    def test_nodes_have_objc_language(self):
-        for n in self.nodes:
-            assert n.language == "objc"
-
-    def test_finds_class(self):
-        classes = [n for n in self.nodes if n.kind == "Class"]
-        # Both @interface and @implementation produce Class nodes; that's
-        # fine because they upsert to the same qualified name in the store.
-        names = {c.name for c in classes}
-        assert "Calculator" in names
-
-    def test_finds_instance_and_class_methods(self):
-        funcs = {
-            (n.name, n.parent_name) for n in self.nodes if n.kind == "Function"
-        }
-        assert ("add", "Calculator") in funcs
-        assert ("reset", "Calculator") in funcs
-        assert ("logResult", "Calculator") in funcs
-        assert ("sharedCalculator", "Calculator") in funcs
-
-    def test_finds_c_main(self):
-        """Top-level C-style main() must be extracted via the
-        function_declarator pattern that C/C++ already use (#88)."""
-        funcs = [n for n in self.nodes if n.kind == "Function"]
-        main_fn = next((f for f in funcs if f.name == "main"), None)
-        assert main_fn is not None
-        assert main_fn.parent_name is None  # top-level, not attached to a class
-
-    def test_finds_imports(self):
-        imports = [e for e in self.edges if e.kind == "IMPORTS_FROM"]
-        targets = {e.target for e in imports}
-        # Angle-bracket system headers and quoted user headers both arrive
-        # as preproc_include in tree-sitter-objc.
-        assert any("Foundation" in t for t in targets)
-        assert any("Logger" in t for t in targets)
-
-    def test_extracts_message_expression_calls(self):
-        """Objective-C uses [receiver method:args] for method calls; these
-        must produce CALLS edges (#88)."""
-        calls = [e for e in self.edges if e.kind == "CALLS"]
-        targets = [e.target for e in calls]
-        # Internal [self logResult:sum] should resolve to Calculator.logResult
-        assert any(t.endswith("::Calculator.logResult") for t in targets)
-        # [Calculator sharedCalculator] from main should also resolve
-        assert any(t.endswith("::Calculator.sharedCalculator") for t in targets)
-        # External NSLog(...) call_expression should be captured too
-        assert "NSLog" in targets
-
-
 class TestBashParsing:
     """Bash/Shell parser — closes #197."""
 

@@ -245,9 +245,9 @@ class TestQueryGraphCallTargetFallbacks:
         (self.root / ".git").mkdir()
         (self.root / ".code-review-graph").mkdir()
 
-        self.target_file = (self.root / "target.m").as_posix()
-        self.cross_file = (self.root / "cross.m").as_posix()
-        self.dispatch_file = (self.root / "dispatch.m").as_posix()
+        self.target_file = (self.root / "target.ts").as_posix()
+        self.cross_file = (self.root / "cross.ts").as_posix()
+        self.dispatch_file = (self.root / "dispatch.ts").as_posix()
         self.db_path = str(self.root / ".code-review-graph" / "graph.db")
         self._seed_data()
 
@@ -260,15 +260,15 @@ class TestQueryGraphCallTargetFallbacks:
         with GraphStore(self.db_path) as store:
             store.upsert_node(NodeInfo(
                 kind="Function", name="target_func", file_path=self.target_file,
-                line_start=10, line_end=12, language="objc",
+                line_start=10, line_end=12, language="typescript",
             ))
             store.upsert_node(NodeInfo(
                 kind="Function", name="same_file_caller", file_path=self.target_file,
-                line_start=20, line_end=24, language="objc",
+                line_start=20, line_end=24, language="typescript",
             ))
             store.upsert_node(NodeInfo(
                 kind="Function", name="cross_file_caller", file_path=self.cross_file,
-                line_start=5, line_end=9, language="objc",
+                line_start=5, line_end=9, language="typescript",
             ))
             store.upsert_edge(EdgeInfo(
                 kind="CALLS",
@@ -287,11 +287,11 @@ class TestQueryGraphCallTargetFallbacks:
 
             store.upsert_node(NodeInfo(
                 kind="Function", name="dispatcher", file_path=self.dispatch_file,
-                line_start=1, line_end=8, language="objc",
+                line_start=1, line_end=8, language="typescript",
             ))
             store.upsert_node(NodeInfo(
                 kind="Function", name="resolved_helper", file_path=self.dispatch_file,
-                line_start=12, line_end=14, language="objc",
+                line_start=12, line_end=14, language="typescript",
             ))
             store.upsert_edge(EdgeInfo(
                 kind="CALLS",
