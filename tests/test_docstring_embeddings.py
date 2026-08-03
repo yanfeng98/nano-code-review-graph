@@ -157,23 +157,6 @@ class TestDocumentationSummaryExtraction:
 
         assert node.extra["docstring"] == "Parse a RateSheet."
 
-    def test_csharp_xml_summary_crosses_attribute(self):
-        node = _parsed_node(
-            "Parser.cs",
-            (
-                b"class Parser {\n"
-                b"  /// <summary>\n"
-                b"  /// Parse a rate sheet.\n"
-                b"  /// </summary>\n"
-                b"  [Obsolete]\n"
-                b"  public void Parse() {}\n"
-                b"}\n"
-            ),
-            "Parse",
-        )
-
-        assert node.extra["docstring"] == "Parse a rate sheet."
-
     def test_doxygen_comment_attaches_to_cpp_template_function(self):
         node = _parsed_node(
             "parser.cpp",

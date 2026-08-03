@@ -91,7 +91,7 @@ A class extends/inherits from another class.
 | file_path | string | File containing the child class |
 
 ### IMPLEMENTS
-A class implements an interface (Java, C#, TypeScript, Go).
+A class implements an interface (Java, TypeScript, Go).
 
 | Property | Type | Description |
 |----------|------|-------------|

@@ -2219,7 +2219,7 @@ class TestTypeScriptTypeDeclarations:
 
     Before this, ``_CLASS_TYPES`` covered only ``class_declaration`` for TS, so a
     types-only module produced zero symbol nodes and its blast radius collapsed
-    to whole-file ``IMPORTS_FROM`` fan-out. Java/C#/PHP already indexed
+    to whole-file ``IMPORTS_FROM`` fan-out. Java/PHP already indexed
     ``interface_declaration``. See: #737
     """
 

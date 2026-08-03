@@ -719,7 +719,6 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".go": "go",
     ".rs": "rust",
     ".java": "java",
-    ".cs": "csharp",
     ".rb": "ruby",
     ".cpp": "cpp",
     ".cc": "cpp",
@@ -900,7 +899,7 @@ _CLASS_TYPES: dict[str, list[str]] = {
     "javascript": ["class_declaration", "class"],
     # TS types are declarations, not just runtime classes: an interface or type
     # alias is the thing callers depend on, so it needs a node of its own the way
-    # Java/C#/PHP interfaces do. Without them a types-only module (types.ts,
+    # Java/PHP interfaces do. Without them a types-only module (types.ts,
     # *.d.ts) contributes zero symbol nodes and its blast radius collapses to
     # whole-file IMPORTS_FROM fan-out. See: #737
     "typescript": [
@@ -918,11 +917,6 @@ _CLASS_TYPES: dict[str, list[str]] = {
     "java": ["class_declaration", "interface_declaration", "enum_declaration"],
     "c": ["struct_specifier", "type_definition"],
     "cpp": ["class_specifier", "struct_specifier"],
-    "csharp": [
-        "class_declaration", "interface_declaration",
-        "enum_declaration", "struct_declaration",
-        "record_declaration", "record_struct_declaration",
-    ],
     "ruby": ["class", "module"],
     "r": [],  # Classes detected via call pattern-matching, not AST node types
     "perl": ["package_statement", "class_statement", "role_statement"],
@@ -1003,14 +997,13 @@ _FUNCTION_TYPES: dict[str, list[str]] = {
     "java": ["method_declaration", "constructor_declaration"],
     "c": ["function_definition"],
     "cpp": ["function_definition", "declaration", "field_declaration"],
-    "csharp": ["method_declaration", "constructor_declaration"],
     "ruby": ["method", "singleton_method"],
     "r": ["function_definition"],
     "perl": ["subroutine_declaration_statement", "method_declaration_statement"],
     "kotlin": ["function_declaration"],
     # Swift: initializers, deinitializers and subscripts are separate node
     # types, not `function_declaration`s, so they need listing alongside it —
-    # the same way java/csharp list `constructor_declaration`. Their names come
+    # the same way java lists `constructor_declaration`. Their names come
     # from the `_get_name` Swift branch (the grammar has no usable name field).
     "swift": [
         "function_declaration",
@@ -1078,7 +1071,6 @@ _IMPORT_TYPES: dict[str, list[str]] = {
     "java": ["import_declaration"],
     "c": ["preproc_include"],
     "cpp": ["preproc_include"],
-    "csharp": ["using_directive"],
     "ruby": ["call"],  # require/require_relative
     "r": ["call"],  # library(), require(), source() — filtered downstream
     "perl": ["use_statement", "require_expression"],
@@ -1134,7 +1126,6 @@ _CALL_TYPES: dict[str, list[str]] = {
     "java": ["method_invocation", "object_creation_expression", "method_reference"],
     "c": ["call_expression"],
     "cpp": ["call_expression"],
-    "csharp": ["invocation_expression", "object_creation_expression"],
     "ruby": ["call", "method_call"],
     "r": ["call"],
     "perl": [
@@ -1850,10 +1841,6 @@ _DOC_COMMENT_WRAPPER_TYPES = frozenset({
     "export_statement",
     "template_declaration",
 })
-_CSHARP_SUMMARY_RE = re.compile(
-    r"<summary(?:\s[^>]*)?>(.*?)</summary\s*>",
-    re.IGNORECASE | re.DOTALL,
-)
 _XML_TAG_RE = re.compile(r"<[^>]+>")
 _DOC_PARAGRAPH_TAG_RE = re.compile(
     r"</?(?:p|para)(?:\s[^>]*)?>",
@@ -1869,10 +1856,6 @@ _DOC_BRIEF_RE = re.compile(r"^\s*[@\\]brief\s+", re.IGNORECASE)
 def _clean_docstring_summary(raw: str, language: str) -> str:
     """Return a whitespace-stable, first-paragraph documentation summary."""
     text = raw.replace("\r\n", "\n").replace("\r", "\n")
-    if language == "csharp":
-        summary = _CSHARP_SUMMARY_RE.search(text)
-        if summary:
-            text = summary.group(1)
     if language != "python":
         text = _DOC_PARAGRAPH_TAG_RE.sub("\n\n", text)
         text = _DOC_INLINE_TAG_RE.sub(r"\1", text)
@@ -1916,7 +1899,7 @@ def _strip_block_doc_comment(text: str) -> str:
 def _modifier_annotation_names(node) -> list[str]:
     """Return annotation names from a ``modifiers`` child of *node*.
 
-    Covers Java/Kotlin/C# where annotations live inside a ``modifiers``
+    Covers Java/Kotlin where annotations live inside a ``modifiers``
     node as ``annotation`` / ``marker_annotation`` children. The leading
     ``@`` is stripped. See: #295
     """
@@ -1942,28 +1925,6 @@ def _python_decorator_names(node) -> list[str]:
             continue
         text = sibling.text.decode("utf-8", errors="replace")
         names.append(text.lstrip("@").strip())
-    return names
-
-
-def _csharp_attribute_names(node) -> list[str]:
-    """Return C# attribute names from ``attribute_list`` children of *node*.
-
-    C# attributes (``[HttpGet]``, ``[Authorize]``, ``[ApiController]``) are
-    ``attribute_list`` nodes, each wrapping one or more ``attribute`` nodes
-    whose first ``identifier`` is the attribute name. The bracket wrapper
-    and any argument list are dropped. See: #295
-    """
-    names: list[str] = []
-    for sub in node.children:
-        if sub.type != "attribute_list":
-            continue
-        for attr in sub.children:
-            if attr.type != "attribute":
-                continue
-            for ident in attr.children:
-                if ident.type in ("identifier", "qualified_name"):
-                    names.append(ident.text.decode("utf-8", errors="replace").strip())
-                    break
     return names
 
 
@@ -2027,8 +1988,7 @@ def _php_attribute_names(node) -> list[str]:
     PHP 8 attributes (``#[Test]``, ``#[DataProvider('x')]``) are
     ``attribute_list`` nodes wrapping one or more ``attribute_group`` nodes,
     each wrapping one or more ``attribute`` nodes whose ``name`` child is the
-    attribute name -- one level deeper than C#'s ``attribute_list >
-    attribute``. See: #693
+    attribute name. See: #693
     """
     names: list[str] = []
     for sub in node.children:
@@ -2076,41 +2036,6 @@ def _php_docblock_marks_test(node) -> bool:
         and sib.type == "comment"
         and _PHP_TEST_DOC_TAG_RE.search(sib.text.decode("utf-8", errors="replace"))
     )
-
-
-def _csharp_namespaces(root_node) -> list[str]:
-    """Return all namespaces declared in a C# compilation unit.
-
-    Handles both the block form (``namespace_declaration``) and the C# 10+
-    file-scoped form (``file_scoped_namespace_declaration``). A single file
-    may declare multiple namespaces; all are returned in source order.
-    See: #310
-    """
-    namespaces: list[str] = []
-    stack = [(root_node, None)]
-
-    while stack:
-        node, parent_namespace = stack.pop()
-        current_namespace = parent_namespace
-        if node.type in (
-            "namespace_declaration", "file_scoped_namespace_declaration",
-        ):
-            for c in node.children:
-                if c.type in ("qualified_name", "identifier"):
-                    text = c.text.decode("utf-8", errors="replace").strip()
-                    if text:
-                        current_namespace = (
-                            f"{parent_namespace}.{text}"
-                            if parent_namespace
-                            else text
-                        )
-                        namespaces.append(current_namespace)
-                    break
-        stack.extend(
-            (child, current_namespace)
-            for child in reversed(node.children)
-        )
-    return namespaces
 
 
 def file_hash(path: Path) -> str:
@@ -2708,13 +2633,6 @@ class CodeParser:
         # File node
         test_file = _is_test_file(file_path_str)
         file_extra: dict = {}
-        # C#: record the namespace(s) this file declares so query-time
-        # fallbacks can resolve namespace-form IMPORTS_FROM targets (from
-        # `using X.Y;` directives) back to the declaring file. See: #310
-        if language == "csharp":
-            ns_list = _csharp_namespaces(tree.root_node)
-            if ns_list:
-                file_extra["csharp_namespaces"] = ns_list
         nodes.append(NodeInfo(
             kind="File",
             name=file_path_str,
@@ -5014,7 +4932,6 @@ class CodeParser:
 
     _TYPED_CALL_LANGUAGES = frozenset({
         "python", "kotlin", "java", "javascript", "typescript", "tsx", "php",
-        "csharp",
     })
     _TRANSPARENT_TYPE_WRAPPERS = frozenset({"Annotated", "Optional", "Type"})
     _NON_RECEIVER_TYPE_NAMES = frozenset({
@@ -5054,7 +4971,6 @@ class CodeParser:
             "typescript": {"statement_block"},
             "tsx": {"statement_block"},
             "php": {"compound_statement"},
-            "csharp": {"block"},
         }.get(language, set())
         targets: dict[tuple[int, str, str], tuple[str, str, str]] = {}
 
@@ -5118,14 +5034,9 @@ class CodeParser:
                         else "typed_receiver"
                     )
                     if type_name is None and receiver[:1].isupper():
-                        # C# receivers keep their class-name evidence even
-                        # when the class is not visible in this file: the
-                        # graph-wide scoped resolver validates it against
-                        # actual Class nodes plus namespace evidence (#612).
                         if (
                             receiver in import_map
                             or receiver in defined_names
-                            or language == "csharp"
                         ):
                             type_name = receiver
                             evidence = "class_receiver"
@@ -5190,7 +5101,6 @@ class CodeParser:
             "javascript": {"required_parameter", "optional_parameter"},
             "typescript": {"required_parameter", "optional_parameter"},
             "tsx": {"required_parameter", "optional_parameter"},
-            "csharp": {"parameter"},
         }.get(language, set())
 
         def visit(node, depth: int = 0) -> None:
@@ -5320,38 +5230,6 @@ class CodeParser:
                 node.child_by_field_name("type"),
             )
 
-        elif language == "csharp" and node.type == "variable_declaration":
-            type_node = node.child_by_field_name("type")
-            if type_node is not None and type_node.type == "implicit_type":
-                type_node = None
-            for child in node.children:
-                if child.type != "variable_declarator":
-                    continue
-                declared_type = type_node
-                if declared_type is None:
-                    # ``var x = new Service();`` — use the constructed type.
-                    creation = next(
-                        (
-                            sub for sub in child.children
-                            if sub.type == "object_creation_expression"
-                        ),
-                        None,
-                    )
-                    if creation is not None:
-                        declared_type = creation.child_by_field_name("type")
-                self._store_typed_binding(
-                    result,
-                    child.child_by_field_name("name"),
-                    declared_type,
-                )
-
-        elif language == "csharp" and node.type == "parameter":
-            self._store_typed_binding(
-                result,
-                node.child_by_field_name("name"),
-                node.child_by_field_name("type"),
-            )
-
         elif language == "php" and node.type == "assignment_expression":
             name_node = node.child_by_field_name("left")
             value_node = node.child_by_field_name("right")
@@ -5452,16 +5330,6 @@ class CodeParser:
             scope = imported or normalized
             return f"{scope}::{method}"
 
-        if language == "csharp":
-            # C# ``using`` directives import namespaces, not files, so a
-            # class receiver cannot be resolved to its defining file during
-            # a single-file parse. Emit the receiver class as a scope target
-            # for the graph-wide scoped resolver (#612).
-            base_type = self._base_type_name(type_name)
-            if not base_type:
-                return None
-            return f"{base_type}::{method}"
-
         base_type = self._base_type_name(type_name)
         if not base_type:
             return None
@@ -5499,8 +5367,8 @@ class CodeParser:
                     "receiver_resolution": evidence_kind,
                 })
                 resolved_target = target
-                if evidence_kind == "constructed_receiver" or language == "csharp":
-                    # Keep PHP/C# parse-only CALLS output backward-compatible
+                if evidence_kind == "constructed_receiver":
+                    # Keep PHP parse-only CALLS output backward-compatible
                     # (bare method target) while preserving the receiver
                     # class scope for the graph-wide resolver.
                     scope, separator, _ = target.rpartition("::")
@@ -10182,9 +10050,9 @@ class CodeParser:
                     )
 
         # Class-level annotation persistence for all annotation-bearing
-        # languages.  Kotlin (@HiltViewModel, @AndroidEntryPoint) and C#
-        # ([ApiController], [Route]) lost this metadata entirely; Java reuses
-        # the list already gathered above.  Stored in ``modifiers`` (string)
+        # languages.  Kotlin (@HiltViewModel, @AndroidEntryPoint) lost this
+        # metadata entirely; Java reuses the list already gathered above.
+        # Stored in ``modifiers`` (string)
         # and ``extra["decorators"]`` (list).  See: #295
         if language == "java":
             class_decorators = list(class_annotations)
@@ -10192,8 +10060,6 @@ class CodeParser:
             class_decorators = _modifier_annotation_names(child)
             if language == "python":
                 class_decorators.extend(_python_decorator_names(child))
-            if language == "csharp":
-                class_decorators.extend(_csharp_attribute_names(child))
         class_modifiers: Optional[str] = (
             ",".join(class_decorators) if class_decorators else None
         )
@@ -10304,7 +10170,7 @@ class CodeParser:
         decorators: tuple[str, ...] = ()
         deco_list: list[str] = []
         for sub in child.children:
-            # Java/Kotlin/C#: annotations inside a modifiers child
+            # Java/Kotlin: annotations inside a modifiers child
             if sub.type == "modifiers":
                 for mod in sub.children:
                     if mod.type in ("annotation", "marker_annotation"):
@@ -10333,12 +10199,6 @@ class CodeParser:
                     inner = inner[:-1]
                 deco_list.append(inner.strip())
                 sib = sib.prev_sibling
-        # C#: attributes use `attribute_list` child nodes ([HttpGet],
-        # [Authorize]) rather than `modifiers > annotation`. Capture the
-        # attribute name from each `attribute_list > attribute > identifier`.
-        # See: #295
-        if language == "csharp":
-            deco_list.extend(_csharp_attribute_names(child))
         # PHP: `#[Test]` attributes wrap `attribute_list > attribute_group >
         # attribute > name`. PHPUnit's legacy `/** @test */` docblock tag is
         # a preceding-sibling `comment` node instead, so it needs a separate
@@ -10905,11 +10765,6 @@ class CodeParser:
             method = method_node.text.decode("utf-8", errors="replace")
             return receiver, method
 
-        if language == "csharp":
-            if node.type != "invocation_expression":
-                return None, None
-            return self._get_csharp_receiver_method(node)
-
         callee = node.child_by_field_name("function")
         if callee is None and node.children:
             callee = node.children[0]
@@ -10974,77 +10829,6 @@ class CodeParser:
                 )
 
         return None, method
-
-    @staticmethod
-    def _get_csharp_receiver_method(node) -> tuple[Optional[str], Optional[str]]:
-        """Return ``(receiver, method)`` for a C# invocation expression.
-
-        Handles ``obj.Method()`` / ``Class.Method()`` (member access),
-        ``this.field.Method()`` (class-field receiver), and
-        ``obj?.Method()`` (conditional access via a member binding).
-        Chained or computed receivers keep the method name but no receiver.
-        """
-        callee = node.child_by_field_name("function")
-        if callee is None and node.children:
-            callee = node.children[0]
-        if callee is None:
-            return None, None
-
-        if callee.type == "member_access_expression":
-            name_node = callee.child_by_field_name("name")
-            if name_node is None:
-                return None, None
-            method = name_node.text.decode("utf-8", errors="replace")
-            receiver_node = callee.child_by_field_name("expression")
-            if receiver_node is None:
-                return None, method
-            if receiver_node.type in ("identifier", "this", "this_expression"):
-                return (
-                    receiver_node.text.decode("utf-8", errors="replace"),
-                    method,
-                )
-            # ``this.field.Save()``: the class field is the receiver.
-            if receiver_node.type == "member_access_expression":
-                root = receiver_node.child_by_field_name("expression")
-                field_node = receiver_node.child_by_field_name("name")
-                if (
-                    root is not None
-                    and field_node is not None
-                    and root.type in ("this", "this_expression")
-                ):
-                    return (
-                        field_node.text.decode("utf-8", errors="replace"),
-                        method,
-                    )
-            return None, method
-
-        if callee.type == "conditional_access_expression":
-            bindings = [
-                child for child in callee.children
-                if child.type == "member_binding_expression"
-            ]
-            if not bindings:
-                return None, None
-            name_node = bindings[-1].child_by_field_name("name")
-            if name_node is None:
-                return None, None
-            method = name_node.text.decode("utf-8", errors="replace")
-            receiver_node = callee.child_by_field_name("condition")
-            named_children = [
-                child for child in callee.children if child.is_named
-            ]
-            if (
-                receiver_node is not None
-                and receiver_node.type == "identifier"
-                and len(named_children) == 2
-            ):
-                return (
-                    receiver_node.text.decode("utf-8", errors="replace"),
-                    method,
-                )
-            return None, method
-
-        return None, None
 
     # ------------------------------------------------------------------
     # PHP / Laravel semantic constructs
@@ -14430,16 +14214,6 @@ class CodeParser:
                 if child.type == "identifier":
                     return child.text.decode("utf-8", errors="replace")
             return None
-        # C#: unlike Java there is no type_identifier — a non-generic return
-        # type such as ``Task`` is itself an ``identifier``, so the generic
-        # loop below would return it instead of the method name. Read the
-        # ``name`` field; unusual shapes still fall through.
-        if language == "csharp" and kind == "function" and node.type in (
-            "method_declaration", "constructor_declaration",
-        ):
-            name_node = node.child_by_field_name("name")
-            if name_node is not None:
-                return name_node.text.decode("utf-8", errors="replace")
 
         if language == "cpp" and kind == "function":
             declarator = node.child_by_field_name("declarator")
@@ -15043,35 +14817,6 @@ class CodeParser:
                             for ident in sub.children:
                                 if ident.type in ("type_identifier", "generic_type"):
                                     bases.append(ident.text.decode("utf-8", errors="replace"))
-        elif language == "csharp":
-            # C# wraps ``: Base, IFace`` in a base_list. Iterate named type
-            # entries so punctuation is excluded while qualified/generic names
-            # are preserved across tree-sitter-c-sharp grammar versions.
-            # Enum base_list nodes describe storage types, not inheritance.
-            if node.type == "enum_declaration":
-                return bases
-            for child in node.children:
-                if child.type != "base_list":
-                    continue
-                for sub in child.children:
-                    if not sub.is_named or sub.type == "argument_list":
-                        continue
-                    if sub.type == "primary_constructor_base_type":
-                        # Positional records contain Base(args); retain only Base.
-                        type_node = sub.child_by_field_name("type")
-                        if type_node is not None:
-                            bases.append(
-                                type_node.text.decode("utf-8", errors="replace")
-                            )
-                        else:
-                            for nested in sub.children:
-                                if nested.is_named and nested.type != "argument_list":
-                                    bases.append(
-                                        nested.text.decode("utf-8", errors="replace")
-                                    )
-                                    break
-                        continue
-                    bases.append(sub.text.decode("utf-8", errors="replace"))
         elif language == "kotlin":
             # Look for superclass/interfaces in extends/implements clauses
             for child in node.children:
@@ -15271,8 +15016,8 @@ class CodeParser:
                 if child.type in ("system_lib_string", "string_literal"):
                     val = child.text.decode("utf-8", errors="replace").strip("<>\"")
                     imports.append(val)
-        elif language in ("java", "csharp"):
-            # import/using package.Class
+        elif language == "java":
+            # import package.Class
             parts = text.split()
             if len(parts) >= 2:
                 imports.append(parts[-1].rstrip(";"))
