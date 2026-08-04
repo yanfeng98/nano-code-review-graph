@@ -725,7 +725,6 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".h": "c",
     ".hpp": "cpp",
     ".hh": "cpp",
-    ".swift": "swift",
     ".php": "php",
     ".scala": "scala",
     ".sol": "solidity",
@@ -915,7 +914,6 @@ _CLASS_TYPES: dict[str, list[str]] = {
     "ruby": ["class", "module"],
     "r": [],  # Classes detected via call pattern-matching, not AST node types
     "perl": ["package_statement", "class_statement", "role_statement"],
-    "swift": ["class_declaration", "struct_declaration", "protocol_declaration"],
     "php": [
         "class_declaration", "interface_declaration",
         "trait_declaration", "enum_declaration",
@@ -989,16 +987,6 @@ _FUNCTION_TYPES: dict[str, list[str]] = {
     "ruby": ["method", "singleton_method"],
     "r": ["function_definition"],
     "perl": ["subroutine_declaration_statement", "method_declaration_statement"],
-    # Swift: initializers, deinitializers and subscripts are separate node
-    # types, not `function_declaration`s, so they need listing alongside it —
-    # Their names come
-    # from the `_get_name` Swift branch (the grammar has no usable name field).
-    "swift": [
-        "function_declaration",
-        "init_declaration",
-        "deinit_declaration",
-        "subscript_declaration",
-    ],
     "php": ["function_definition", "method_declaration"],
     "scala": ["function_definition", "function_declaration"],
     # Solidity: events and modifiers use kind="Function" because the graph
@@ -1057,7 +1045,6 @@ _IMPORT_TYPES: dict[str, list[str]] = {
     "ruby": ["call"],  # require/require_relative
     "r": ["call"],  # library(), require(), source() — filtered downstream
     "perl": ["use_statement", "require_expression"],
-    "swift": ["import_declaration"],
     "php": ["namespace_use_declaration"],
     "scala": ["import_declaration"],
     "solidity": ["import_directive"],
@@ -1110,7 +1097,6 @@ _CALL_TYPES: dict[str, list[str]] = {
         "function_call_expression", "method_call_expression",
         "ambiguous_function_call_expression",
     ],
-    "swift": ["call_expression"],
     "php": [
         "function_call_expression",
         "member_call_expression",
@@ -8540,21 +8526,7 @@ class CodeParser:
 
         class_parent = enclosing_class
 
-        # Swift: detect the actual type keyword (class/struct/enum/actor/extension)
-        # and store it in extra["swift_kind"] for richer downstream analysis.
-        # Tree-sitter maps struct/enum/actor/extension all to class_declaration;
-        # protocol uses its own protocol_declaration node type.
         extra: dict = {}
-        if language == "swift":
-            if child.type == "class_declaration":
-                _swift_keywords = {"class", "struct", "enum", "actor", "extension"}
-                for kw_child in child.children:
-                    kw_text = kw_child.text.decode("utf-8", errors="replace")
-                    if kw_text in _swift_keywords:
-                        extra["swift_kind"] = kw_text
-                        break
-            elif child.type == "protocol_declaration":
-                extra["swift_kind"] = "protocol"
 
         # Class-level annotation persistence for all annotation-bearing
         # languages. Stored in ``modifiers`` (string)
@@ -12520,26 +12492,6 @@ class CodeParser:
             for child in node.children:
                 if child.type == "field_identifier":
                     return child.text.decode("utf-8", errors="replace")
-        # Swift init/deinit/subscript: the grammar gives none of them a usable
-        # name. `init_declaration`'s name field is the `init` keyword itself,
-        # `deinit_declaration` has no name field at all (so the generic loop
-        # returns None and the node is dropped), and `subscript_declaration`'s
-        # name field is the *return type* (`subscript(i: Int) -> String` would
-        # be named "String"). Name each after its Swift declaration keyword.
-        if language == "swift" and node.type in (
-            "init_declaration",
-            "deinit_declaration",
-            "subscript_declaration",
-        ):
-            return node.type.removesuffix("_declaration")
-        # Swift extensions: name is inside user_type > type_identifier
-        # (e.g. `extension MyClass: Protocol { ... }`)
-        if language == "swift" and node.type == "class_declaration":
-            for child in node.children:
-                if child.type == "user_type":
-                    for sub in child.children:
-                        if sub.type == "type_identifier":
-                            return sub.text.decode("utf-8", errors="replace")
         # Verilog/SystemVerilog: names are nested differently per construct type.
         if language == "verilog":
             if node.type == "package_declaration":
@@ -13084,19 +13036,6 @@ class CodeParser:
                     for sub in child.children:
                         if sub.type == "type_identifier":
                             bases.append(sub.text.decode("utf-8", errors="replace"))
-        elif language == "swift":
-            # Swift: class Foo: Bar, Baz { ... } / extension Foo: Protocol { ... }
-            # AST: inheritance_specifier > user_type > type_identifier
-            for child in node.children:
-                if child.type == "inheritance_specifier":
-                    for sub in child.children:
-                        if sub.type == "user_type":
-                            for ident in sub.children:
-                                if ident.type == "type_identifier":
-                                    bases.append(
-                                        ident.text.decode("utf-8", errors="replace")
-                                    )
-                                    break
         elif language == "julia":
             # Julia: struct Foo <: Bar / abstract type Foo <: Bar end
             # AST: type_head > binary_expression with operator "<:" and

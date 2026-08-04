@@ -1,4 +1,4 @@
-"""Tests for Go, Rust, C, C++, Ruby, PHP, Swift, Solidity, and Vue parsing."""
+"""Tests for Go, Rust, C, C++, Ruby, PHP, Solidity, and Vue parsing."""
 
 from pathlib import Path
 
@@ -581,106 +581,6 @@ class TestPHPImportResolution:
         assert (base / "Entity/Job.php").resolve().as_posix() in targets
         assert (base / "Model/Status.php").resolve().as_posix() in targets
         assert len(targets) == 2
-
-
-class TestSwiftParsing:
-    def setup_method(self):
-        self.parser = CodeParser()
-        self.nodes, self.edges = self.parser.parse_file(FIXTURES / "sample.swift")
-
-    def test_detects_language(self):
-        assert self.parser.detect_language(Path("App.swift")) == "swift"
-
-    def test_finds_classes(self):
-        classes = [n for n in self.nodes if n.kind == "Class"]
-        names = {c.name for c in classes}
-        assert "User" in names
-        assert "InMemoryRepo" in names
-
-    def test_finds_functions(self):
-        funcs = [n for n in self.nodes if n.kind == "Function"]
-        names = {f.name for f in funcs}
-        assert "createUser" in names or "findById" in names or "save" in names
-
-    def test_finds_enum(self):
-        classes = [n for n in self.nodes if n.kind == "Class"]
-        names = {c.name for c in classes}
-        assert "Direction" in names
-
-    def test_finds_actor(self):
-        classes = [n for n in self.nodes if n.kind == "Class"]
-        names = {c.name for c in classes}
-        assert "DataStore" in names
-
-    def test_finds_extension(self):
-        """Extensions should be detected and linked to the extended type."""
-        classes = [n for n in self.nodes if n.kind == "Class"]
-        # Extension of InMemoryRepo should produce a Class node named InMemoryRepo
-        # with swift_kind == "extension"
-        ext_nodes = [c for c in classes if c.extra.get("swift_kind") == "extension"]
-        assert len(ext_nodes) >= 1
-        assert ext_nodes[0].name == "InMemoryRepo"
-
-    def test_finds_protocol(self):
-        classes = [n for n in self.nodes if n.kind == "Class"]
-        names = {c.name for c in classes}
-        assert "UserRepository" in names
-
-    def test_swift_kind_extra(self):
-        """Each Swift type should have the correct swift_kind in extra."""
-        classes = {n.name: n for n in self.nodes if n.kind == "Class"}
-        assert classes["User"].extra.get("swift_kind") == "struct"
-        assert classes["Direction"].extra.get("swift_kind") == "enum"
-        assert classes["DataStore"].extra.get("swift_kind") == "actor"
-        assert classes["UserRepository"].extra.get("swift_kind") == "protocol"
-        # InMemoryRepo appears twice (class + extension); check at least one is "class"
-        repo_nodes = [n for n in self.nodes if n.kind == "Class" and n.name == "InMemoryRepo"]
-        kinds = {n.extra.get("swift_kind") for n in repo_nodes}
-        assert "class" in kinds
-        assert "extension" in kinds
-
-    def test_inheritance_edges(self):
-        """Swift inheritance / conformance should produce INHERITS edges."""
-        inherits = [e for e in self.edges if e.kind == "INHERITS"]
-        targets = {e.target for e in inherits}
-        # InMemoryRepo: UserRepository
-        assert "UserRepository" in targets
-        # Direction: String
-        assert "String" in targets
-        # extension InMemoryRepo: CustomStringConvertible
-        assert "CustomStringConvertible" in targets
-
-    def test_finds_initializers(self):
-        """`init` / `convenience init` are Function nodes on their own type."""
-        inits = [
-            n for n in self.nodes
-            if n.kind == "Function" and n.name == "init" and n.parent_name == "InMemoryRepo"
-        ]
-        assert len(inits) == 2
-
-    def test_finds_deinitializer(self):
-        funcs = {(n.name, n.parent_name) for n in self.nodes if n.kind == "Function"}
-        assert ("deinit", "InMemoryRepo") in funcs
-
-    def test_finds_subscript(self):
-        """`subscript` is named after its keyword, not its return type."""
-        funcs = {(n.name, n.parent_name) for n in self.nodes if n.kind == "Function"}
-        assert ("subscript", "InMemoryRepo") in funcs
-        assert not any(n.name == "User" for n in self.nodes if n.kind == "Function")
-
-    def test_initializer_body_calls_attributed_to_declaration(self):
-        """Calls inside init/deinit/subscript belong to that declaration, not the file."""
-        calls = {
-            (e.source.rsplit("::", 1)[-1], e.target.rsplit("::", 1)[-1])
-            for e in self.edges if e.kind == "CALLS"
-        }
-        # init(seed:) calls save(user); convenience init() delegates to self.init
-        assert ("InMemoryRepo.init", "InMemoryRepo.save") in calls
-        assert ("InMemoryRepo.init", "InMemoryRepo.init") in calls
-        assert ("InMemoryRepo.deinit", "removeAll") in calls
-        assert ("InMemoryRepo.subscript", "InMemoryRepo.findById") in calls
-        # Previously these landed on the File node, making blast radius file-wide.
-        assert not any(src.endswith("sample.swift") for src, _ in calls)
 
 
 class TestScalaParsing:

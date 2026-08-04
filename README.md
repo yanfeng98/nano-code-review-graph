@@ -115,7 +115,7 @@ Build the code review graph for this project
   <img src="diagrams/diagram9_language_coverage.png" alt="语言覆盖按类别组织：Web、后端、系统、移动端、脚本、配置，以及 Jupyter 和 Databricks notebook 支持" width="90%" />
 </p>
 
-解析器支持跨语言解析函数、类、导入、调用点、继承和测试检测。当前支持包括 Python、JavaScript/TypeScript/TSX、Go、Rust、C/C++、VB.NET、Ruby、Swift、PHP、Scala、Solidity、Dart、R、Perl、Lua/Luau、shell 脚本、Elixir、Zig、PowerShell、Julia、ReScript、GDScript、Nix、Verilog/SystemVerilog、SQL、Terraform/OpenTofu 结构（`.tf`；通用 `.hcl` 文件被识别为文件节点）、Ansible playbooks/roles/tasks、Vue/Svelte SFCs、通过 TypeScript 解析器解析的 Astro 文件、Jupyter/Databricks notebooks（`.ipynb`）以及 Perl XS 文件（`.xs`）。通用 YAML 不被视为源代码。
+解析器支持跨语言解析函数、类、导入、调用点、继承和测试检测。当前支持包括 Python、JavaScript/TypeScript/TSX、Go、Rust、C/C++、VB.NET、Ruby、PHP、Scala、Solidity、Dart、R、Perl、Lua/Luau、shell 脚本、Elixir、Zig、PowerShell、Julia、ReScript、GDScript、Nix、Verilog/SystemVerilog、SQL、Terraform/OpenTofu 结构（`.tf`；通用 `.hcl` 文件被识别为文件节点）、Ansible playbooks/roles/tasks、Vue/Svelte SFCs、通过 TypeScript 解析器解析的 Astro 文件、Jupyter/Databricks notebooks（`.ipynb`）以及 Perl XS 文件（`.xs`）。通用 YAML 不被视为源代码。
 
 PHP 项目额外获得仓库边界的 Composer PSR-4 解析、Blade 模板引用以及 Laravel Route/Eloquent 语义边（当源代码包含显式框架导入、模型继承和接收者证据时）。
 
@@ -246,7 +246,7 @@ jobs:
 | 功能 | 详情 |
 |---------|---------|
 | **增量更新** | 仅重新解析变更文件。后续更新在 2 秒内完成。 |
-| **广泛语言 + notebook 支持** | Python、JavaScript/TypeScript/TSX、Go、Rust、C/C++、VB.NET、Ruby、Swift、PHP、Scala、Solidity、Dart、R、Perl、Lua/Luau、shell 脚本、Elixir、Zig、PowerShell、Julia、ReScript、GDScript、Nix、Verilog/SystemVerilog、SQL、Terraform/OpenTofu 结构（`.tf`；通用 `.hcl` 文件仅作为文件节点）、Ansible playbooks/roles/tasks、Vue/Svelte SFCs、通过 TypeScript 解析器解析的 Astro 文件、Jupyter/Databricks (.ipynb) 和 Perl XS (.xs) |
+| **广泛语言 + notebook 支持** | Python、JavaScript/TypeScript/TSX、Go、Rust、C/C++、VB.NET、Ruby、PHP、Scala、Solidity、Dart、R、Perl、Lua/Luau、shell 脚本、Elixir、Zig、PowerShell、Julia、ReScript、GDScript、Nix、Verilog/SystemVerilog、SQL、Terraform/OpenTofu 结构（`.tf`；通用 `.hcl` 文件仅作为文件节点）、Ansible playbooks/roles/tasks、Vue/Svelte SFCs、通过 TypeScript 解析器解析的 Astro 文件、Jupyter/Databricks (.ipynb) 和 Perl XS (.xs) |
 | **框架感知的 PHP 解析** | 仓库边界的 Composer PSR-4 导入、Blade 模板引用、以及证据门控的 Laravel Route-to-controller 和 Eloquent 关系边 |
 | **影响半径分析** | 展示哪些函数、类和文件可能受变更影响 |
 | **自动更新 hooks** | Hooks 和 watch 模式可在文件保存和支持的提交钩子时更新图 |
