@@ -690,7 +690,6 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     # extraction is regex-based (see _parse_rescript).
     ".res": "rescript",
     ".resi": "rescript",
-    ".gd": "gdscript",
     ".nix": "nix",
     # SystemVerilog/Verilog
     ".sv": "verilog",
@@ -873,9 +872,6 @@ _CLASS_TYPES: dict[str, list[str]] = {
         "class_declaration",
         "package_declaration",
     ],
-    # GDScript: inner classes use ``class Name:`` (class_definition); the
-    # file-level ``class_name Name`` gives the script itself an identity.
-    "gdscript": ["class_definition", "class_name_statement"],
     # SQL: CREATE TABLE / CREATE VIEW are handled via _parse_sql dispatch.
     "sql": [],
     # HCL/Terraform: all constructs are blocks; dispatched via
@@ -939,8 +935,6 @@ _FUNCTION_TYPES: dict[str, list[str]] = {
         "macro_definition",
     ],
     "verilog": ["task_declaration", "function_declaration", "always_construct"],
-    # GDScript: ``func name(args) -> ReturnType:`` — includes ``static func``.
-    "gdscript": ["function_definition"],
     # SQL: CREATE FUNCTION / CREATE PROCEDURE handled via _parse_sql dispatch.
     "sql": [],
     # HCL/Terraform: dispatched via _extract_hcl_constructs.
@@ -979,11 +973,6 @@ _IMPORT_TYPES: dict[str, list[str]] = {
     # Julia: import/using are import_statement nodes.
     "julia": ["import_statement", "using_statement"],
     "verilog": ["package_import_declaration"],
-    # GDScript has no ``import`` keyword. The closest analogue is
-    # ``extends OtherClass`` / ``extends "res://path.gd"``, which establishes
-    # a hard dependency on the parent script. preload()/load() calls remain
-    # as ordinary CALLS edges.
-    "gdscript": ["extends_statement"],
     # SQL: table references extracted as IMPORTS_FROM via _parse_sql dispatch.
     "sql": [],
     # HCL/Terraform: module source attributes become IMPORTS_FROM via
@@ -1035,9 +1024,6 @@ _CALL_TYPES: dict[str, list[str]] = {
         "subroutine_call",
         "system_tf_call",
     ],
-    # GDScript: bare calls produce ``call``; ``obj.method()`` is an
-    # ``attribute`` node whose right-hand side is an ``attribute_call``.
-    "gdscript": ["call", "attribute_call"],
     # SQL: no call edges extracted (grammar too unreliable for procedure calls).
     "sql": [],
     # HCL/Terraform: resource references dispatched via _extract_hcl_constructs.
@@ -11781,25 +11767,6 @@ class CodeParser:
                                     imports.append(
                                         f"{module_name}.{real_name}",
                                     )
-        elif language == "gdscript":
-            # ``extends Node`` → type > identifier("Node")
-            # ``extends "res://path.gd"`` → string literal
-            # ``extends SomeClass.Nested`` → type node (keep full text)
-            for child in node.children:
-                if child.type == "type":
-                    txt = child.text.decode("utf-8", errors="replace").strip()
-                    if txt:
-                        imports.append(txt)
-                elif child.type == "string":
-                    val = child.text.decode("utf-8", errors="replace").strip("'\"")
-                    if val:
-                        imports.append(val)
-                elif child.type == "identifier":
-                    # Fallback: some grammar variants expose the parent type as
-                    # a bare identifier next to the ``extends`` keyword.
-                    txt = child.text.decode("utf-8", errors="replace")
-                    if txt and txt != "extends":
-                        imports.append(txt)
         elif language in self._custom_languages:
             # Custom languages (languages.toml): prefer the grammar's
             # module-ish field over the raw statement text (e.g. Erlang

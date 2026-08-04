@@ -122,7 +122,7 @@ Since v2.3.4, review and impact tools include compact `context_savings` metadata
 
 ## Supported Languages
 
-The parser currently covers Python, JavaScript, TypeScript/TSX, Go, Rust, C/C++, VB.NET, Ruby, Solidity, R, Perl, Lua/Luau, shell scripts, Elixir, Zig, Julia, ReScript, GDScript, Nix, Verilog/SystemVerilog, SQL, Vue/Svelte single-file components, Astro files parsed through the TypeScript parser, Jupyter/Databricks notebooks (`.ipynb`), and Perl XS files (`.xs`).
+The parser currently covers Python, JavaScript, TypeScript/TSX, Go, Rust, C/C++, VB.NET, Ruby, Solidity, R, Perl, Lua/Luau, shell scripts, Elixir, Zig, Julia, ReScript, Nix, Verilog/SystemVerilog, SQL, Vue/Svelte single-file components, Astro files parsed through the TypeScript parser, Jupyter/Databricks notebooks (`.ipynb`), and Perl XS files (`.xs`).
 
 Extension-less scripts are detected by shebang for common bash/sh/zsh/ksh/dash/ash, Python, Node, Ruby, Perl, Lua, Rscript interpreters.
 
