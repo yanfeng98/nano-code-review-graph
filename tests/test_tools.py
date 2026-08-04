@@ -488,38 +488,6 @@ class TestQueryGraphCallTargetFallbacks:
             "JsxImplementer",
         }
 
-    def test_inheritors_of_bare_dart_class_ignores_member_matches(
-        self,
-        tmp_path,
-        monkeypatch,
-    ):
-        """Issue #87: Animal.speak must not make bare Animal ambiguous."""
-        source = tmp_path / "animals.dart"
-        source.write_text(
-            "class Animal {\n"
-            "  void speak() {}\n"
-            "}\n"
-            "class Dog extends Animal {\n"
-            "  @override\n"
-            "  void speak() {}\n"
-            "}\n",
-            encoding="utf-8",
-        )
-        graph_dir = tmp_path / ".code-review-graph"
-        graph_dir.mkdir()
-        monkeypatch.setenv("CRG_SERIAL_PARSE", "1")
-        with GraphStore(graph_dir / "graph.db") as store:
-            full_build(tmp_path, store)
-
-        result = query_graph(
-            pattern="inheritors_of",
-            target="Animal",
-            repo_root=str(tmp_path),
-        )
-
-        assert result["status"] == "ok"
-        assert {item["name"] for item in result["results"]} == {"Dog"}
-
 
 def _seed_repo_relative_graph(root: Path) -> None:
     """Seed graph data with cwd-relative paths, as eval repos currently do."""

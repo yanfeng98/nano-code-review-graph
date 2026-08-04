@@ -489,7 +489,7 @@ def query_graph(
                         add_result(node_to_dict(child), e)
             # Fallback: INHERITS/IMPLEMENTS edges store unqualified base names
             # (e.g. "Animal") while qn is fully qualified
-            # (e.g. "sample.dart::Animal"). Search by plain name too. See: #87
+            # (e.g. "src/animals.rs::Animal"). Search by plain name too. See: #87
             if total_results == 0 and node:
                 for kind in ("INHERITS", "IMPLEMENTS"):
                     for e in store.iter_edges_by_target_name(

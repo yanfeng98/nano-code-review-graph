@@ -656,16 +656,15 @@ def d9():
         ("Web",        ["TypeScript", "JavaScript", "TSX", "Vue", "Svelte"],         BLU, BLU_BG),
         ("Backend",    ["Python", "Go", "Rust", "Scala", "Elixir"],          GRN, GRN_BG),
         ("Systems",    ["C", "C++", "Zig"],                           ORG, ORG_BG),
-        ("Mobile",     ["Dart"],                                  PRP, PRP_BG),
         ("Scripting",  ["Ruby", "Perl", "Lua", "R", "Julia"],                 YLW, YLW_BG),
         ("Shells",     ["Bash", "PowerShell"],                                       RED, RED_BG),
         ("Domain",     ["Solidity", "SQL", "Verilog", "GDScript", "Nix"],            GRY, GRY_BG),
         ("Other",      ["ReScript", "Jupyter/.ipynb"],                               PRP, PRP_BG),
     ]
 
-    gw = 130  # group width \u2014 narrower to fit 8 groups
+    gw = 130  # group width \u2014 narrower to fit 7 groups
     gap = 18
-    total_w = len(groups) * gw + (len(groups)-1) * gap  # 8*130 + 7*18 = 1166
+    total_w = len(groups) * gw + (len(groups)-1) * gap  # 7*130 + 6*18 = 1018
     x0 = (1400 - total_w) / 2  # center on 700
     gy = 75
 

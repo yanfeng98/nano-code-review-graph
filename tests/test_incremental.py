@@ -296,15 +296,13 @@ class TestIgnorePatterns:
         assert not _should_ignore("src/venv_tools/bar.py", patterns)
 
     def test_should_ignore_framework_defaults(self):
-        """Default patterns should cover Gradle, Flutter, and caches."""
+        """Default patterns should cover Gradle and caches."""
         from code_review_graph.incremental import DEFAULT_IGNORE_PATTERNS
 
         patterns = DEFAULT_IGNORE_PATTERNS
         # Gradle
         assert _should_ignore(".gradle/caches/jars.bin", patterns)
         assert _should_ignore("build/libs/app.jar", patterns)
-        # Flutter/Dart
-        assert _should_ignore(".dart_tool/package_config.json", patterns)
         # Coverage/cache
         assert _should_ignore("coverage/lcov.info", patterns)
         assert _should_ignore(".cache/webpack/index.pack", patterns)

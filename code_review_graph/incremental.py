@@ -145,9 +145,6 @@ DEFAULT_IGNORE_PATTERNS = [
     # Gradle
     "**/.gradle/**",
     "*.jar",
-    # Dart / Flutter
-    "**/.dart_tool/**",
-    "**/.pub-cache/**",
     # AWS CDK
     "**/cdk.out/**",
     # General

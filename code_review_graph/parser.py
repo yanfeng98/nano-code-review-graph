@@ -666,7 +666,6 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".scala": "scala",
     ".sol": "solidity",
     ".vue": "vue",
-    ".dart": "dart",
     ".r": "r",  # .lower() in detect_language handles .R → .r
     ".mjs": "javascript",
     ".astro": "typescript",
@@ -858,7 +857,6 @@ _CLASS_TYPES: dict[str, list[str]] = {
         "struct_declaration", "enum_declaration", "error_declaration",
         "user_defined_type_definition",
     ],
-    "dart": ["class_definition", "mixin_declaration", "enum_declaration"],
     "lua": [],  # Lua has no class keyword; table-based OOP handled via constructs handler
     "luau": ["type_definition"],  # Luau type aliases; table-based OOP via constructs handler
     "bash": [],  # Shell has no classes
@@ -928,11 +926,6 @@ _FUNCTION_TYPES: dict[str, list[str]] = {
         "function_definition", "constructor_definition", "modifier_definition",
         "event_definition", "fallback_receive_definition",
     ],
-    # Dart: function_signature covers both top-level functions and class methods
-    # (class methods appear as method_signature > function_signature pairs;
-    # the parser recurses into method_signature generically and then matches
-    # function_signature inside it).
-    "dart": ["function_signature"],
     "lua": ["function_declaration"],
     "luau": ["function_declaration"],
     # Bash: only function_definition; everything else is a command.
@@ -978,8 +971,6 @@ _IMPORT_TYPES: dict[str, list[str]] = {
     "perl": ["use_statement", "require_expression"],
     "scala": ["import_declaration"],
     "solidity": ["import_directive"],
-    # Dart: import_or_export wraps library_import > import_specification > configurable_uri
-    "dart": ["import_or_export"],
     # Lua/Luau: require() is a function_call, handled via _extract_lua_constructs
     "lua": [],
     "luau": [],
@@ -1101,7 +1092,6 @@ _TEST_FILE_PATTERNS = [
     re.compile(r".*_test\.go$"),
     re.compile(r"tests?/"),
     re.compile(r"[\\/]__tests__[\\/]"),
-    re.compile(r".*_test\.dart$"),
     re.compile(r"test[_-].*\.[rR]$"),
     re.compile(r"tests/testthat/"),
     re.compile(r".*_test\.resi?$"),
@@ -2051,8 +2041,6 @@ class CodeParser:
         self._excluded_files: set[str] = set()
         self._export_symbol_cache: dict[str, Optional[str]] = {}
         self._tsconfig_resolver = TsconfigResolver()
-        # Per-parse cache of Dart pubspec root lookups; see #87
-        self._dart_pubspec_cache: dict[tuple[str, str], Optional[Path]] = {}
         # Cargo discovery is shared by every Rust import/call in a source file.
         self._rust_project_cache: dict[
             str, tuple[Path, Path, Path, dict[str, Path], Path]
@@ -5527,18 +5515,6 @@ class CodeParser:
                 )
                 continue
 
-            # --- Dart call detection (see #87) ---
-            # tree-sitter-dart does not wrap calls in a single
-            # ``call_expression`` node; instead the pattern is
-            # ``identifier + selector > argument_part`` as siblings inside
-            # the parent.  Scan child's children here and emit CALLS edges
-            # for any we find; nested calls are handled by the main recursion.
-            if language == "dart":
-                self._extract_dart_calls_from_children(
-                    child, source, file_path, edges,
-                    enclosing_class, enclosing_func,
-                )
-
             # --- JS/TS static CommonJS and dynamic imports ---
             # Treat only literal module specifiers as definite dependencies.
             # Dynamic templates and path.join/path.resolve expressions are
@@ -6386,83 +6362,6 @@ class CodeParser:
             return True
         return False
 
-    def _extract_dart_calls_from_children(
-        self,
-        parent,
-        source: bytes,
-        file_path: str,
-        edges: list[EdgeInfo],
-        enclosing_class: Optional[str],
-        enclosing_func: Optional[str],
-    ) -> None:
-        """Detect Dart call sites from a parent node's children (#87 bug 1).
-
-        tree-sitter-dart does not emit a single ``call_expression`` node for
-        Dart calls.  Instead it produces ``identifier`` / method-selector
-        siblings followed by a ``selector`` whose child is ``argument_part``:
-
-            identifier "print"
-            selector
-              argument_part
-
-        And for method calls like ``obj.foo()`` the middle selector is a
-        ``unconditional_assignable_selector`` holding the method name:
-
-            identifier "obj"
-            selector
-              unconditional_assignable_selector "."
-                identifier "foo"
-            selector
-              argument_part
-
-        This walker scans the immediate children of ``parent`` for either
-        shape and emits a ``CALLS`` edge.  Nested calls are picked up as
-        ``_extract_from_tree`` recurses into child nodes.
-        """
-        call_name: Optional[str] = None
-        for sub in parent.children:
-            if sub.type == "identifier":
-                call_name = sub.text.decode("utf-8", errors="replace")
-                continue
-            if sub.type == "selector":
-                # Case A: selector > unconditional_assignable_selector > identifier
-                # (updates call_name to the method name)
-                method_name: Optional[str] = None
-                has_arguments = False
-                for ssub in sub.children:
-                    if ssub.type == "unconditional_assignable_selector":
-                        for ident in ssub.children:
-                            if ident.type == "identifier":
-                                method_name = ident.text.decode(
-                                    "utf-8", errors="replace"
-                                )
-                                break
-                    elif ssub.type == "argument_part":
-                        has_arguments = True
-                if method_name is not None:
-                    call_name = method_name
-                if has_arguments and call_name:
-                    src_qn = (
-                        self._qualify(enclosing_func, file_path, enclosing_class)
-                        if enclosing_func else file_path
-                    )
-                    edges.append(EdgeInfo(
-                        kind="CALLS",
-                        source=src_qn,
-                        target=call_name,
-                        file_path=file_path,
-                        line=parent.start_point[0] + 1,
-                    ))
-                    # After emitting for this call, clear call_name so we
-                    # don't re-emit on any trailing chained selector.
-                    call_name = None
-                continue
-            # Non-identifier, non-selector children don't change the
-            # pending call name (``return``, ``await``, ``yield``, etc.)
-            # but anything unexpected should reset it to avoid spurious
-            # edges across unrelated siblings.
-            if sub.type not in ("return", "await", "yield", "this", "const", "new"):
-                call_name = None
 
     def _extract_r_constructs(
         self,
@@ -10521,37 +10420,6 @@ class CodeParser:
                 if resolved:
                     return resolved
 
-        elif language == "dart":
-            if module.startswith("."):
-                # Dart relative imports include the .dart extension
-                base = caller_dir / module
-                if base.is_file():
-                    return str(base.resolve())
-                # Fallback: try appending .dart
-                target = base.with_suffix(".dart")
-                if target.is_file():
-                    return str(target.resolve())
-            elif module.startswith("package:"):
-                # ``package:<name>/<sub_path>`` — resolve to the current repo's
-                # ``lib/<sub_path>`` iff a ``pubspec.yaml`` declaring that
-                # package name is found in an ancestor directory. See: #87
-                try:
-                    uri_body = module[len("package:"):]
-                    pkg_name, _, sub_path = uri_body.partition("/")
-                    if not sub_path:
-                        return None
-                    pubspec_root = self._find_dart_pubspec_root(
-                        caller_dir, pkg_name
-                    )
-                    if pubspec_root is not None:
-                        target = pubspec_root / "lib" / sub_path
-                        if target.is_file():
-                            return str(target.resolve())
-                except (OSError, ValueError):
-                    return None
-            # ``dart:core`` / ``dart:async`` etc. are SDK libraries we do
-            # not track; fall through to return None.
-
         elif language == "rust":
             return self._resolve_rust_module_file(module, file_path)
 
@@ -10799,36 +10667,6 @@ class CodeParser:
             return None
         return normalize_file_path(resolved)
 
-    def _find_dart_pubspec_root(
-        self, start: Path, pkg_name: str,
-    ) -> Optional[Path]:
-        """Walk up from ``start`` to find a ``pubspec.yaml`` whose ``name:``
-        matches ``pkg_name``. Returns the directory containing that pubspec,
-        or None if no match is found. Result is cached per (start, pkg_name)
-        pair so repeated lookups within one parse pass are cheap.
-        """
-        cache_key = (str(start), pkg_name)
-        cached = self._dart_pubspec_cache.get(cache_key)
-        if cached is not None or cache_key in self._dart_pubspec_cache:
-            return cached
-        current = start
-        # Avoid infinite loops on weird symlinks.
-        for _ in range(20):
-            pubspec = current / "pubspec.yaml"
-            if pubspec.is_file():
-                try:
-                    text = pubspec.read_text(encoding="utf-8", errors="replace")
-                except OSError:
-                    text = ""
-                m = re.search(r"^name:\s*([\w-]+)", text, re.MULTILINE)
-                if m and m.group(1) == pkg_name:
-                    self._dart_pubspec_cache[cache_key] = current
-                    return current
-            if current.parent == current:
-                break
-            current = current.parent
-        self._dart_pubspec_cache[cache_key] = None
-        return None
 
     def _resolve_rust_scoped_call(
         self,
@@ -11146,13 +10984,6 @@ class CodeParser:
 
     def _get_name(self, node, language: str, kind: str) -> Optional[str]:
         """Extract the name from a class/function definition node."""
-        # Dart: function_signature has a return-type node before the identifier;
-        # search only for 'identifier' to avoid returning the return type name.
-        if language == "dart" and node.type == "function_signature":
-            for child in node.children:
-                if child.type == "identifier":
-                    return child.text.decode("utf-8", errors="replace")
-            return None
         # Solidity: constructor and receive/fallback have no identifier child
         if language == "solidity":
             if node.type == "constructor_definition":
@@ -11790,23 +11621,6 @@ class CodeParser:
                                     for f in field_node.children:
                                         if f.type == "type_identifier":
                                             bases.append(f.text.decode("utf-8", errors="replace"))
-        elif language == "dart":
-            # class Foo extends Bar with Mixin implements Iface { ... }
-            # AST: superclass contains type_identifier (base) and mixins (with clause);
-            #      interfaces is a sibling of superclass.
-            for child in node.children:
-                if child.type == "superclass":
-                    for sub in child.children:
-                        if sub.type == "type_identifier":
-                            bases.append(sub.text.decode("utf-8", errors="replace"))
-                        elif sub.type == "mixins":
-                            for m in sub.children:
-                                if m.type == "type_identifier":
-                                    bases.append(m.text.decode("utf-8", errors="replace"))
-                elif child.type == "interfaces":
-                    for sub in child.children:
-                        if sub.type == "type_identifier":
-                            bases.append(sub.text.decode("utf-8", errors="replace"))
         elif language == "julia":
             # Julia: struct Foo <: Bar / abstract type Foo <: Bar end
             # AST: type_head > binary_expression with operator "<:" and
@@ -11939,21 +11753,6 @@ class CodeParser:
                 match = re.search(r"""['"](.*?)['"]""", text)
                 if match:
                     imports.append(match.group(1))
-        elif language == "dart":
-            # import 'dart:async' or import 'package:flutter/material.dart'
-            # Node structure: import_or_export > library_import > import_specification
-            #                 > configurable_uri > uri > string_literal
-            def _find_string_literal(n) -> Optional[str]:
-                if n.type == "string_literal":
-                    return n.text.decode("utf-8", errors="replace").strip("'\"")
-                for c in n.children:
-                    result = _find_string_literal(c)
-                    if result is not None:
-                        return result
-                return None
-            val = _find_string_literal(node)
-            if val:
-                imports.append(val)
         elif language == "verilog":
             # import pkg::*; or import pkg::item;
             # Node structure: package_import_declaration > package_import_item > package_identifier
