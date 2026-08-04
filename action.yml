@@ -58,7 +58,7 @@ runs:
       uses: actions/cache@v6
       with:
         path: .code-review-graph
-        key: code-review-graph-schema9-${{ runner.os }}-${{ hashFiles('**/uv.lock', '**/poetry.lock', '**/requirements*.txt', '**/Pipfile.lock', '**/package-lock.json', '**/pnpm-lock.yaml', '**/yarn.lock', '**/go.sum', '**/Cargo.lock', '**/Gemfile.lock', '**/composer.lock') }}
+        key: code-review-graph-schema9-${{ runner.os }}-${{ hashFiles('**/uv.lock', '**/poetry.lock', '**/requirements*.txt', '**/Pipfile.lock', '**/package-lock.json', '**/pnpm-lock.yaml', '**/yarn.lock', '**/go.sum', '**/Cargo.lock', '**/Gemfile.lock') }}
         restore-keys: |
           code-review-graph-schema9-${{ runner.os }}-
 

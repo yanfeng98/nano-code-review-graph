@@ -1,17 +1,11 @@
-"""Post-build resolver for PHP/Rust scoped calls and receiver-typed calls.
+"""Post-build resolver for Rust scoped calls.
 
-Tree-sitter extraction records a scoped/static call such as ``Mailer::send($x)``
-(PHP) or ``Mailer::send(x)`` / ``Self::new()`` (Rust) as a ``CALLS`` edge whose
-target is the intermediate ``Class::method`` string.  That string matches
-neither the canonical node key (``<file>::Class.method``) nor a bare method
-name, so ``callers_of``, ``get_impact_radius`` and ``tests_for`` never see the
-edge and report zero callers for a method that is obviously being called
-(GitHub #567).
-
-PHP instance calls keep their historical bare method target during parsing.
-When a local receiver was directly constructed (``$x = new Type(); $x->run()``),
-the parser stores the class as ``extra.receiver_scope`` and this pass uses that
-evidence to resolve the call without changing parse-only output (GitHub #745).
+Tree-sitter extraction records a scoped/static call such as ``Mailer::send(x)``
+/ ``Self::new()`` (Rust) as a ``CALLS`` edge whose target is the intermediate
+``Class::method`` string.  That string matches neither the canonical node key
+(``<file>::Class.method``) nor a bare method name, so ``callers_of``,
+``get_impact_radius`` and ``tests_for`` never see the edge and report zero
+callers for a method that is obviously being called (GitHub #567).
 
 This module runs after the graph is built and rewrites the resolvable
 ``Class::method`` targets to the canonical qualified name of the defined
@@ -21,8 +15,7 @@ It is deliberately conservative so it never fabricates an edge:
 
 * Only genuine ``Class::method`` targets are considered; already-resolved
   targets (``<file>::Class.method``) are left alone.
-* ``self`` / ``static`` (PHP) and ``self`` / ``Self`` (Rust) resolve to the
-  enclosing class/type of the caller.
+* ``self`` / ``Self`` (Rust) resolve to the enclosing class/type of the caller.
 * A target resolves when exactly one ``(class, method)`` node exists in the
   graph, or when the caller file's ``IMPORTS_FROM`` edges disambiguate between
   several same-named definitions.
@@ -35,9 +28,6 @@ heuristically resolved scoped call from a directly-extracted one.
 
 Language notes:
 
-* PHP scopes are namespace-qualified (``App\\Mail\\Mailer``) and PHP keywords
-  are case-insensitive, so ``self`` / ``static`` (any case) mean the enclosing
-  class.
 * Rust scoped calls come through as ``::``-joined path segments.  Only genuine
   two-segment ``Type::method`` targets are resolved; multi-segment module paths
   (``crate::mailer::Mailer::new``) are left alone because resolving them by
@@ -58,20 +48,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # Languages whose scoped/static calls dangle as ``Class::method`` targets.
-_SCOPED_LANGUAGES = ("php", "rust")
-
-# Languages whose parsers keep a bare method target and record the receiver
-# class in ``extra.receiver_scope`` for this pass to resolve.
-_RECEIVER_SCOPE_LANGUAGES = ("php",)
+_SCOPED_LANGUAGES = ("rust",)
 
 # Node kinds that can be a scoped-call target (methods live under a class).
 _METHOD_KINDS = ("Function", "Test", "Method")
 
-# PHP scope receivers (case-insensitive) that mean the enclosing class.
-_PHP_SELF_SCOPES = {"self", "static"}
-
 # Separators that split an import target into path segments across languages
-# (PHP ``App\Mail\Mailer``, Rust ``crate::mail::Mailer``, resolved paths).
+# (Rust ``crate::mail::Mailer``, resolved paths).
 _IMPORT_SEGMENT_SEPARATORS = ("::", "\\", "/")
 
 
@@ -84,20 +67,17 @@ def _import_segments(target: str) -> list[str]:
 
 
 def _fold(name: str, language: str) -> str:
-    """Case-fold identifiers for PHP (case-insensitive) but not Rust.
+    """Return the identifier unchanged.
 
-    PHP class and function names are matched case-insensitively by the language,
-    so ``Mailer::DISPATCH`` and ``mailer::dispatch`` name the same symbol.  Rust
-    identifiers are case-sensitive, so ``Mailer::send`` and ``Mailer::Send`` are
-    different symbols and must never be conflated.
+    Rust identifiers are case-sensitive, so ``Mailer::send`` and
+    ``Mailer::Send`` are different symbols and must never be conflated.
     """
-    return name.casefold() if language == "php" else name
+    return name
 
 
 def _path_tokens(file_path: str) -> list[str]:
     """Path split into segments, with the file extension stripped off the last.
 
-    ``/repo/src/Queue/Mailer.php`` → ``["repo", "src", "Queue", "Mailer"]``;
     ``/repo/src/mailer.rs`` → ``["repo", "src", "mailer"]``.
     """
     parts = [p for p in file_path.replace("\\", "/").split("/") if p]
@@ -127,17 +107,10 @@ def _path_ends_with(
 def _safe_import_suffixes(segments: list[str], language: str) -> list[list[str]]:
     """Return complete import suffixes that can safely identify a source path.
 
-    PHP projects commonly map one leading namespace root (for example ``App``)
-    onto a source directory. Rust imports carry a trailing type and may start
-    with a module-root keyword. We strip only those known structural segments;
-    arbitrary leading namespace/module segments are never discarded.
+    Rust imports carry a trailing type and may start with a module-root
+    keyword. We strip only those known structural segments; arbitrary leading
+    module segments are never discarded.
     """
-    if language == "php":
-        suffixes = [segments]
-        if len(segments) > 2:
-            suffixes.append(segments[1:])
-        return [suffix for suffix in suffixes if len(suffix) >= 2]
-
     if language == "rust" and len(segments) >= 2:
         module_path = segments[:-1]
         suffixes = [module_path]
@@ -186,26 +159,11 @@ def _scope_and_method(
 ) -> Optional[tuple[Optional[str], str, bool]]:
     """Parse a raw scoped target into ``(class, method, needs_enclosing)``.
 
-    ``class`` is ``None`` when ``needs_enclosing`` is set (``self`` / ``Self`` /
-    ``static``), signalling the caller's enclosing class should be used.
-    Returns ``None`` for targets that must be left untouched (``parent::``, a
-    Rust module path, a lowercase ``self::`` module call, …).
+    ``class`` is ``None`` when ``needs_enclosing`` is set (``self`` / ``Self``),
+    signalling the caller's enclosing class should be used.
+    Returns ``None`` for targets that must be left untouched (a Rust module
+    path, a lowercase ``self::`` module call, …).
     """
-    if language == "php":
-        scope, _, method = target.partition("::")
-        if not scope or not method or "::" in method:
-            return None
-        lowered = scope.strip("\\").casefold()
-        if lowered in _PHP_SELF_SCOPES:
-            return None, method, True
-        if lowered == "parent":
-            return None
-        # Strip a namespace prefix: ``App\Mail\Mailer`` → ``Mailer``.
-        class_name = scope.strip("\\").rsplit("\\", 1)[-1]
-        if not class_name:
-            return None
-        return class_name, method, False
-
     if language == "rust":
         # Only genuine two-segment ``Type::method`` calls are resolvable;
         # longer module paths are deliberately left alone.
@@ -250,8 +208,8 @@ def resolve_scoped_calls(store: GraphStore) -> dict:
 
     # ------------------------------------------------------------------
     # method_map: (language, class_key, method_key) → [qualified, ...]
-    # Keyed by language so a PHP class never resolves a same-named Rust type;
-    # keys are case-folded for PHP only (Rust identifiers are case-sensitive).
+    # Keyed by language so a Rust type never resolves a same-named type in
+    # another language.
     # ------------------------------------------------------------------
     method_map: dict[tuple[str, str, str], list[str]] = {}
     file_of: dict[str, str] = {}
@@ -290,8 +248,8 @@ def resolve_scoped_calls(store: GraphStore) -> dict:
         if not imported:
             return None
         # (1) Prefer a candidate whose defining file is explicitly imported.
-        # #574's PHP import resolver rewrites resolvable ``use`` targets to the
-        # absolute path of the class file, so a direct path match is exact.
+        # The import resolver rewrites resolvable targets to the absolute path
+        # of the class file, so a direct path match is exact.
         imported_paths = {
             _path_key(target)
             for target in imported
@@ -304,12 +262,11 @@ def resolve_scoped_calls(store: GraphStore) -> dict:
         ]
         if len(matched) == 1:
             return matched[0]
-        # (2) Fall back to a fully-qualified ``use`` target that could not be
-        # resolved to a path (no composer/module map). A candidate must match a
+        # (2) Fall back to a fully-qualified target that could not be
+        # resolved to a path (no module map). A candidate must match a
         # complete normalized import suffix, not merely have the longest partial
-        # overlap. Otherwise an unrelated import such as
-        # ``App\Warehouse\Queue\Mailer`` could be fabricated as
-        # ``src/Order/Queue/Mailer.php`` just because both end in Queue/Mailer.
+        # overlap. Otherwise an unrelated import could be fabricated as
+        # ``src/Order/Queue/Mailer`` just because both end in Queue/Mailer.
         matched_by_suffix: set[str] = set()
         for candidate in candidates:
             tokens = _path_tokens(file_of.get(candidate, ""))
@@ -349,15 +306,7 @@ def resolve_scoped_calls(store: GraphStore) -> dict:
             extra = {}
 
         resolution_target = target
-        receiver_scope = extra.get("receiver_scope")
-        if (
-            language in _RECEIVER_SCOPE_LANGUAGES
-            and "::" not in target
-            and isinstance(receiver_scope, str)
-            and receiver_scope
-        ):
-            resolution_target = f"{receiver_scope}::{target}"
-        elif not _is_unresolved_scoped_target(target):
+        if not _is_unresolved_scoped_target(target):
             continue
 
         parsed = _scope_and_method(resolution_target, language)

@@ -39,7 +39,7 @@ DEFAULT_TOP_K = 3
 
 _SOURCE_EXTS = (
     ".py", ".js", ".ts", ".tsx", ".go", ".rs",
-    ".c", ".cpp", ".h", ".rb", ".php",
+    ".c", ".cpp", ".h", ".rb",
 )
 
 _SKIP_DIRS = {

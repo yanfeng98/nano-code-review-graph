@@ -93,21 +93,6 @@ class TestGraphStore:
 
         assert self.store.get_node(f"{native_prefix}::missing") is None
 
-    def test_get_node_bridge_keeps_php_backslashes_in_symbol_part(self):
-        """Only the path component is normalized; PHP FQN symbols keep ``\\``."""
-        node = NodeInfo(
-            kind="Class", name="App\\Domain\\Job", file_path="src/App.php",
-            line_start=1, line_end=10, language="php",
-        )
-        self.store.upsert_node(node)
-        self.store.commit()
-
-        posix_qn = "src/App.php::App\\Domain\\Job"
-        assert self.store.get_node(posix_qn) is not None
-        native_qn = "src\\App.php::App\\Domain\\Job"
-        bridged = self.store.get_node(native_qn)
-        assert bridged is not None
-        assert bridged.qualified_name == posix_qn
 
     def test_upsert_edge(self):
         edge = EdgeInfo(

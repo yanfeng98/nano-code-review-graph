@@ -107,24 +107,6 @@ def test_qualify_normalizes_file_path_component():
     assert parser._qualify("greet", "/repo/case.jl", None) == "/repo/case.jl::greet"
 
 
-def test_php_namespace_backslashes_survive_normalization(tmp_path):
-    """Only the path component is normalized; PHP FQN identifiers keep '\\'."""
-    php = tmp_path / "service.php"
-    php.write_text(
-        "<?php\nnamespace App\\Service;\nuse App\\Domain\\Entity\\Job;\n"
-        "class Handler { function run() { return new Job(); } }\n",
-        encoding="utf-8",
-    )
-    nodes, edges = CodeParser().parse_file(php)
-
-    # The unresolved import target must keep its namespace backslashes.
-    imports = [e for e in edges if e.kind == "IMPORTS_FROM"]
-    assert any("App\\Domain\\Entity\\Job" == e.target for e in imports), (
-        [e.target for e in imports]
-    )
-    assert all(e.file_path == php.as_posix() for e in edges)
-
-
 def test_dataclass_file_path_is_normalized_defensively():
     node = NodeInfo(
         kind="Function",

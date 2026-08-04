@@ -140,11 +140,6 @@ DEFAULT_IGNORE_PATTERNS = [
     "/target/**",
     "/bin/**",
     "/obj/**",
-    # PHP / Laravel / Composer
-    "**/vendor/**",
-    "/storage/**",
-    "/bootstrap/cache/**",
-    "/public/build/**",
     # Ruby / Bundler
     "**/.bundle/**",
     # Gradle
@@ -1278,7 +1273,7 @@ def incremental_update(
 
     hcl_changed = any(rp.endswith((".tf", ".hcl")) for rp in all_files)
     hcl_stats = _run_hcl_resolver(store) if hcl_changed else None
-    scoped_changed = any(rp.endswith((".php", ".rs")) for rp in all_files)
+    scoped_changed = any(rp.endswith(".rs") for rp in all_files)
     scoped_stats = _run_scoped_resolver(store) if scoped_changed else None
 
     return {

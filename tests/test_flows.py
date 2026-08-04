@@ -111,28 +111,6 @@ class TestFlows:
         assert "handle_request" in ep_names
         assert "regular_func" not in ep_names
 
-    def test_php_entry_names_are_language_scoped(self):
-        """PHP framework and magic method names must not pollute other languages."""
-        names = ("boot", "register", "__invoke")
-        for name in names:
-            self._add_func(name, path="app.php", language="php")
-            self._add_func(name, path="app.py", language="python")
-            self._add_call("app.php::caller", f"app.php::{name}", "app.php")
-            self._add_call("app.py::caller", f"app.py::{name}", "app.py")
-
-        entries = detect_entry_points(self.store)
-        php_entries = {
-            node.name for node in entries
-            if node.file_path == "app.php"
-        }
-        python_entries = {
-            node.name for node in entries
-            if node.file_path == "app.py"
-        }
-
-        assert php_entries == set(names)
-        assert python_entries.isdisjoint(names)
-
     # ---------------------------------------------------------------
     # detect_entry_points -- expanded decorator patterns
     # ---------------------------------------------------------------

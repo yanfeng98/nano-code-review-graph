@@ -569,9 +569,6 @@ def _load_tree_sitter_parser(grammar: str):
         return None
 
 
-_PhpPsr4Mappings = tuple[tuple[str, tuple[str, ...]], ...]
-
-
 def _path_is_within(path: Path, root: Path) -> bool:
     """Return whether *path* is inside *root* after both are resolved."""
     try:
@@ -580,65 +577,6 @@ def _path_is_within(path: Path, root: Path) -> bool:
         return False
     return True
 
-
-@lru_cache(maxsize=128)
-def _read_php_composer_psr4(
-    composer_path: str,
-    repo_root: str,
-    _mtime_ns: int,
-    _size: int,
-) -> _PhpPsr4Mappings:
-    """Read immutable, shape-safe PSR-4 mappings from one composer.json."""
-    composer = Path(composer_path)
-    root = Path(repo_root)
-    try:
-        data = json.loads(
-            composer.read_text(encoding="utf-8", errors="replace"),
-        )
-    except (OSError, json.JSONDecodeError):
-        return ()
-    if not isinstance(data, dict):
-        return ()
-
-    combined: dict[str, list[str]] = {}
-    for section_name in ("autoload", "autoload-dev"):
-        section = data.get(section_name)
-        if not isinstance(section, dict):
-            continue
-        psr4 = section.get("psr-4")
-        if not isinstance(psr4, dict):
-            continue
-        for raw_prefix, raw_paths in psr4.items():
-            if not isinstance(raw_prefix, str):
-                continue
-            prefix = raw_prefix.lstrip("\\").rstrip("\\")
-            candidate_paths = (
-                [raw_paths] if isinstance(raw_paths, str)
-                else raw_paths if isinstance(raw_paths, list)
-                else []
-            )
-            destinations = combined.setdefault(prefix, [])
-            for raw_path in candidate_paths:
-                if not isinstance(raw_path, str):
-                    continue
-                try:
-                    destination = (composer.parent / raw_path).resolve()
-                except (OSError, RuntimeError, ValueError):
-                    continue
-                if not _path_is_within(destination, root):
-                    continue
-                destination_str = str(destination)
-                if destination_str not in destinations:
-                    destinations.append(destination_str)
-
-    return tuple(
-        (prefix, tuple(destinations))
-        for prefix, destinations in sorted(
-            combined.items(),
-            key=lambda item: (-len(item[0]), item[0]),
-        )
-        if destinations
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -655,8 +593,8 @@ def normalize_file_path(path: "str | PurePath") -> str:
     Linux/macOS, and so consumers that reconstruct identifiers from ``Path``
     objects always agree with the parser. See issue #774.
 
-    Only apply this to file *paths* — never to symbol names: PHP namespace
-    identifiers (``App\\Domain\\Job``) legitimately contain backslashes.
+    Only apply this to file *paths* — never to symbol names: qualified
+    identifiers legitimately contain backslashes.
     """
     if isinstance(path, PurePath):
         return path.as_posix()
@@ -701,7 +639,7 @@ class EdgeInfo:
     def __post_init__(self) -> None:
         # Identity invariant (#774): file paths always use POSIX separators.
         # ``source``/``target`` are left alone — they may contain qualified
-        # names whose symbol part legitimately embeds backslashes (PHP FQNs).
+        # names whose symbol part legitimately embeds backslashes.
         self.file_path = normalize_file_path(self.file_path)
 
 
@@ -725,7 +663,6 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".h": "c",
     ".hpp": "cpp",
     ".hh": "cpp",
-    ".php": "php",
     ".scala": "scala",
     ".sol": "solidity",
     ".vue": "vue",
@@ -827,12 +764,11 @@ SHEBANG_INTERPRETER_TO_LANGUAGE: dict[str, str] = {
     # JavaScript via Node
     "node": "javascript",
     "nodejs": "javascript",
-    # Ruby / Perl / Lua / R / PHP
+    # Ruby / Perl / Lua / R
     "ruby": "ruby",
     "perl": "perl",
     "lua": "lua",
     "Rscript": "r",
-    "php": "php",
 }
 
 # Maximum bytes to read from the head of a file when probing for a shebang.
@@ -894,7 +830,7 @@ _CLASS_TYPES: dict[str, list[str]] = {
     "javascript": ["class_declaration", "class"],
     # TS types are declarations, not just runtime classes: an interface or type
     # alias is the thing callers depend on, so it needs a node of its own the way
-    # PHP interfaces do. Without them a types-only module (types.ts,
+    # interface declarations do. Without them a types-only module (types.ts,
     # *.d.ts) contributes zero symbol nodes and its blast radius collapses to
     # whole-file IMPORTS_FROM fan-out. See: #737
     "typescript": [
@@ -914,10 +850,6 @@ _CLASS_TYPES: dict[str, list[str]] = {
     "ruby": ["class", "module"],
     "r": [],  # Classes detected via call pattern-matching, not AST node types
     "perl": ["package_statement", "class_statement", "role_statement"],
-    "php": [
-        "class_declaration", "interface_declaration",
-        "trait_declaration", "enum_declaration",
-    ],
     "scala": [
         "class_definition", "trait_definition", "object_definition", "enum_definition",
     ],
@@ -987,7 +919,6 @@ _FUNCTION_TYPES: dict[str, list[str]] = {
     "ruby": ["method", "singleton_method"],
     "r": ["function_definition"],
     "perl": ["subroutine_declaration_statement", "method_declaration_statement"],
-    "php": ["function_definition", "method_declaration"],
     "scala": ["function_definition", "function_declaration"],
     # Solidity: events and modifiers use kind="Function" because the graph
     # schema has no dedicated kind for them.  State variables are also modeled
@@ -1045,7 +976,6 @@ _IMPORT_TYPES: dict[str, list[str]] = {
     "ruby": ["call"],  # require/require_relative
     "r": ["call"],  # library(), require(), source() — filtered downstream
     "perl": ["use_statement", "require_expression"],
-    "php": ["namespace_use_declaration"],
     "scala": ["import_declaration"],
     "solidity": ["import_directive"],
     # Dart: import_or_export wraps library_import > import_specification > configurable_uri
@@ -1096,13 +1026,6 @@ _CALL_TYPES: dict[str, list[str]] = {
     "perl": [
         "function_call_expression", "method_call_expression",
         "ambiguous_function_call_expression",
-    ],
-    "php": [
-        "function_call_expression",
-        "member_call_expression",
-        "scoped_call_expression",
-        "nullsafe_member_call_expression",
-        "object_creation_expression",
     ],
     "scala": ["call_expression", "instance_expression", "generic_function"],
     "solidity": ["call_expression"],
@@ -1197,7 +1120,6 @@ _TEST_RUNNER_NAMES = frozenset({
 
 # Annotations/decorators that mark test methods
 _TEST_ANNOTATIONS = frozenset({
-    "Test",
     # Rust: built-in `#[test]` plus common async-runtime + framework
     # variants. Stripped of the `#[ ]` wrapper before lookup.
     "test", "tokio::test", "async_std::test",
@@ -1825,116 +1747,6 @@ def _python_decorator_names(node) -> list[str]:
     return names
 
 
-_PHPUNIT_TEST_ATTRIBUTE = "phpunit\\framework\\attributes\\test"
-
-
-def _php_attribute_aliases(node) -> dict[str, str]:
-    """Return aliases that resolve specifically to PHPUnit's Test attribute."""
-    root = node
-    while root.parent is not None:
-        root = root.parent
-
-    aliases: dict[str, str] = {}
-    stack = [root]
-    while stack:
-        current = stack.pop()
-        if current.type == "namespace_use_clause":
-            alias = current.child_by_field_name("alias")
-            if alias is not None:
-                target = next(
-                    (
-                        child
-                        for child in current.children
-                        if child.type in ("name", "qualified_name")
-                        and child != alias
-                    ),
-                    None,
-                )
-                if target is not None:
-                    alias_text = alias.text.decode(
-                        "utf-8", errors="replace",
-                    ).strip()
-                    target_text = target.text.decode(
-                        "utf-8", errors="replace",
-                    ).strip()
-                    if current.parent.type == "namespace_use_group":
-                        declaration = current.parent.parent
-                        prefix = next(
-                            (
-                                child
-                                for child in declaration.children
-                                if child.type == "namespace_name"
-                            ),
-                            None,
-                        )
-                        if prefix is not None:
-                            prefix_text = prefix.text.decode(
-                                "utf-8", errors="replace",
-                            ).strip()
-                            target_text = f"{prefix_text}\\{target_text}"
-                    normalized_target = target_text.lstrip("\\").casefold()
-                    if normalized_target == _PHPUNIT_TEST_ATTRIBUTE:
-                        aliases[alias_text.casefold()] = "Test"
-        stack.extend(reversed(current.children))
-    return aliases
-
-
-def _php_attribute_names(node) -> list[str]:
-    """Return PHP attribute names from ``attribute_list`` children of *node*.
-
-    PHP 8 attributes (``#[Test]``, ``#[DataProvider('x')]``) are
-    ``attribute_list`` nodes wrapping one or more ``attribute_group`` nodes,
-    each wrapping one or more ``attribute`` nodes whose ``name`` child is the
-    attribute name. See: #693
-    """
-    names: list[str] = []
-    for sub in node.children:
-        if sub.type != "attribute_list":
-            continue
-        for group in sub.children:
-            if group.type != "attribute_group":
-                continue
-            for attr in group.children:
-                if attr.type != "attribute":
-                    continue
-                for ident in attr.children:
-                    if ident.type in ("name", "qualified_name"):
-                        raw_name = ident.text.decode(
-                            "utf-8", errors="replace",
-                        ).strip()
-                        normalized = raw_name.lstrip("\\")
-                        if normalized.casefold() == _PHPUNIT_TEST_ATTRIBUTE:
-                            names.append("Test")
-                        else:
-                            names.append(normalized)
-                        break
-    if not names:
-        return []
-    aliases = _php_attribute_aliases(node)
-    return [aliases.get(name.casefold(), name) for name in names]
-
-
-_PHP_TEST_DOC_TAG_RE = re.compile(r"(?<![\w-])@test(?![\w-])")
-
-
-def _php_docblock_marks_test(node) -> bool:
-    """Return True if a PHPUnit ``/** @test */`` docblock precedes *node*.
-
-    PHPUnit's legacy convention marks a test method with an ``@test`` tag in
-    the doc comment immediately above it, instead of a ``test_`` name prefix
-    or a ``#[Test]`` attribute. Tree-sitter represents that comment as a
-    preceding sibling of the ``method_declaration``, not a child, so it needs
-    its own check rather than reuse of the attribute-based extraction above.
-    See: #693
-    """
-    sib = node.prev_sibling
-    return bool(
-        sib is not None
-        and sib.type == "comment"
-        and _PHP_TEST_DOC_TAG_RE.search(sib.text.decode("utf-8", errors="replace"))
-    )
-
-
 def file_hash(path: Path) -> str:
     """SHA-256 hash of file contents."""
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -2226,21 +2038,6 @@ class CodeParser:
     """Parses source files using Tree-sitter and extracts structural information."""
 
     _MODULE_CACHE_MAX = 15_000  # Evict cache to cap memory on huge monorepos
-    _BLADE_COMMENT_RE = re.compile(r"\{\{--.*?(?:--\}\}|$)", re.DOTALL)
-    _BLADE_DIRECTIVE_RE = re.compile(
-        r"""(?<!@)@(extends|include|component|livewire)\s*\(\s*(['"])([^'"]+)\2\s*\)""",
-    )
-    _LARAVEL_ROUTE_FACADE = "Illuminate\\Support\\Facades\\Route"
-    _LARAVEL_ELOQUENT_MODEL = "Illuminate\\Database\\Eloquent\\Model"
-    _LARAVEL_ROUTE_VERBS = frozenset({
-        "get", "post", "put", "patch", "delete", "options",
-        "any", "match", "resource", "apiResource",
-    })
-    _LARAVEL_RELATIONSHIPS = frozenset({
-        "hasMany", "hasOne", "belongsTo", "belongsToMany",
-        "morphTo", "morphMany", "morphOne", "morphToMany",
-        "morphedByMany", "hasManyThrough", "hasOneThrough",
-    })
 
     def __init__(self, repo_root: Optional[Path] = None) -> None:
         self._repo_root = Path(repo_root).resolve() if repo_root is not None else None
@@ -2318,8 +2115,6 @@ class CodeParser:
         save, mis-detect the language, and store a wrong parse under the
         snapshot's hash (issue #746).
         """
-        if path.name.lower().endswith(".blade.php"):
-            return "blade"
         suffix = path.suffix.lower()
         lang = self._extension_map.get(suffix)
         if lang == "yaml" and _is_ansible_path(path):
@@ -2444,9 +2239,6 @@ class CodeParser:
         elif language == "cpp":
             parse_source = self._mask_cpp_qt_macros(source)
 
-        if language == "blade":
-            return self._parse_blade(path, source)
-
         # Vue SFCs: parse with vue parser, then delegate script blocks to JS/TS
         if language == "vue":
             return self._parse_vue(path, source)
@@ -2552,19 +2344,6 @@ class CodeParser:
             tree.root_node, source, language, file_path_str, nodes, edges,
             import_map=import_map, defined_names=defined_names,
         )
-
-        if language == "php":
-            self._extract_php_laravel_edges(
-                tree.root_node,
-                file_path_str,
-                edges,
-            )
-            edges = self._resolve_php_scoped_calls(
-                tree.root_node,
-                nodes,
-                edges,
-                file_path_str,
-            )
 
         edges = self._apply_typed_call_targets(edges, typed_call_targets, language)
 
@@ -2725,51 +2504,6 @@ class CodeParser:
             index += 1
 
         return bytes(masked)
-
-    @classmethod
-    def _mask_blade_comments(cls, text: str) -> str:
-        """Mask Blade comments while preserving offsets and line numbers."""
-        def replace_comment(match: re.Match[str]) -> str:
-            return "".join(
-                char if char in "\r\n" else " "
-                for char in match.group(0)
-            )
-
-        return cls._BLADE_COMMENT_RE.sub(replace_comment, text)
-
-    def _parse_blade(
-        self,
-        path: Path,
-        source: bytes,
-    ) -> tuple[list[NodeInfo], list[EdgeInfo]]:
-        """Parse static Blade template references without a Tree-sitter grammar."""
-        text = source.decode("utf-8", errors="replace")
-        masked = self._mask_blade_comments(text)
-        file_path = normalize_file_path(path)
-        nodes = [
-            NodeInfo(
-                kind="File",
-                name=file_path,
-                file_path=file_path,
-                line_start=1,
-                line_end=source.count(b"\n") + 1,
-                language="blade",
-                is_test=_is_test_file(file_path),
-            ),
-        ]
-        edges: list[EdgeInfo] = []
-        for match in self._BLADE_DIRECTIVE_RE.finditer(masked):
-            directive = match.group(1)
-            target = match.group(3)
-            edges.append(EdgeInfo(
-                kind="REFERENCES" if directive == "livewire" else "IMPORTS_FROM",
-                source=file_path,
-                target=target,
-                file_path=file_path,
-                line=masked.count("\n", 0, match.start()) + 1,
-                extra={"blade_directive": directive},
-            ))
-        return nodes, edges
 
     def _parse_vue(
         self, path: Path, source: bytes,
@@ -4817,7 +4551,7 @@ class CodeParser:
         return resolved
 
     _TYPED_CALL_LANGUAGES = frozenset({
-        "python", "javascript", "typescript", "tsx", "php",
+        "python", "javascript", "typescript", "tsx",
     })
     _TRANSPARENT_TYPE_WRAPPERS = frozenset({"Annotated", "Optional", "Type"})
     _NON_RECEIVER_TYPE_NAMES = frozenset({
@@ -4840,8 +4574,6 @@ class CodeParser:
         The result is keyed by source line, receiver, and method so the normal
         call extractor remains the single producer of CALLS edges. Statically
         typed receivers resolve directly when their class is repository-local.
-        PHP variables assigned from ``new Type`` retain a bare parse-time target
-        plus the constructed class scope for conservative graph-wide resolution.
         Unknown or ambiguous types keep their existing bare targets.
         """
         if language not in self._TYPED_CALL_LANGUAGES:
@@ -4854,7 +4586,6 @@ class CodeParser:
             "javascript": {"statement_block"},
             "typescript": {"statement_block"},
             "tsx": {"statement_block"},
-            "php": {"compound_statement"},
         }.get(language, set())
         targets: dict[tuple[int, str, str], tuple[str, str, str]] = {}
 
@@ -4891,18 +4622,11 @@ class CodeParser:
                 return
 
             new_bindings = self._typed_bindings_from_node(node, language)
-            assigned_names = (
-                self._php_assigned_variables(node)
-                if language == "php"
-                else set()
-            )
-            if new_bindings or assigned_names:
+            if new_bindings:
                 # Initializers are evaluated before their declaration becomes
                 # visible, so visit children with the previous environment.
                 for child in node.children:
                     walk(child, bindings, class_fields, depth + 1)
-                for name in assigned_names:
-                    bindings.pop(name, None)
                 bindings.update(new_bindings)
                 return
 
@@ -4912,11 +4636,7 @@ class CodeParser:
                 )
                 if receiver and method:
                     type_name = bindings.get(receiver)
-                    evidence = (
-                        "constructed_receiver"
-                        if language == "php"
-                        else "typed_receiver"
-                    )
+                    evidence = "typed_receiver"
                     if type_name is None and receiver[:1].isupper():
                         if (
                             receiver in import_map
@@ -5070,45 +4790,7 @@ class CodeParser:
                 node.child_by_field_name("type"),
             )
 
-        elif language == "php" and node.type == "assignment_expression":
-            name_node = node.child_by_field_name("left")
-            value_node = node.child_by_field_name("right")
-            if (
-                name_node is not None
-                and name_node.type == "variable_name"
-                and value_node is not None
-                and value_node.type == "object_creation_expression"
-            ):
-                type_node = next(
-                    (
-                        child
-                        for child in value_node.children
-                        if child.type in ("name", "qualified_name")
-                    ),
-                    None,
-                )
-                if type_node is not None:
-                    name = name_node.text.decode(
-                        "utf-8", errors="replace",
-                    )
-                    type_name = type_node.text.decode(
-                        "utf-8", errors="replace",
-                    ).strip("\\")
-                    if name and type_name:
-                        result[name] = type_name
-
         return result
-
-    @staticmethod
-    def _php_assigned_variables(node) -> set[str]:
-        """Return simple PHP variables invalidated by one assignment."""
-        if node.type != "assignment_expression":
-            return set()
-        name_node = node.child_by_field_name("left")
-        if name_node is None or name_node.type != "variable_name":
-            return set()
-        name = name_node.text.decode("utf-8", errors="replace")
-        return {name} if name else set()
 
     @classmethod
     def _store_typed_binding(cls, result: dict[str, str], name_node, type_node) -> None:
@@ -5161,15 +4843,6 @@ class CodeParser:
         import_map: dict[str, str],
         defined_names: set[str],
     ) -> Optional[str]:
-        if language == "php":
-            normalized = type_name.strip("\\")
-            if not normalized:
-                return None
-            local_name = normalized.rsplit("\\", 1)[-1]
-            imported = import_map.get(local_name.casefold())
-            scope = imported or normalized
-            return f"{scope}::{method}"
-
         base_type = self._base_type_name(type_name)
         if not base_type:
             return None
@@ -5207,14 +4880,6 @@ class CodeParser:
                     "receiver_resolution": evidence_kind,
                 })
                 resolved_target = target
-                if evidence_kind == "constructed_receiver":
-                    # Keep PHP parse-only CALLS output backward-compatible
-                    # (bare method target) while preserving the receiver
-                    # class scope for the graph-wide resolver.
-                    scope, separator, _ = target.rpartition("::")
-                    if separator and scope:
-                        extra["receiver_scope"] = scope
-                    resolved_target = edge.target
                 edge = EdgeInfo(
                     kind=edge.kind,
                     source=edge.source,
@@ -8660,27 +8325,10 @@ class CodeParser:
                     inner = inner[:-1]
                 deco_list.append(inner.strip())
                 sib = sib.prev_sibling
-        # PHP: `#[Test]` attributes wrap `attribute_list > attribute_group >
-        # attribute > name`. PHPUnit's legacy `/** @test */` docblock tag is
-        # a preceding-sibling `comment` node instead, so it needs a separate
-        # check; when present it's folded into `deco_list` as `"Test"` since
-        # that's already in `_TEST_ANNOTATIONS`. See: #693
-        if language == "php":
-            deco_list.extend(_php_attribute_names(child))
-            if _php_docblock_marks_test(child):
-                deco_list.append("Test")
         if deco_list:
             decorators = tuple(deco_list)
 
         is_test = _is_test_function(name, file_path, decorators)
-        # PHPUnit's name convention is ``test*`` (not only ``test_*``).
-        if (
-            language == "php"
-            and child.type == "method_declaration"
-            and _is_test_file(file_path)
-            and name.startswith("test")
-        ):
-            is_test = True
         kind = "Test" if is_test else "Function"
 
         parent_name = enclosing_class
@@ -9075,22 +8723,6 @@ class CodeParser:
         receiver so class-field annotations can resolve them. More complex
         receiver expressions are deliberately left unresolved.
         """
-        if language == "php" and node.type in (
-            "member_call_expression",
-            "nullsafe_member_call_expression",
-        ):
-            receiver = node.child_by_field_name("object")
-            method = node.child_by_field_name("name")
-            if method is None:
-                return None, None
-            method_name = method.text.decode("utf-8", errors="replace")
-            if receiver is None or receiver.type != "variable_name":
-                return None, method_name
-            return (
-                receiver.text.decode("utf-8", errors="replace"),
-                method_name,
-            )
-
         if language == "rust" and node.type == "call_expression":
             callee = node.child_by_field_name("function")
             while callee is not None and callee.type == "generic_function":
@@ -9161,739 +8793,6 @@ class CodeParser:
 
         return None, method
 
-    # ------------------------------------------------------------------
-    # PHP / Laravel semantic constructs
-    # ------------------------------------------------------------------
-
-    def _resolve_php_scoped_calls(
-        self,
-        root,
-        nodes: list[NodeInfo],
-        edges: list[EdgeInfo],
-        file_path: str,
-    ) -> list[EdgeInfo]:
-        """Resolve PHP ``Class::method`` calls from lexical file evidence.
-
-        Resolution happens during parsing, so incremental updates touch only
-        the changed file. Bare cross-file class names are deliberately left
-        unresolved; accepted evidence is a same-file method, ``self``/``static``,
-        an explicit import, a qualified name, or the current PHP namespace.
-        """
-        methods: dict[tuple[str, str], list[str]] = {}
-        for node in nodes:
-            if (
-                node.language != "php"
-                or node.kind not in ("Function", "Test")
-                or not node.parent_name
-            ):
-                continue
-            key = (node.parent_name.casefold(), node.name.casefold())
-            methods.setdefault(key, []).append(
-                self._qualify(node.name, file_path, node.parent_name),
-            )
-
-        def same_file_target(class_name: str, method: str) -> Optional[str]:
-            candidates = methods.get(
-                (class_name.casefold(), method.casefold()),
-                [],
-            )
-            return candidates[0] if len(candidates) == 1 else None
-
-        def resolve_target(
-            scope: str,
-            method: str,
-            namespace: str,
-            imports: dict[str, str],
-            enclosing_class: Optional[str],
-        ) -> tuple[Optional[str], Optional[str]]:
-            normalized = scope.strip("\\")
-            lowered = normalized.casefold()
-            if lowered in ("self", "static"):
-                if not enclosing_class:
-                    return None, None
-                return (
-                    same_file_target(enclosing_class, method),
-                    "enclosing_class",
-                )
-            if lowered == "parent":
-                return None, None
-
-            if "\\" not in normalized:
-                local = same_file_target(normalized, method)
-                if local is not None:
-                    return local, "same_file"
-
-            head = normalized.partition("\\")[0]
-            imported = imports.get(head.casefold())
-            absolute = scope.startswith("\\")
-            if imported:
-                qualified = self._php_resolve_class_reference(
-                    scope, namespace, imports,
-                )
-                evidence = "import"
-            elif absolute:
-                qualified = normalized
-                evidence = "fully_qualified"
-            elif "\\" in normalized:
-                qualified = self._php_resolve_class_reference(
-                    scope, namespace, imports,
-                )
-                evidence = "qualified"
-            elif namespace:
-                qualified = f"{namespace}\\{normalized}"
-                evidence = "same_namespace"
-            else:
-                return None, None
-
-            resolved_file = self._resolve_module_to_file(
-                qualified, file_path, "php",
-            )
-            if resolved_file is None:
-                return None, None
-            class_name = qualified.rsplit("\\", 1)[-1]
-            return (
-                f"{self._qualify(class_name, resolved_file, None)}.{method}",
-                evidence,
-            )
-
-        resolutions: dict[tuple[int, str, str], tuple[str, str]] = {}
-
-        def walk_node(
-            node,
-            namespace: str,
-            imports: dict[str, str],
-            enclosing_class: Optional[str],
-            enclosing_func: Optional[str],
-            depth: int = 0,
-        ) -> None:
-            if depth > self._MAX_AST_DEPTH:
-                return
-            if node.type in self._class_types["php"]:
-                class_name = self._get_name(node, "php", "class")
-                for child in node.children:
-                    walk_node(
-                        child,
-                        namespace,
-                        imports,
-                        class_name or enclosing_class,
-                        None,
-                        depth + 1,
-                    )
-                return
-
-            if node.type in self._function_types["php"]:
-                function_name = self._get_name(node, "php", "function")
-                for child in node.children:
-                    walk_node(
-                        child,
-                        namespace,
-                        imports,
-                        enclosing_class,
-                        function_name or enclosing_func,
-                        depth + 1,
-                    )
-                return
-
-            scope, method = self._php_scoped_call_parts(node)
-            if scope and method:
-                target, evidence = resolve_target(
-                    scope,
-                    method,
-                    namespace,
-                    imports,
-                    enclosing_class,
-                )
-                if target is not None and evidence is not None:
-                    stable_scope = scope.lstrip("\\")
-                    source_name = (
-                        self._qualify(
-                            enclosing_func, file_path, enclosing_class,
-                        )
-                        if enclosing_func
-                        else file_path
-                    )
-                    resolutions[(
-                        node.start_point[0] + 1,
-                        source_name,
-                        f"{stable_scope}::{method}",
-                    )] = (target, evidence)
-
-            for child in node.children:
-                walk_node(
-                    child,
-                    namespace,
-                    imports,
-                    enclosing_class,
-                    enclosing_func,
-                    depth + 1,
-                )
-
-        def walk_sequence(
-            container, namespace: str = "", depth: int = 0,
-        ) -> None:
-            if depth > self._MAX_AST_DEPTH:
-                return
-            current_namespace = namespace
-            imports: dict[str, str] = {}
-            for child in container.children:
-                if child.type == "namespace_definition":
-                    child_namespace = self._php_namespace_name(child)
-                    block = next(
-                        (
-                            part for part in child.children
-                            if part.type == "compound_statement"
-                        ),
-                        None,
-                    )
-                    if block is not None:
-                        walk_sequence(block, child_namespace, depth + 1)
-                    else:
-                        current_namespace = child_namespace
-                        imports = {}
-                    continue
-                if child.type == "namespace_use_declaration":
-                    imports.update(self._php_import_bindings(child))
-                    continue
-                walk_node(
-                    child,
-                    current_namespace,
-                    imports,
-                    enclosing_class=None,
-                    enclosing_func=None,
-                    depth=depth + 1,
-                )
-
-        walk_sequence(root)
-        if not resolutions:
-            return edges
-
-        resolved: list[EdgeInfo] = []
-        for edge in edges:
-            resolution = resolutions.get((edge.line, edge.source, edge.target))
-            if edge.kind != "CALLS" or resolution is None:
-                resolved.append(edge)
-                continue
-            target, evidence = resolution
-            extra = dict(edge.extra)
-            extra["scoped_resolution"] = evidence
-            resolved.append(EdgeInfo(
-                kind=edge.kind,
-                source=edge.source,
-                target=target,
-                file_path=edge.file_path,
-                line=edge.line,
-                extra=extra,
-            ))
-        return resolved
-
-    def _extract_php_laravel_edges(
-        self,
-        root,
-        file_path: str,
-        edges: list[EdgeInfo],
-    ) -> None:
-        """Run evidence-gated Laravel analysis without altering generic calls."""
-        self._walk_php_laravel_sequence(
-            root,
-            file_path,
-            edges,
-            namespace="",
-        )
-
-    def _walk_php_laravel_sequence(
-        self,
-        container,
-        file_path: str,
-        edges: list[EdgeInfo],
-        namespace: str,
-    ) -> None:
-        """Walk a PHP namespace scope, applying imports in source order."""
-        current_namespace = namespace
-        imports: dict[str, str] = {}
-
-        for child in container.children:
-            if child.type == "namespace_definition":
-                child_namespace = self._php_namespace_name(child)
-                block = next(
-                    (
-                        part for part in child.children
-                        if part.type == "compound_statement"
-                    ),
-                    None,
-                )
-                if block is not None:
-                    self._walk_php_laravel_sequence(
-                        block,
-                        file_path,
-                        edges,
-                        namespace=child_namespace,
-                    )
-                else:
-                    current_namespace = child_namespace
-                    imports = {}
-                continue
-
-            if child.type == "namespace_use_declaration":
-                imports.update(self._php_import_bindings(child))
-                continue
-
-            self._walk_php_laravel_node(
-                child,
-                file_path,
-                edges,
-                current_namespace,
-                imports,
-                enclosing_class=None,
-                enclosing_func=None,
-                eloquent_model=False,
-            )
-
-    def _walk_php_laravel_node(
-        self,
-        node,
-        file_path: str,
-        edges: list[EdgeInfo],
-        namespace: str,
-        imports: dict[str, str],
-        enclosing_class: Optional[str],
-        enclosing_func: Optional[str],
-        eloquent_model: bool,
-    ) -> None:
-        """Walk one PHP subtree with its namespace and enclosing-class evidence."""
-        if node.type in self._class_types["php"]:
-            class_name = self._get_name(node, "php", "class")
-            is_eloquent = (
-                node.type == "class_declaration"
-                and self._php_class_extends_eloquent_model(
-                    node,
-                    namespace,
-                    imports,
-                )
-            )
-            for child in node.children:
-                self._walk_php_laravel_node(
-                    child,
-                    file_path,
-                    edges,
-                    namespace,
-                    imports,
-                    enclosing_class=class_name,
-                    enclosing_func=None,
-                    eloquent_model=is_eloquent,
-                )
-            return
-
-        if node.type in self._function_types["php"]:
-            function_name = self._get_name(node, "php", "function")
-            for child in node.children:
-                self._walk_php_laravel_node(
-                    child,
-                    file_path,
-                    edges,
-                    namespace,
-                    imports,
-                    enclosing_class=enclosing_class,
-                    enclosing_func=function_name or enclosing_func,
-                    eloquent_model=eloquent_model,
-                )
-            return
-
-        if node.type == "scoped_call_expression":
-            self._emit_laravel_route_edge(
-                node,
-                file_path,
-                edges,
-                namespace,
-                imports,
-                enclosing_class,
-                enclosing_func,
-            )
-        elif node.type == "member_call_expression" and eloquent_model:
-            self._emit_laravel_relationship_edge(
-                node,
-                file_path,
-                edges,
-                namespace,
-                imports,
-                enclosing_class,
-                enclosing_func,
-            )
-
-        for child in node.children:
-            self._walk_php_laravel_node(
-                child,
-                file_path,
-                edges,
-                namespace,
-                imports,
-                enclosing_class,
-                enclosing_func,
-                eloquent_model,
-            )
-
-    @staticmethod
-    def _php_namespace_name(node) -> str:
-        for child in node.children:
-            if child.type == "namespace_name":
-                return child.text.decode(
-                    "utf-8", errors="replace",
-                ).strip("\\")
-        return ""
-
-    @staticmethod
-    def _php_import_bindings(node) -> dict[str, str]:
-        """Return case-insensitive local class aliases for a PHP use statement."""
-        statement = node.text.decode("utf-8", errors="replace").lstrip()
-        lowered = statement.casefold()
-        if lowered.startswith("use function ") or lowered.startswith("use const "):
-            return {}
-
-        group = next(
-            (
-                child for child in node.children
-                if child.type == "namespace_use_group"
-            ),
-            None,
-        )
-        prefix = ""
-        if group is not None:
-            for child in node.children:
-                if child.type == "namespace_name":
-                    prefix = child.text.decode(
-                        "utf-8", errors="replace",
-                    ).strip("\\")
-                    break
-            clauses = [
-                child for child in group.children
-                if child.type == "namespace_use_clause"
-            ]
-        else:
-            clauses = [
-                child for child in node.children
-                if child.type == "namespace_use_clause"
-            ]
-
-        bindings: dict[str, str] = {}
-        for clause in clauses:
-            imported: Optional[str] = None
-            alias: Optional[str] = None
-            seen_alias = False
-            for child in clause.children:
-                if child.type == "as":
-                    seen_alias = True
-                    continue
-                if imported is None and child.type in ("qualified_name", "name"):
-                    imported = child.text.decode(
-                        "utf-8", errors="replace",
-                    ).strip("\\")
-                    continue
-                if seen_alias and child.type == "name":
-                    alias = child.text.decode(
-                        "utf-8", errors="replace",
-                    )
-            if not imported:
-                continue
-            qualified = f"{prefix}\\{imported}" if prefix else imported
-            local_name = alias or qualified.rsplit("\\", 1)[-1]
-            bindings[local_name.casefold()] = qualified
-        return bindings
-
-    @staticmethod
-    def _php_resolve_class_reference(
-        reference: str,
-        namespace: str,
-        imports: dict[str, str],
-    ) -> str:
-        """Resolve a PHP class reference through aliases and its namespace."""
-        absolute = reference.startswith("\\")
-        normalized = reference.strip("\\")
-        if not normalized:
-            return ""
-        if absolute:
-            return normalized
-
-        head, separator, tail = normalized.partition("\\")
-        imported = imports.get(head.casefold())
-        if imported:
-            return f"{imported}\\{tail}" if separator else imported
-        if namespace:
-            return f"{namespace}\\{normalized}"
-        return normalized
-
-    def _php_class_extends_eloquent_model(
-        self,
-        node,
-        namespace: str,
-        imports: dict[str, str],
-    ) -> bool:
-        for base in self._get_bases(node, "php", b""):
-            resolved = self._php_resolve_class_reference(
-                base,
-                namespace,
-                imports,
-            )
-            if resolved.casefold() == self._LARAVEL_ELOQUENT_MODEL.casefold():
-                return True
-        return False
-
-    @staticmethod
-    def _php_scoped_call_parts(node) -> tuple[Optional[str], Optional[str]]:
-        """Return the static receiver and method for a PHP scoped call."""
-        if node.type != "scoped_call_expression":
-            return None, None
-        scope = node.child_by_field_name("scope")
-        name = node.child_by_field_name("name")
-        if scope is None or name is None:
-            return None, None
-        receiver = scope.text.decode("utf-8", errors="replace")
-        method = name.text.decode("utf-8", errors="replace")
-        return receiver or None, method or None
-
-    @staticmethod
-    def _php_class_constant_reference(node) -> Optional[str]:
-        class_reference: Optional[str] = None
-        constant: Optional[str] = None
-        for child in node.children:
-            if class_reference is None and child.type in ("name", "qualified_name"):
-                class_reference = child.text.decode(
-                    "utf-8", errors="replace",
-                )
-            elif child.type == "name":
-                constant = child.text.decode(
-                    "utf-8", errors="replace",
-                )
-        if class_reference and constant and constant.casefold() == "class":
-            return class_reference
-        return None
-
-    def _php_route_handler(
-        self,
-        node,
-    ) -> Optional[tuple[str, str]]:
-        arguments = next(
-            (child for child in node.children if child.type == "arguments"),
-            None,
-        )
-        if arguments is None:
-            return None
-        args = [
-            child for child in arguments.children
-            if child.type == "argument"
-        ]
-        if len(args) < 2:
-            return None
-        array = next(
-            (
-                child for child in args[1].children
-                if child.type == "array_creation_expression"
-            ),
-            None,
-        )
-        if array is None:
-            return None
-        elements = [
-            child for child in array.children
-            if child.type == "array_element_initializer"
-        ]
-        if len(elements) != 2:
-            return None
-
-        class_access = next(
-            (
-                child for child in elements[0].children
-                if child.type == "class_constant_access_expression"
-            ),
-            None,
-        )
-        method_string = next(
-            (
-                child for child in elements[1].children
-                if child.type in ("string", "encapsed_string")
-            ),
-            None,
-        )
-        if class_access is None or method_string is None:
-            return None
-        class_reference = self._php_class_constant_reference(class_access)
-        method = method_string.text.decode(
-            "utf-8", errors="replace",
-        ).strip("'\"")
-        if (
-            not class_reference
-            or re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", method) is None
-        ):
-            return None
-        return class_reference, method
-
-    def _php_semantic_target(
-        self,
-        class_reference: str,
-        namespace: str,
-        imports: dict[str, str],
-        file_path: str,
-        method: Optional[str] = None,
-    ) -> str:
-        qualified_class = self._php_resolve_class_reference(
-            class_reference,
-            namespace,
-            imports,
-        )
-        short_name = qualified_class.rsplit("\\", 1)[-1]
-        resolved_file = self._resolve_module_to_file(
-            qualified_class,
-            file_path,
-            "php",
-        )
-        if resolved_file:
-            target = f"{resolved_file}::{short_name}"
-        else:
-            target = short_name
-        return f"{target}.{method}" if method else target
-
-    def _php_laravel_caller(
-        self,
-        file_path: str,
-        enclosing_class: Optional[str],
-        enclosing_func: Optional[str],
-    ) -> str:
-        if enclosing_func:
-            return self._qualify(
-                enclosing_func,
-                file_path,
-                enclosing_class,
-            )
-        if enclosing_class:
-            return self._qualify(enclosing_class, file_path, None)
-        return file_path
-
-    def _emit_laravel_route_edge(
-        self,
-        node,
-        file_path: str,
-        edges: list[EdgeInfo],
-        namespace: str,
-        imports: dict[str, str],
-        enclosing_class: Optional[str],
-        enclosing_func: Optional[str],
-    ) -> None:
-        receiver, verb = self._php_scoped_call_parts(node)
-        if not receiver or verb not in self._LARAVEL_ROUTE_VERBS:
-            return
-        resolved_receiver = self._php_resolve_class_reference(
-            receiver,
-            namespace,
-            imports,
-        )
-        if resolved_receiver.casefold() != self._LARAVEL_ROUTE_FACADE.casefold():
-            return
-        handler = self._php_route_handler(node)
-        if handler is None:
-            return
-        controller, method = handler
-        edges.append(EdgeInfo(
-            kind="CALLS",
-            source=self._php_laravel_caller(
-                file_path,
-                enclosing_class,
-                enclosing_func,
-            ),
-            target=self._php_semantic_target(
-                controller,
-                namespace,
-                imports,
-                file_path,
-                method,
-            ),
-            file_path=file_path,
-            line=node.start_point[0] + 1,
-            extra={
-                "framework": "laravel",
-                "laravel_kind": "route",
-                "route_verb": verb,
-            },
-        ))
-
-    def _emit_laravel_relationship_edge(
-        self,
-        node,
-        file_path: str,
-        edges: list[EdgeInfo],
-        namespace: str,
-        imports: dict[str, str],
-        enclosing_class: Optional[str],
-        enclosing_func: Optional[str],
-    ) -> None:
-        if not node.children or node.children[0].type != "variable_name":
-            return
-        receiver = node.children[0].text.decode(
-            "utf-8", errors="replace",
-        )
-        if receiver != "$this":
-            return
-        method_node = next(
-            (
-                child for child in reversed(node.children)
-                if child.type == "name"
-            ),
-            None,
-        )
-        if method_node is None:
-            return
-        relationship = method_node.text.decode(
-            "utf-8", errors="replace",
-        )
-        if relationship not in self._LARAVEL_RELATIONSHIPS:
-            return
-
-        arguments = next(
-            (child for child in node.children if child.type == "arguments"),
-            None,
-        )
-        if arguments is None:
-            return
-        first_argument = next(
-            (
-                child for child in arguments.children
-                if child.type == "argument"
-            ),
-            None,
-        )
-        if first_argument is None:
-            return
-        class_access = next(
-            (
-                child for child in first_argument.children
-                if child.type == "class_constant_access_expression"
-            ),
-            None,
-        )
-        if class_access is None:
-            return
-        target_model = self._php_class_constant_reference(class_access)
-        if target_model is None:
-            return
-
-        edges.append(EdgeInfo(
-            kind="REFERENCES",
-            source=self._php_laravel_caller(
-                file_path,
-                enclosing_class,
-                enclosing_func,
-            ),
-            target=self._php_semantic_target(
-                target_model,
-                namespace,
-                imports,
-                file_path,
-            ),
-            file_path=file_path,
-            line=node.start_point[0] + 1,
-            extra={
-                "framework": "laravel",
-                "laravel_kind": "eloquent_relationship",
-                "relationship": relationship,
-            },
-        ))
 
     def _extract_jsx_component_call(
         self,
@@ -11450,9 +10349,6 @@ class CodeParser:
                         if module_name and real_name and alias:
                             import_map[alias] = f"{module_name}.{real_name}"
 
-        elif language == "php":
-            import_map.update(self._php_import_bindings(node))
-
     def _collect_js_import_names(
         self, clause_node, module: str, import_map: dict[str, str],
     ) -> None:
@@ -11658,44 +10554,6 @@ class CodeParser:
 
         elif language == "rust":
             return self._resolve_rust_module_file(module, file_path)
-
-        elif language == "php":
-            composer_resolved = self._resolve_php_composer_module(
-                module, caller_dir,
-            )
-            if composer_resolved:
-                return composer_resolved
-
-            # ``use App\Domain\Entity\Job;`` — convert namespace separators to
-            # a relative path and walk up from the caller's directory to find
-            # the file. PSR-4 layouts where a
-            # namespace segment maps to a real directory (e.g. ``App\Foo`` ->
-            # ``.../App/Foo``) resolve; vendor/global classes (``\Exception``)
-            # and ``use function`` / ``use const`` targets with no matching
-            # file stay unresolved and keep the bare FQN, like JDK imports.
-            rel_path = module.replace("\\", "/").lstrip("/") + ".php"
-            try:
-                boundary = self._php_repository_boundary(caller_dir)
-                current = caller_dir.resolve()
-            except (OSError, RuntimeError, ValueError):
-                return None
-            if boundary is None or not _path_is_within(current, boundary):
-                return None
-
-            while _path_is_within(current, boundary):
-                try:
-                    target = (current / rel_path).resolve()
-                except (OSError, RuntimeError, ValueError):
-                    target = None
-                if (
-                    target is not None
-                    and _path_is_within(target, boundary)
-                    and target.is_file()
-                ):
-                    return str(target)
-                if current == boundary:
-                    break
-                current = current.parent
 
         return None
 
@@ -11941,92 +10799,6 @@ class CodeParser:
             return None
         return normalize_file_path(resolved)
 
-    def _resolve_php_composer_module(
-        self,
-        module: str,
-        caller_dir: Path,
-    ) -> Optional[str]:
-        """Resolve a PHP class through the nearest bounded Composer project."""
-        boundary = self._php_repository_boundary(caller_dir)
-        if boundary is None:
-            return None
-        mappings = self._find_php_composer_psr4(caller_dir, boundary)
-        if not mappings:
-            return None
-
-        normalized_module = module.lstrip("\\")
-        for prefix, destinations in mappings:
-            if prefix:
-                if normalized_module == prefix:
-                    relative = ""
-                elif normalized_module.startswith(prefix + "\\"):
-                    relative = normalized_module[len(prefix) + 1:]
-                else:
-                    continue
-            else:
-                relative = normalized_module
-            if not relative:
-                continue
-            relative_path = relative.replace("\\", "/") + ".php"
-            for destination in destinations:
-                try:
-                    target = (Path(destination) / relative_path).resolve()
-                except (OSError, RuntimeError, ValueError):
-                    continue
-                if not _path_is_within(target, boundary):
-                    continue
-                if target.is_file():
-                    return str(target)
-        return None
-
-    def _php_repository_boundary(self, start: Path) -> Optional[Path]:
-        """Return a safe Composer search boundary for *start*."""
-        try:
-            resolved_start = start.resolve()
-        except (OSError, RuntimeError, ValueError):
-            return None
-
-        if self._repo_root is not None:
-            if _path_is_within(resolved_start, self._repo_root):
-                return self._repo_root
-            return None
-
-        current = resolved_start
-        while True:
-            if (current / ".git").exists() or (current / ".svn").exists():
-                return current
-            if current == current.parent:
-                break
-            current = current.parent
-        # With no explicit or discoverable repository, never climb above the
-        # caller directory looking for unrelated Composer configuration.
-        return resolved_start
-
-    def _find_php_composer_psr4(
-        self,
-        start: Path,
-        boundary: Path,
-    ) -> _PhpPsr4Mappings:
-        """Find and parse the nearest composer.json without crossing *boundary*."""
-        current = start.resolve()
-        while _path_is_within(current, boundary):
-            composer = current / "composer.json"
-            if composer.is_file():
-                try:
-                    composer_stat = composer.stat()
-                except OSError:
-                    return ()
-                return _read_php_composer_psr4(
-                    str(composer.resolve()),
-                    str(boundary),
-                    composer_stat.st_mtime_ns,
-                    composer_stat.st_size,
-                )
-            if current == boundary:
-                break
-            current = current.parent
-        return ()
-
     def _find_dart_pubspec_root(
         self, start: Path, pkg_name: str,
     ) -> Optional[Path]:
@@ -12265,8 +11037,7 @@ class CodeParser:
 
         The path component is normalized to POSIX separators so identities
         are stable across operating systems (#774). ``name`` and
-        ``enclosing_class`` are never touched — PHP namespace identifiers
-        legitimately contain backslashes.
+        ``enclosing_class`` are never touched.
         """
         file_path = normalize_file_path(file_path)
         if enclosing_class:
@@ -13073,16 +11844,6 @@ class CodeParser:
                             bases.append(
                                 idents[0].text.decode("utf-8", errors="replace"),
                             )
-        elif language == "php":
-            # class Foo extends Bar implements Baz, Qux { ... }
-            for child in node.children:
-                if child.type not in ("base_clause", "class_interface_clause"):
-                    continue
-                for base in child.children:
-                    if base.type in ("name", "qualified_name"):
-                        bases.append(
-                            base.text.decode("utf-8", errors="replace"),
-                        )
         return bases
 
     def _extract_import(self, node, language: str, source: bytes) -> list[str]:
@@ -13288,47 +12049,6 @@ class CodeParser:
                     txt = child.text.decode("utf-8", errors="replace")
                     if txt and txt != "extends":
                         imports.append(txt)
-        elif language == "php":
-            # ``namespace_use_declaration`` covers several shapes:
-            #   use A\B\C;            use A\B\C as D;
-            #   use function A\b;     use const A\B;
-            #   use A\B, C\D;         (comma-separated clauses)
-            #   use A\B\{C, D as E};  (grouped — clause names are relative to A\B)
-            # Record the fully-qualified name of each imported symbol, ignoring
-            # any ``as`` alias and stripping a leading ``\``, so IMPORTS_FROM
-            # targets are clean FQNs that _do_resolve_module can map to files.
-            # Without this branch PHP falls through to the raw-text fallback and
-            # stores the entire ``use ...;`` statement as the edge target.
-            def _php_clause_fqn(clause) -> Optional[str]:
-                for sub in clause.children:
-                    if sub.type in ("qualified_name", "name"):
-                        return sub.text.decode(
-                            "utf-8", errors="replace",
-                        ).lstrip("\\")
-                return None
-
-            group_node = None
-            prefix = ""
-            for child in node.children:
-                if child.type == "namespace_name":
-                    prefix = child.text.decode(
-                        "utf-8", errors="replace",
-                    ).strip("\\")
-                elif child.type == "namespace_use_group":
-                    group_node = child
-
-            if group_node is not None:
-                for clause in group_node.children:
-                    if clause.type == "namespace_use_clause":
-                        rel = _php_clause_fqn(clause)
-                        if rel:
-                            imports.append(f"{prefix}\\{rel}" if prefix else rel)
-            else:
-                for clause in node.children:
-                    if clause.type == "namespace_use_clause":
-                        fqn = _php_clause_fqn(clause)
-                        if fqn:
-                            imports.append(fqn)
         elif language in self._custom_languages:
             # Custom languages (languages.toml): prefer the grammar's
             # module-ish field over the raw statement text (e.g. Erlang
@@ -13385,40 +12105,6 @@ class CodeParser:
         # Julia broadcast call: ``sin.(x)`` — same structure as
         # call_expression (first child is identifier or field_expression)
         # so the generic paths below handle it.
-        if language == "php":
-            def _normalize_php_name(text: str) -> str:
-                # PHP global/function names can be prefixed with '\\'.
-                return text.lstrip("\\")
-
-            if node.type == "function_call_expression":
-                for child in node.children:
-                    if child.type in ("name", "qualified_name"):
-                        raw = child.text.decode("utf-8", errors="replace")
-                        return _normalize_php_name(raw)
-                return None
-
-            if node.type in (
-                "member_call_expression",
-                "nullsafe_member_call_expression",
-            ):
-                for child in reversed(node.children):
-                    if child.type == "name":
-                        return child.text.decode("utf-8", errors="replace")
-                return None
-
-            if node.type == "scoped_call_expression":
-                scope, method = self._php_scoped_call_parts(node)
-                if not scope or not method:
-                    return None
-                return f"{_normalize_php_name(scope)}::{method}"
-
-            if node.type == "object_creation_expression":
-                for child in node.children:
-                    if child.type in ("name", "qualified_name"):
-                        raw = child.text.decode("utf-8", errors="replace")
-                        return _normalize_php_name(raw)
-                return None
-
         # Scala: instance_expression (new Foo(...)) – extract the type name
         if node.type == "instance_expression":
             for child in node.children:

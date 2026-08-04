@@ -287,7 +287,7 @@ class TestIgnorePatterns:
         # Monorepo: nested node_modules
         assert _should_ignore("packages/app/node_modules/react/index.js", patterns)
         assert _should_ignore("apps/web/node_modules/lodash/index.js", patterns)
-        # PHP/Laravel: vendor at any depth
+        # vendor at any depth
         assert _should_ignore("backend/vendor/autoload.php", patterns)
         # Gradle at any depth
         assert _should_ignore("android/app/.gradle/cache/metadata.bin", patterns)
@@ -296,13 +296,10 @@ class TestIgnorePatterns:
         assert not _should_ignore("src/venv_tools/bar.py", patterns)
 
     def test_should_ignore_framework_defaults(self):
-        """Default patterns should cover Laravel, Gradle, Flutter, and caches."""
+        """Default patterns should cover Gradle, Flutter, and caches."""
         from code_review_graph.incremental import DEFAULT_IGNORE_PATTERNS
 
         patterns = DEFAULT_IGNORE_PATTERNS
-        # Laravel/PHP
-        assert _should_ignore("vendor/autoload.php", patterns)
-        assert _should_ignore("bootstrap/cache/packages.php", patterns)
         # Gradle
         assert _should_ignore(".gradle/caches/jars.bin", patterns)
         assert _should_ignore("build/libs/app.jar", patterns)
@@ -339,7 +336,6 @@ class TestIgnorePatterns:
 
         patterns = DEFAULT_IGNORE_PATTERNS
         assert _should_ignore("packages/app/node_modules/pkg/index.js", patterns)
-        assert _should_ignore("services/api/vendor/pkg/file.php", patterns)
         assert _should_ignore("src/lib/__pycache__/module.pyc", patterns)
 
 

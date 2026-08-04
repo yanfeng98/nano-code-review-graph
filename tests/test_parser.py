@@ -2190,7 +2190,7 @@ class TestTypeScriptTypeDeclarations:
 
     Before this, ``_CLASS_TYPES`` covered only ``class_declaration`` for TS, so a
     types-only module produced zero symbol nodes and its blast radius collapsed
-    to whole-file ``IMPORTS_FROM`` fan-out. PHP already indexed
+    to whole-file ``IMPORTS_FROM`` fan-out. Other grammars already indexed
     ``interface_declaration``. See: #737
     """
 

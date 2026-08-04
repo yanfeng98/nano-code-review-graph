@@ -61,7 +61,7 @@ def _bridge_qualified_name(qualified_name: str) -> str:
     are just the path). Stored identities always use forward slashes (#774),
     so a Windows-native spelling must be bridged to find the POSIX-keyed row.
     Only the path component is rewritten — the symbol part may legitimately
-    contain backslashes (PHP fully-qualified names).
+    contain backslashes.
     """
     path_part, sep, symbol_part = qualified_name.partition("::")
     return normalize_file_path(path_part) + sep + symbol_part
