@@ -90,12 +90,12 @@ class TestNotebookParsing:
             "cells": [
                 {"cell_type": "code", "source": ["println(\"hello\")"], "outputs": []},
             ],
-            "metadata": {"kernelspec": {"language": "scala"}},
+            "metadata": {"kernelspec": {"language": "julia"}},
             "nbformat": 4,
         }
         source = json.dumps(nb).encode("utf-8")
         nodes, edges = self.parser.parse_bytes(
-            Path("scala_notebook.ipynb"), source,
+            Path("julia_notebook.ipynb"), source,
         )
         assert nodes == []
         assert edges == []
@@ -179,10 +179,6 @@ class TestDatabricksNotebookParsing:
         assert "catalog.schema.lookup" in targets
         assert "catalog.schema.output" in targets
 
-    def test_skips_scala_cells(self):
-        names = {n.name for n in self.nodes if n.kind == "Function"}
-        assert "x" not in names
-
     def test_skips_md_cells(self):
         func_count = len([n for n in self.nodes if n.kind == "Function"])
         assert func_count == 3  # transform_data + process_results + clean_data (R cell)
@@ -195,7 +191,7 @@ class TestDatabricksNotebookParsing:
     def test_cell_index_tracking(self):
         funcs = {n.name: n for n in self.nodes if n.kind == "Function"}
         assert funcs["transform_data"].extra.get("cell_index") == 1
-        assert funcs["process_results"].extra.get("cell_index") == 6
+        assert funcs["process_results"].extra.get("cell_index") == 5
 
     def test_cross_cell_python_calls(self):
         calls = [e for e in self.edges if e.kind == "CALLS"]

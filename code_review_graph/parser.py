@@ -663,7 +663,6 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".h": "c",
     ".hpp": "cpp",
     ".hh": "cpp",
-    ".scala": "scala",
     ".sol": "solidity",
     ".vue": "vue",
     ".r": "r",  # .lower() in detect_language handles .R → .r
@@ -849,9 +848,6 @@ _CLASS_TYPES: dict[str, list[str]] = {
     "ruby": ["class", "module"],
     "r": [],  # Classes detected via call pattern-matching, not AST node types
     "perl": ["package_statement", "class_statement", "role_statement"],
-    "scala": [
-        "class_definition", "trait_definition", "object_definition", "enum_definition",
-    ],
     "solidity": [
         "contract_declaration", "interface_declaration", "library_declaration",
         "struct_declaration", "enum_declaration", "error_declaration",
@@ -917,7 +913,6 @@ _FUNCTION_TYPES: dict[str, list[str]] = {
     "ruby": ["method", "singleton_method"],
     "r": ["function_definition"],
     "perl": ["subroutine_declaration_statement", "method_declaration_statement"],
-    "scala": ["function_definition", "function_declaration"],
     # Solidity: events and modifiers use kind="Function" because the graph
     # schema has no dedicated kind for them.  State variables are also modeled
     # as Function nodes (public ones auto-generate getters) and distinguished
@@ -969,7 +964,6 @@ _IMPORT_TYPES: dict[str, list[str]] = {
     "ruby": ["call"],  # require/require_relative
     "r": ["call"],  # library(), require(), source() — filtered downstream
     "perl": ["use_statement", "require_expression"],
-    "scala": ["import_declaration"],
     "solidity": ["import_directive"],
     # Lua/Luau: require() is a function_call, handled via _extract_lua_constructs
     "lua": [],
@@ -1018,7 +1012,6 @@ _CALL_TYPES: dict[str, list[str]] = {
         "function_call_expression", "method_call_expression",
         "ambiguous_function_call_expression",
     ],
-    "scala": ["call_expression", "instance_expression", "generic_function"],
     "solidity": ["call_expression"],
     "lua": ["function_call"],
     "luau": ["function_call"],
@@ -2762,7 +2755,7 @@ class CodeParser:
             "%sql": "sql",
             "%r": "r",
         }
-        skip_magics = {"%scala", "%md", "%sh"}
+        skip_magics = {"%md", "%sh"}
 
         for cell_idx, cell in enumerate(nb.get("cells", [])):
             if cell.get("cell_type") != "code":
@@ -11558,19 +11551,6 @@ class CodeParser:
                     for arg in child.children:
                         if arg.type in ("identifier", "attribute"):
                             bases.append(arg.text.decode("utf-8", errors="replace"))
-        elif language == "scala":
-            for child in node.children:
-                if child.type == "extends_clause":
-                    for sub in child.children:
-                        if sub.type == "type_identifier":
-                            bases.append(sub.text.decode("utf-8", errors="replace"))
-                        elif sub.type == "generic_type":
-                            for ident in sub.children:
-                                if ident.type == "type_identifier":
-                                    bases.append(
-                                        ident.text.decode("utf-8", errors="replace")
-                                    )
-                                    break
         elif language == "cpp":
             # C++: base_class_clause contains type_identifiers
             for child in node.children:
@@ -11714,27 +11694,6 @@ class CodeParser:
                     val = child.text.decode("utf-8", errors="replace").strip('"')
                     if val:
                         imports.append(val)
-        elif language == "scala":
-            parts = []
-            selectors = []
-            is_wildcard = False
-            for child in node.children:
-                if child.type == "identifier":
-                    parts.append(child.text.decode("utf-8", errors="replace"))
-                elif child.type == "namespace_selectors":
-                    for sub in child.children:
-                        if sub.type == "identifier":
-                            selectors.append(sub.text.decode("utf-8", errors="replace"))
-                elif child.type == "namespace_wildcard":
-                    is_wildcard = True
-            base = ".".join(parts)
-            if selectors:
-                for name in selectors:
-                    imports.append(f"{base}.{name}")
-            elif is_wildcard:
-                imports.append(f"{base}.*")
-            elif base:
-                imports.append(base)
         elif language == "r":
             # library(pkg), require(pkg), source("file.R")
             func_name = self._r_call_func_name(node)
@@ -11904,12 +11863,6 @@ class CodeParser:
         # Julia broadcast call: ``sin.(x)`` — same structure as
         # call_expression (first child is identifier or field_expression)
         # so the generic paths below handle it.
-        # Scala: instance_expression (new Foo(...)) – extract the type name
-        if node.type == "instance_expression":
-            for child in node.children:
-                if child.type in ("type_identifier", "identifier"):
-                    return child.text.decode("utf-8", errors="replace")
-            return None
 
         # Ruby: `call` nodes expose a `method` field for both receiver calls
         # (`Bar.new.run` -> `run`) and paren calls (`helper_method(1)` ->

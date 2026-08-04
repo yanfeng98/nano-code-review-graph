@@ -142,9 +142,6 @@ DEFAULT_IGNORE_PATTERNS = [
     "/obj/**",
     # Ruby / Bundler
     "**/.bundle/**",
-    # Gradle
-    "**/.gradle/**",
-    "*.jar",
     # AWS CDK
     "**/cdk.out/**",
     # General
