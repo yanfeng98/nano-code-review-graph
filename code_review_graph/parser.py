@@ -682,9 +682,6 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".exs": "elixir",
     ".ipynb": "notebook",
     ".zig": "zig",
-    ".ps1": "powershell",
-    ".psm1": "powershell",
-    ".psd1": "powershell",
     ".svelte": "svelte",
     ".jl": "julia",
     # ReScript: .res is implementation, .resi is interface. Both share one
@@ -867,7 +864,6 @@ _CLASS_TYPES: dict[str, list[str]] = {
     # whose RHS is a SuffixExpr > ContainerDecl. Dispatched via
     # _extract_zig_constructs.
     "zig": [],
-    "powershell": ["class_statement"],
     "julia": [
         "struct_definition", "abstract_definition", "module_definition",
     ],
@@ -935,7 +931,6 @@ _FUNCTION_TYPES: dict[str, list[str]] = {
     # walker can't bridge the FnProto signature to its sibling Block body,
     # so the whole thing is dispatched via _extract_zig_constructs.
     "zig": [],
-    "powershell": ["function_statement"],
     # Julia: short-form functions `f(x) = expr` parse as `assignment` nodes
     # (not a dedicated definition node) and are handled in
     # _extract_julia_constructs.
@@ -981,7 +976,6 @@ _IMPORT_TYPES: dict[str, list[str]] = {
     # "@import" + FnCallArguments holding a STRINGLITERALSINGLE. Handled in
     # _extract_zig_constructs as part of VarDecl processing.
     "zig": [],
-    "powershell": [],
     # Julia: import/using are import_statement nodes.
     "julia": ["import_statement", "using_statement"],
     "verilog": ["package_import_declaration"],
@@ -1029,7 +1023,6 @@ _CALL_TYPES: dict[str, list[str]] = {
     # SuffixExpr); calls are walked explicitly in
     # _extract_zig_calls_in_subtree from inside function bodies.
     "zig": [],
-    "powershell": ["command_expression"],
     "julia": [
         "call_expression",
         "broadcast_call_expression",
