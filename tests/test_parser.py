@@ -84,12 +84,6 @@ class TestCodeParser:
         )
         assert self.parser.detect_language(p) == "ruby"
 
-    def test_detect_shebang_perl(self, tmp_path):
-        p = self._write_shebang_file(
-            tmp_path, "cgi-script", "#!/usr/bin/env perl\nprint 1;\n",
-        )
-        assert self.parser.detect_language(p) == "perl"
-
     def test_detect_shebang_with_trailing_flags(self, tmp_path):
         """``#!/bin/bash -e`` still maps to bash (flags ignored)."""
         p = self._write_shebang_file(

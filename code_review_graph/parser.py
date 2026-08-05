@@ -666,10 +666,6 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".vue": "vue",
     ".mjs": "javascript",
     ".astro": "typescript",
-    ".pl": "perl",
-    ".pm": "perl",
-    ".t": "perl",
-    ".xs": "c",  # Perl XS: parsed as C to capture functions/structs/includes
     ".lua": "lua",
     ".luau": "luau",
     ".sh": "bash",
@@ -754,9 +750,8 @@ SHEBANG_INTERPRETER_TO_LANGUAGE: dict[str, str] = {
     # JavaScript via Node
     "node": "javascript",
     "nodejs": "javascript",
-    # Ruby / Perl / Lua
+    # Ruby / Lua
     "ruby": "ruby",
-    "perl": "perl",
     "lua": "lua",
 }
 
@@ -837,7 +832,6 @@ _CLASS_TYPES: dict[str, list[str]] = {
     "c": ["struct_specifier", "type_definition"],
     "cpp": ["class_specifier", "struct_specifier"],
     "ruby": ["class", "module"],
-    "perl": ["package_statement", "class_statement", "role_statement"],
     "lua": [],  # Lua has no class keyword; table-based OOP handled via constructs handler
     "luau": ["type_definition"],  # Luau type aliases; table-based OOP via constructs handler
     "bash": [],  # Shell has no classes
@@ -888,7 +882,6 @@ _FUNCTION_TYPES: dict[str, list[str]] = {
     "c": ["function_definition"],
     "cpp": ["function_definition", "declaration", "field_declaration"],
     "ruby": ["method", "singleton_method"],
-    "perl": ["subroutine_declaration_statement", "method_declaration_statement"],
     "lua": ["function_declaration"],
     "luau": ["function_declaration"],
     # Bash: only function_definition; everything else is a command.
@@ -924,7 +917,6 @@ _IMPORT_TYPES: dict[str, list[str]] = {
     "c": ["preproc_include"],
     "cpp": ["preproc_include"],
     "ruby": ["call"],  # require/require_relative
-    "perl": ["use_statement", "require_expression"],
     # Lua/Luau: require() is a function_call, handled via _extract_lua_constructs
     "lua": [],
     "luau": [],
@@ -958,10 +950,6 @@ _CALL_TYPES: dict[str, list[str]] = {
     "c": ["call_expression"],
     "cpp": ["call_expression"],
     "ruby": ["call", "method_call"],
-    "perl": [
-        "function_call_expression", "method_call_expression",
-        "ambiguous_function_call_expression",
-    ],
     "lua": ["function_call"],
     "luau": ["function_call"],
     # Bash: every command invocation is a "command" node.
@@ -10429,13 +10417,6 @@ class CodeParser:
                         if sub.type == "identifier":
                             return sub.text.decode("utf-8", errors="replace")
                     return None
-        # Perl: bareword for subroutine names, package for package names
-        if language == "perl":
-            for child in node.children:
-                if child.type == "bareword":
-                    return child.text.decode("utf-8", errors="replace")
-                if child.type == "package" and child.text != b"package":
-                    return child.text.decode("utf-8", errors="replace")
         if language == "cpp" and kind == "function":
             declarator = node.child_by_field_name("declarator")
             if node.type in ("declaration", "field_declaration"):
@@ -11267,19 +11248,8 @@ class CodeParser:
                 return first.text.decode("utf-8", errors="replace")
             return None
 
-        # Perl method_call_expression: $obj->method() — find the 'method' child
-        if language == "perl" and node.type == "method_call_expression":
-            for child in node.children:
-                if child.type == "method":
-                    return child.text.decode("utf-8", errors="replace")
-            return None  # method child not found
-
         # Simple call: func_name(args)
         if first.type in ("identifier", "simple_identifier"):
-            return first.text.decode("utf-8", errors="replace")
-
-        # Perl: function_call_expression / ambiguous_function_call_expression
-        if first.type == "function":
             return first.text.decode("utf-8", errors="replace")
 
         # Lua/Luau: dot_index_expression (obj.method) and method_index_expression
