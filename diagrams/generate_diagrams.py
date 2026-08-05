@@ -654,7 +654,7 @@ def d9():
     # Group languages by ecosystem \u2014 verified against parser.py EXTENSION_TO_LANGUAGE
     groups = [
         ("Web",        ["TypeScript", "JavaScript", "TSX", "Vue", "Svelte"],         BLU, BLU_BG),
-        ("Backend",    ["Python", "Go", "Rust", "Elixir"],          GRN, GRN_BG),
+        ("Backend",    ["Python", "Go", "Rust"],                     GRN, GRN_BG),
         ("Systems",    ["C", "C++", "Zig"],                           ORG, ORG_BG),
         ("Scripting",  ["Ruby", "Perl", "Lua", "Julia"],                 YLW, YLW_BG),
         ("Shells",     ["Bash"],                                       RED, RED_BG),

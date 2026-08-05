@@ -1,8 +1,8 @@
 """Tests for config-driven custom language support (languages.toml, #320).
 
 Erlang is used as the end-to-end grammar: tree_sitter_language_pack ships
-it, but code-review-graph has no built-in ``.erl`` support (only Elixir on
-the BEAM side), so it exercises the full bring-your-own-language path.
+it, but code-review-graph has no built-in ``.erl`` support, so it exercises
+the full bring-your-own-language path.
 """
 
 import logging
@@ -272,7 +272,7 @@ class TestParserIntegration:
         repo, _src = self._repo(tmp_path)
         parser = CodeParser(repo)
         assert parser.detect_language(Path("main.py")) == "python"
-        assert parser.detect_language(Path("app.ex")) == "elixir"
+        assert parser.detect_language(Path("app.ts")) == "typescript"
 
     def test_e2e_nodes_and_edges(self, tmp_path):
         repo, src = self._repo(tmp_path)

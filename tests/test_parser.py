@@ -1718,21 +1718,6 @@ class TestModuleScopeCalls:
         # Edge originates at the JSX site (line 3), not the import (line 1).
         assert top_level[0].line == 3
 
-    def test_elixir_top_level_dotted_call_attributes_to_file(self):
-        # `.exs` scripts and mix tasks commonly have module-scope `IO.puts`,
-        # which is what the parser comment explicitly calls out.
-        source = b'IO.puts("hello")\n'
-        path = FIXTURES / "module_scope_script.exs"
-        _, edges = self.parser.parse_bytes(path, source)
-
-        top_level = [
-            e for e in edges
-            if e.kind == "CALLS"
-            and e.source == path.as_posix()
-            and e.target.endswith("puts")
-        ]
-        assert len(top_level) == 1
-
     def test_cpp_scoped_method_names(self, tmp_path):
         """C++ scoped method definitions must extract the leaf method name,
         not the return-type identifier.

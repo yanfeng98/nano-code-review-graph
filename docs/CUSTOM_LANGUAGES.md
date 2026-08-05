@@ -59,8 +59,8 @@ The loader never crashes a build. Anything invalid is skipped with a
 `WARNING` log line:
 
 - **Built-ins always win.** A custom language cannot claim a built-in
-  extension (`.py`, `.ts`, `.ex`, ...) and cannot reuse a built-in language
-  name (`python`, `elixir`, ...).
+  extension (`.py`, `.ts`, `.erl`, ...) and cannot reuse a built-in language
+  name (`python`, `typescript`, ...).
 - `grammar` must load from `tree_sitter_language_pack`; unknown grammars are
   skipped.
 - Every extension must start with a dot.
