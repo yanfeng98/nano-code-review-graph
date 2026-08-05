@@ -14,13 +14,6 @@ def load_config():
 
 # COMMAND ----------
 
-# MAGIC %r
-# MAGIC summarize_data <- function(df) {
-# MAGIC   summary(df)
-# MAGIC }
-
-# COMMAND ----------
-
 # MAGIC %md
 # MAGIC ## Analysis Notes
 # MAGIC This section documents the analysis.

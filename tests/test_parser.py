@@ -1718,27 +1718,6 @@ class TestModuleScopeCalls:
         # Edge originates at the JSX site (line 3), not the import (line 1).
         assert top_level[0].line == 3
 
-    def test_r_top_level_call_attributes_to_file(self):
-        # R scripts are overwhelmingly module-scope by convention; this is
-        # the highest-leverage language for the fix after Python.
-        source = (
-            b"worker <- function() {\n"
-            b"  1\n"
-            b"}\n"
-            b"\n"
-            b"worker()\n"
-        )
-        path = FIXTURES / "module_scope_sample.R"
-        _, edges = self.parser.parse_bytes(path, source)
-
-        top_level = [
-            e for e in edges
-            if e.kind == "CALLS"
-            and e.source == path.as_posix()
-            and e.target.endswith("worker")
-        ]
-        assert len(top_level) == 1
-
     def test_elixir_top_level_dotted_call_attributes_to_file(self):
         # `.exs` scripts and mix tasks commonly have module-scope `IO.puts`,
         # which is what the parser comment explicitly calls out.

@@ -105,7 +105,7 @@ line-length = 100
 target-version = "py310"
 exclude = [
     "diagrams/",  # diagram DSL scripts — intentionally compact, non-standard style
-    "tests/fixtures/sample_databricks_notebook.ipynb",  # SQL/R/Scala cells are not valid Python
+    "tests/fixtures/sample_databricks_notebook.ipynb",  # SQL cells are not valid Python
 ]
 
 [tool.ruff.lint]

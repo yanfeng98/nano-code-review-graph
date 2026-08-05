@@ -3,8 +3,6 @@
 import json
 from pathlib import Path
 
-import pytest
-
 from code_review_graph.parser import _SQL_TABLE_RE, CodeParser
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -181,17 +179,17 @@ class TestDatabricksNotebookParsing:
 
     def test_skips_md_cells(self):
         func_count = len([n for n in self.nodes if n.kind == "Function"])
-        assert func_count == 3  # transform_data + process_results + clean_data (R cell)
+        assert func_count == 2  # transform_data + process_results
 
     def test_default_language_for_unmagicked_cell(self):
-        """Cell 6 has no magic prefix — should use kernel default (python)."""
+        """Cell 5 has no magic prefix — should use kernel default (python)."""
         funcs = {n.name: n for n in self.nodes if n.kind == "Function"}
         assert "process_results" in funcs
 
     def test_cell_index_tracking(self):
         funcs = {n.name: n for n in self.nodes if n.kind == "Function"}
         assert funcs["transform_data"].extra.get("cell_index") == 1
-        assert funcs["process_results"].extra.get("cell_index") == 5
+        assert funcs["process_results"].extra.get("cell_index") == 4
 
     def test_cross_cell_python_calls(self):
         calls = [e for e in self.edges if e.kind == "CALLS"]
@@ -228,12 +226,12 @@ class TestDatabricksPyNotebook:
     def test_skips_magic_md_cells(self):
         funcs = [n for n in self.nodes if n.kind == "Function"]
         names = {f.name for f in funcs}
-        assert len(names) == 3  # load_config + process_events + summarize_data (R cell)
+        assert len(names) == 2  # load_config + process_events
 
     def test_cell_index_tracking(self):
         funcs = {n.name: n for n in self.nodes if n.kind == "Function"}
         assert funcs["load_config"].extra.get("cell_index") == 0
-        assert funcs["process_events"].extra.get("cell_index") == 4
+        assert funcs["process_events"].extra.get("cell_index") == 3
 
     def test_python_imports(self):
         imports = [
@@ -324,55 +322,6 @@ class TestDatabricksPyNotebook:
         )
 
 
-class TestRKernelNotebook:
-    def setup_method(self):
-        self.parser = CodeParser()
-        nb = {
-            "cells": [
-                {
-                    "cell_type": "code",
-                    "source": [
-                        "library(dplyr)\n",
-                    ],
-                    "outputs": [],
-                },
-                {
-                    "cell_type": "code",
-                    "source": [
-                        "clean_data <- function(df) {\n",
-                        "  df %>% filter(!is.na(value))\n",
-                        "}\n",
-                    ],
-                    "outputs": [],
-                },
-            ],
-            "metadata": {"kernelspec": {"language": "r"}},
-            "nbformat": 4,
-        }
-        source = json.dumps(nb).encode("utf-8")
-        self.nodes, self.edges = self.parser.parse_bytes(
-            Path("analysis.ipynb"), source,
-        )
-
-    def test_r_kernel_not_skipped(self):
-        """R-kernel notebooks should now be parsed, not skipped."""
-        assert len(self.nodes) >= 1
-        file_node = [n for n in self.nodes if n.kind == "File"][0]
-        assert file_node.language == "r"
-
-    @pytest.mark.xfail(reason="Requires R parser mappings from PR #43")
-    def test_r_kernel_detects_functions(self):
-        funcs = [n for n in self.nodes if n.kind == "Function"]
-        names = {f.name for f in funcs}
-        assert "clean_data" in names
-
-    @pytest.mark.xfail(reason="Requires R parser mappings from PR #43")
-    def test_r_kernel_detects_imports(self):
-        imports = [e for e in self.edges if e.kind == "IMPORTS_FROM"]
-        targets = {e.target for e in imports}
-        assert "dplyr" in targets
-
-
 class TestNotebookEdgeCases:
     def setup_method(self):
         self.parser = CodeParser()
@@ -431,7 +380,7 @@ class TestNotebookEdgeCases:
             ],
             "metadata": {
                 "kernelspec": {"language": "python"},
-                "language_info": {"name": "r"},
+                "language_info": {"name": "julia"},
             },
             "nbformat": 4,
         }
