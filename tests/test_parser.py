@@ -78,12 +78,6 @@ class TestCodeParser:
         )
         assert self.parser.detect_language(p) == "javascript"
 
-    def test_detect_shebang_ruby(self, tmp_path):
-        p = self._write_shebang_file(
-            tmp_path, "rake-task", "#!/usr/bin/env ruby\nputs 1\n",
-        )
-        assert self.parser.detect_language(p) == "ruby"
-
     def test_detect_shebang_with_trailing_flags(self, tmp_path):
         """``#!/bin/bash -e`` still maps to bash (flags ignored)."""
         p = self._write_shebang_file(

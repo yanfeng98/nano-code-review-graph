@@ -115,7 +115,7 @@ The action caches the `.code-review-graph/` directory (the SQLite graph
 database) with `actions/cache`:
 
 - **Key**: `code-review-graph-schema9-<runner.os>-<hashFiles(lockfiles)>`,
-  where the lockfile hash covers common Python/JS/Go/Rust/Ruby lockfiles
+  where the lockfile hash covers common Python/JS/Go/Rust lockfiles
   (`uv.lock`, `poetry.lock`, `requirements*.txt`, `package-lock.json`,
   `go.sum`, `Cargo.lock`, …).
 - **Schema segment**: `schema9` tracks the database schema version

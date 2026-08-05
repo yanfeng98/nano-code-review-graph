@@ -656,7 +656,7 @@ def d9():
         ("Web",        ["TypeScript", "JavaScript", "TSX", "Vue", "Svelte"],         BLU, BLU_BG),
         ("Backend",    ["Python", "Go", "Rust"],                     GRN, GRN_BG),
         ("Systems",    ["C", "C++", "Zig"],                           ORG, ORG_BG),
-        ("Scripting",  ["Ruby", "Lua", "Julia"],                         YLW, YLW_BG),
+        ("Scripting",  ["Lua", "Julia"],                                 YLW, YLW_BG),
         ("Shells",     ["Bash"],                                       RED, RED_BG),
         ("Domain",     ["SQL", "Verilog", "Nix"],            GRY, GRY_BG),
         ("Other",      ["ReScript", "Jupyter/.ipynb"],                               PRP, PRP_BG),

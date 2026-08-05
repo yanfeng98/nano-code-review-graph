@@ -140,7 +140,7 @@ DEFAULT_IGNORE_PATTERNS = [
     "/target/**",
     "/bin/**",
     "/obj/**",
-    # Ruby / Bundler
+    # Bundler
     "**/.bundle/**",
     # AWS CDK
     "**/cdk.out/**",

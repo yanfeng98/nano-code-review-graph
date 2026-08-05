@@ -32,7 +32,7 @@ def compute_naive_tokens(repo_root: Path) -> int:
     total = 0
     exts = (
         ".py", ".js", ".ts", ".go", ".rs",
-        ".c", ".cpp", ".rb",
+        ".c", ".cpp",
     )
     for ext in exts:
         for f in repo_root.rglob(f"*{ext}"):

@@ -655,7 +655,6 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".tsx": "tsx",
     ".go": "go",
     ".rs": "rust",
-    ".rb": "ruby",
     ".cpp": "cpp",
     ".cc": "cpp",
     ".cxx": "cpp",
@@ -750,8 +749,7 @@ SHEBANG_INTERPRETER_TO_LANGUAGE: dict[str, str] = {
     # JavaScript via Node
     "node": "javascript",
     "nodejs": "javascript",
-    # Ruby / Lua
-    "ruby": "ruby",
+    # Lua
     "lua": "lua",
 }
 
@@ -831,7 +829,6 @@ _CLASS_TYPES: dict[str, list[str]] = {
     "rust": ["struct_item", "enum_item", "trait_item"],
     "c": ["struct_specifier", "type_definition"],
     "cpp": ["class_specifier", "struct_specifier"],
-    "ruby": ["class", "module"],
     "lua": [],  # Lua has no class keyword; table-based OOP handled via constructs handler
     "luau": ["type_definition"],  # Luau type aliases; table-based OOP via constructs handler
     "bash": [],  # Shell has no classes
@@ -881,7 +878,6 @@ _FUNCTION_TYPES: dict[str, list[str]] = {
     "rust": ["function_item", "function_signature_item"],
     "c": ["function_definition"],
     "cpp": ["function_definition", "declaration", "field_declaration"],
-    "ruby": ["method", "singleton_method"],
     "lua": ["function_declaration"],
     "luau": ["function_declaration"],
     # Bash: only function_definition; everything else is a command.
@@ -916,7 +912,6 @@ _IMPORT_TYPES: dict[str, list[str]] = {
     "rust": ["use_declaration"],
     "c": ["preproc_include"],
     "cpp": ["preproc_include"],
-    "ruby": ["call"],  # require/require_relative
     # Lua/Luau: require() is a function_call, handled via _extract_lua_constructs
     "lua": [],
     "luau": [],
@@ -949,7 +944,6 @@ _CALL_TYPES: dict[str, list[str]] = {
     "rust": ["call_expression", "macro_invocation"],
     "c": ["call_expression"],
     "cpp": ["call_expression"],
-    "ruby": ["call", "method_call"],
     "lua": ["function_call"],
     "luau": ["function_call"],
     # Bash: every command invocation is a "command" node.
@@ -5478,10 +5472,10 @@ class CodeParser:
                     child, language, source, file_path, edges,
                 ):
                     continue
-                # Node type is shared between imports and calls (e.g. Ruby
-                # `call` covers both `require` and method invocation). If it
-                # was not an import, fall through to call extraction below
-                # rather than dropping it.
+                # A node type can be shared between imports and calls (e.g.
+                # a custom language mapping one node type to both). If it was
+                # not an import, fall through to call extraction below rather
+                # than dropping it.
 
             # --- Calls ---
             if node_type in call_types:
@@ -7965,11 +7959,10 @@ class CodeParser:
     ) -> bool:
         """Extract import edges from an import statement node.
 
-        Returns True if at least one import edge was emitted. Some grammars
-        reuse a single node type for both imports and ordinary calls (e.g.
-        Ruby's ``call`` covers both ``require``/``require_relative`` and method
-        invocation). Returning False lets the dispatcher fall through to call
-        extraction instead of silently dropping the call. See: Ruby call graph.
+        Returns True if at least one import edge was emitted. A grammar can
+        reuse a single node type for both imports and ordinary calls.
+        Returning False lets the dispatcher fall through to call extraction
+        instead of silently dropping the call.
         """
         imports = self._extract_import(child, language, source)
         for imp_target in imports:
@@ -11082,12 +11075,6 @@ class CodeParser:
                 if child.type in ("system_lib_string", "string_literal"):
                     val = child.text.decode("utf-8", errors="replace").strip("<>\"")
                     imports.append(val)
-        elif language == "ruby":
-            # require 'module' or require_relative 'path'
-            if "require" in text:
-                match = re.search(r"""['"](.*?)['"]""", text)
-                if match:
-                    imports.append(match.group(1))
         elif language == "verilog":
             # import pkg::*; or import pkg::item;
             # Node structure: package_import_declaration > package_import_item > package_identifier
@@ -11220,16 +11207,6 @@ class CodeParser:
         # Julia broadcast call: ``sin.(x)`` — same structure as
         # call_expression (first child is identifier or field_expression)
         # so the generic paths below handle it.
-
-        # Ruby: `call` nodes expose a `method` field for both receiver calls
-        # (`Bar.new.run` -> `run`) and paren calls (`helper_method(1)` ->
-        # `helper_method`). `require`/`require_relative` are handled earlier as
-        # imports, so they never reach here. Bare implicit-self calls with no
-        # parens parse as plain `identifier` (not `call`) and are not captured.
-        if language == "ruby" and node.type in ("call", "method_call"):
-            method_node = node.child_by_field_name("method")
-            if method_node is not None:
-                return method_node.text.decode("utf-8", errors="replace")
 
         # Bash: `command` node's first child is the command name.
         if language == "bash" and node.type == "command":
