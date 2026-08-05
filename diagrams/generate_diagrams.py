@@ -658,7 +658,7 @@ def d9():
         ("Systems",    ["C", "C++", "Zig"],                           ORG, ORG_BG),
         ("Scripting",  ["Ruby", "Perl", "Lua", "Julia"],                 YLW, YLW_BG),
         ("Shells",     ["Bash"],                                       RED, RED_BG),
-        ("Domain",     ["Solidity", "SQL", "Verilog", "Nix"],            GRY, GRY_BG),
+        ("Domain",     ["SQL", "Verilog", "Nix"],            GRY, GRY_BG),
         ("Other",      ["ReScript", "Jupyter/.ipynb"],                               PRP, PRP_BG),
     ]
 

@@ -663,7 +663,6 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".h": "c",
     ".hpp": "cpp",
     ".hh": "cpp",
-    ".sol": "solidity",
     ".vue": "vue",
     ".mjs": "javascript",
     ".astro": "typescript",
@@ -841,11 +840,6 @@ _CLASS_TYPES: dict[str, list[str]] = {
     "cpp": ["class_specifier", "struct_specifier"],
     "ruby": ["class", "module"],
     "perl": ["package_statement", "class_statement", "role_statement"],
-    "solidity": [
-        "contract_declaration", "interface_declaration", "library_declaration",
-        "struct_declaration", "enum_declaration", "error_declaration",
-        "user_defined_type_definition",
-    ],
     "lua": [],  # Lua has no class keyword; table-based OOP handled via constructs handler
     "luau": ["type_definition"],  # Luau type aliases; table-based OOP via constructs handler
     "bash": [],  # Shell has no classes
@@ -901,14 +895,6 @@ _FUNCTION_TYPES: dict[str, list[str]] = {
     "cpp": ["function_definition", "declaration", "field_declaration"],
     "ruby": ["method", "singleton_method"],
     "perl": ["subroutine_declaration_statement", "method_declaration_statement"],
-    # Solidity: events and modifiers use kind="Function" because the graph
-    # schema has no dedicated kind for them.  State variables are also modeled
-    # as Function nodes (public ones auto-generate getters) and distinguished
-    # via extra["solidity_kind"].
-    "solidity": [
-        "function_definition", "constructor_definition", "modifier_definition",
-        "event_definition", "fallback_receive_definition",
-    ],
     "lua": ["function_declaration"],
     "luau": ["function_declaration"],
     # Bash: only function_definition; everything else is a command.
@@ -948,7 +934,6 @@ _IMPORT_TYPES: dict[str, list[str]] = {
     "cpp": ["preproc_include"],
     "ruby": ["call"],  # require/require_relative
     "perl": ["use_statement", "require_expression"],
-    "solidity": ["import_directive"],
     # Lua/Luau: require() is a function_call, handled via _extract_lua_constructs
     "lua": [],
     "luau": [],
@@ -989,7 +974,6 @@ _CALL_TYPES: dict[str, list[str]] = {
         "function_call_expression", "method_call_expression",
         "ambiguous_function_call_expression",
     ],
-    "solidity": ["call_expression"],
     "lua": ["function_call"],
     "luau": ["function_call"],
     # Bash: every command invocation is a "command" node.
@@ -5577,13 +5561,6 @@ class CodeParser:
                 import_map, defined_names,
             )
 
-            # --- Solidity-specific constructs ---
-            if language == "solidity" and self._extract_solidity_constructs(
-                child, node_type, source, file_path, nodes, edges,
-                enclosing_class, enclosing_func,
-            ):
-                continue
-
             # Recurse for other node types
             self._extract_from_tree(
                 child, source, language, file_path, nodes, edges,
@@ -8238,23 +8215,6 @@ class CodeParser:
                 extra={"julia_qualified_def": True},
             ))
 
-        # Solidity: modifier invocations on functions -> CALLS edges
-        if language == "solidity":
-            for sub in child.children:
-                if sub.type == "modifier_invocation":
-                    for ident in sub.children:
-                        if ident.type == "identifier":
-                            edges.append(EdgeInfo(
-                                kind="CALLS",
-                                source=qualified,
-                                target=ident.text.decode(
-                                    "utf-8", errors="replace",
-                                ),
-                                file_path=file_path,
-                                line=sub.start_point[0] + 1,
-                            ))
-                            break
-
         # Recurse to find calls inside the function
         recursive_class = (
             parent_name if language in ("julia", "cpp") else enclosing_class
@@ -8315,8 +8275,8 @@ class CodeParser:
 
         Returns True if the child was fully handled (a test runner call or a
         statically unreachable Python call that should skip default
-        recursion). Returns False if the caller should continue to Solidity
-        handling and default recursion.
+        recursion). Returns False if the caller should continue to default
+        recursion.
         """
         if (
             language == "python"
@@ -8975,173 +8935,6 @@ class CodeParser:
                     line=ch.start_point[0] + 1,
                 )
 
-    def _extract_solidity_constructs(
-        self,
-        child,
-        node_type: str,
-        source: bytes,
-        file_path: str,
-        nodes: list[NodeInfo],
-        edges: list[EdgeInfo],
-        enclosing_class: Optional[str],
-        enclosing_func: Optional[str],
-    ) -> bool:
-        """Handle Solidity-specific AST constructs (emit, state vars, etc.).
-
-        Returns True if the child was fully handled and should skip
-        default recursion.
-        """
-        # Emit statements: emit EventName(...) -> CALLS edge.
-        # Module-scope emits attribute to the File node.
-        if node_type == "emit_statement":
-            for sub in child.children:
-                if sub.type == "expression":
-                    for ident in sub.children:
-                        if ident.type == "identifier":
-                            caller = (
-                                self._qualify(
-                                    enclosing_func, file_path,
-                                    enclosing_class,
-                                )
-                                if enclosing_func
-                                else file_path
-                            )
-                            edges.append(EdgeInfo(
-                                kind="CALLS",
-                                source=caller,
-                                target=ident.text.decode(
-                                    "utf-8", errors="replace",
-                                ),
-                                file_path=file_path,
-                                line=child.start_point[0] + 1,
-                            ))
-            # emit_statement falls through to default recursion
-            return False
-
-        # State variable declarations -> Function nodes (public ones
-        # auto-generate getters, and all are critical for reviews)
-        if node_type == "state_variable_declaration" and enclosing_class:
-            var_name = None
-            var_visibility = None
-            var_mutability = None
-            var_type = None
-            for sub in child.children:
-                if sub.type == "identifier":
-                    var_name = sub.text.decode(
-                        "utf-8", errors="replace",
-                    )
-                elif sub.type == "visibility":
-                    var_visibility = sub.text.decode(
-                        "utf-8", errors="replace",
-                    )
-                elif sub.type == "type_name":
-                    var_type = sub.text.decode(
-                        "utf-8", errors="replace",
-                    )
-                elif sub.type in ("constant", "immutable"):
-                    var_mutability = sub.type
-            if var_name:
-                qualified = self._qualify(
-                    var_name, file_path, enclosing_class,
-                )
-                nodes.append(NodeInfo(
-                    kind="Function",
-                    name=var_name,
-                    file_path=file_path,
-                    line_start=child.start_point[0] + 1,
-                    line_end=child.end_point[0] + 1,
-                    language="solidity",
-                    parent_name=enclosing_class,
-                    return_type=var_type,
-                    modifiers=var_visibility,
-                    extra={
-                        "solidity_kind": "state_variable",
-                        "mutability": var_mutability,
-                    },
-                ))
-                edges.append(EdgeInfo(
-                    kind="CONTAINS",
-                    source=self._qualify(
-                        enclosing_class, file_path, None,
-                    ),
-                    target=qualified,
-                    file_path=file_path,
-                    line=child.start_point[0] + 1,
-                ))
-                return True
-            return False
-
-        # File-level and contract-level constant declarations
-        if node_type == "constant_variable_declaration":
-            var_name = None
-            var_type = None
-            for sub in child.children:
-                if sub.type == "identifier":
-                    var_name = sub.text.decode(
-                        "utf-8", errors="replace",
-                    )
-                elif sub.type == "type_name":
-                    var_type = sub.text.decode(
-                        "utf-8", errors="replace",
-                    )
-            if var_name:
-                qualified = self._qualify(
-                    var_name, file_path, enclosing_class,
-                )
-                nodes.append(NodeInfo(
-                    kind="Function",
-                    name=var_name,
-                    file_path=file_path,
-                    line_start=child.start_point[0] + 1,
-                    line_end=child.end_point[0] + 1,
-                    language="solidity",
-                    parent_name=enclosing_class,
-                    return_type=var_type,
-                    extra={"solidity_kind": "constant"},
-                ))
-                container = (
-                    self._qualify(enclosing_class, file_path, None)
-                    if enclosing_class
-                    else file_path
-                )
-                edges.append(EdgeInfo(
-                    kind="CONTAINS",
-                    source=container,
-                    target=qualified,
-                    file_path=file_path,
-                    line=child.start_point[0] + 1,
-                ))
-                return True
-            return False
-
-        # Using directives: using LibName for Type -> DEPENDS_ON edge
-        if node_type == "using_directive":
-            lib_name = None
-            for sub in child.children:
-                if sub.type == "type_alias":
-                    for ident in sub.children:
-                        if ident.type == "identifier":
-                            lib_name = ident.text.decode(
-                                "utf-8", errors="replace",
-                            )
-            if lib_name:
-                source_name = (
-                    self._qualify(
-                        enclosing_class, file_path, None,
-                    )
-                    if enclosing_class
-                    else file_path
-                )
-                edges.append(EdgeInfo(
-                    kind="DEPENDS_ON",
-                    source=source_name,
-                    target=lib_name,
-                    file_path=file_path,
-                    line=child.start_point[0] + 1,
-                ))
-            return True
-
-        return False
 
     def _rust_path_segments(self, node) -> list[str]:
         """Return semantic Rust path segments while discarding type arguments."""
@@ -10884,14 +10677,6 @@ class CodeParser:
 
     def _get_name(self, node, language: str, kind: str) -> Optional[str]:
         """Extract the name from a class/function definition node."""
-        # Solidity: constructor and receive/fallback have no identifier child
-        if language == "solidity":
-            if node.type == "constructor_definition":
-                return "constructor"
-            if node.type == "fallback_receive_definition":
-                for child in node.children:
-                    if child.type in ("receive", "fallback"):
-                        return child.text.decode("utf-8", errors="replace")
         # Lua/Luau: function_declaration names may be dot_index_expression or
         # method_index_expression (e.g. function Animal.new() / Animal:speak()).
         # Return only the method name; the table name is used as parent_name
@@ -11426,15 +11211,6 @@ class CodeParser:
             )
             if child.type in param_types:
                 return child.text.decode("utf-8", errors="replace")
-        # Solidity: parameters are direct children between ( and )
-        if language == "solidity":
-            params = [
-                c.text.decode("utf-8", errors="replace")
-                for c in node.children
-                if c.type == "parameter"
-            ]
-            if params:
-                return f"({', '.join(params)})"
         return None
 
     def _get_return_type(self, node, language: str, source: bytes) -> Optional[str]:
@@ -11488,15 +11264,6 @@ class CodeParser:
                             if ident.type in ("type_identifier", "nested_type_identifier"):
                                 bases.append(ident.text.decode("utf-8", errors="replace"))
                                 break
-        elif language == "solidity":
-            # contract Foo is Bar, Baz { ... }
-            for child in node.children:
-                if child.type == "inheritance_specifier":
-                    for sub in child.children:
-                        if sub.type == "user_defined_type":
-                            for ident in sub.children:
-                                if ident.type == "identifier":
-                                    bases.append(ident.text.decode("utf-8", errors="replace"))
         elif language == "go":
             # Embedded structs / interface composition
             for child in node.children:
@@ -11594,13 +11361,6 @@ class CodeParser:
                 if child.type in ("system_lib_string", "string_literal"):
                     val = child.text.decode("utf-8", errors="replace").strip("<>\"")
                     imports.append(val)
-        elif language == "solidity":
-            # import "path/to/file.sol" or import {Symbol} from "path"
-            for child in node.children:
-                if child.type == "string":
-                    val = child.text.decode("utf-8", errors="replace").strip('"')
-                    if val:
-                        imports.append(val)
         elif language == "ruby":
             # require 'module' or require_relative 'path'
             if "require" in text:
@@ -11766,10 +11526,6 @@ class CodeParser:
             if first.type == "simple_identifier":
                 return first.text.decode("utf-8", errors="replace")
             return None
-
-        # Solidity wraps call targets in an 'expression' node – unwrap it
-        if language == "solidity" and first.type == "expression" and first.children:
-            first = first.children[0]
 
         # Perl method_call_expression: $obj->method() — find the 'method' child
         if language == "perl" and node.type == "method_call_expression":
