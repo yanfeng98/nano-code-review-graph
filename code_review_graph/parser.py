@@ -666,7 +666,6 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".mjs": "javascript",
     ".astro": "typescript",
     ".lua": "lua",
-    ".luau": "luau",
     ".sh": "bash",
     ".bash": "bash",
     ".zsh": "bash",
@@ -830,7 +829,6 @@ _CLASS_TYPES: dict[str, list[str]] = {
     "c": ["struct_specifier", "type_definition"],
     "cpp": ["class_specifier", "struct_specifier"],
     "lua": [],  # Lua has no class keyword; table-based OOP handled via constructs handler
-    "luau": ["type_definition"],  # Luau type aliases; table-based OOP via constructs handler
     "bash": [],  # Shell has no classes
     # Nix: attrset bindings aren't "classes"; dispatched via
     # _extract_nix_constructs.
@@ -879,7 +877,6 @@ _FUNCTION_TYPES: dict[str, list[str]] = {
     "c": ["function_definition"],
     "cpp": ["function_definition", "declaration", "field_declaration"],
     "lua": ["function_declaration"],
-    "luau": ["function_declaration"],
     # Bash: only function_definition; everything else is a command.
     "bash": ["function_definition"],
     # Nix: `attrpath = expr;` bindings become Function nodes —
@@ -912,9 +909,8 @@ _IMPORT_TYPES: dict[str, list[str]] = {
     "rust": ["use_declaration"],
     "c": ["preproc_include"],
     "cpp": ["preproc_include"],
-    # Lua/Luau: require() is a function_call, handled via _extract_lua_constructs
+    # Lua: require() is a function_call, handled via _extract_lua_constructs
     "lua": [],
-    "luau": [],
     # Bash: source / . <file> is a command — handled in _extract_bash_source below.
     "bash": [],
     # Nix: `import ./x.nix`, `callPackage ./y.nix {}`, and flake
@@ -945,7 +941,6 @@ _CALL_TYPES: dict[str, list[str]] = {
     "c": ["call_expression"],
     "cpp": ["call_expression"],
     "lua": ["function_call"],
-    "luau": ["function_call"],
     # Bash: every command invocation is a "command" node.
     "bash": ["command"],
     # Nix: function application is ubiquitous; only import/callPackage
@@ -5309,8 +5304,8 @@ class CodeParser:
         for child in root.children:
             node_type = child.type
 
-            # --- Lua/Luau-specific constructs ---
-            if language in ("lua", "luau") and self._extract_lua_constructs(
+            # --- Lua-specific constructs ---
+            if language == "lua" and self._extract_lua_constructs(
                 child, node_type, source, language, file_path,
                 nodes, edges, enclosing_class, enclosing_func,
                 import_map, defined_names, _depth,
@@ -10398,11 +10393,11 @@ class CodeParser:
 
     def _get_name(self, node, language: str, kind: str) -> Optional[str]:
         """Extract the name from a class/function definition node."""
-        # Lua/Luau: function_declaration names may be dot_index_expression or
+        # Lua: function_declaration names may be dot_index_expression or
         # method_index_expression (e.g. function Animal.new() / Animal:speak()).
         # Return only the method name; the table name is used as parent_name
         # in _extract_lua_constructs.
-        if language in ("lua", "luau") and node.type == "function_declaration":
+        if language == "lua" and node.type == "function_declaration":
             for child in node.children:
                 if child.type in ("dot_index_expression", "method_index_expression"):
                     # Last identifier child is the method name
@@ -11229,9 +11224,9 @@ class CodeParser:
         if first.type in ("identifier", "simple_identifier"):
             return first.text.decode("utf-8", errors="replace")
 
-        # Lua/Luau: dot_index_expression (obj.method) and method_index_expression
+        # Lua: dot_index_expression (obj.method) and method_index_expression
         # (obj:method) — extract the rightmost identifier as the call name.
-        if language in ("lua", "luau") and first.type in (
+        if language == "lua" and first.type in (
             "dot_index_expression", "method_index_expression",
         ):
             for child in reversed(first.children):
