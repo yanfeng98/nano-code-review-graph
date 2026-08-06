@@ -36,7 +36,7 @@
 - **Graph lookup correctness**: Review, impact, and file-summary tools resolve user-facing paths to stored graph paths; `callers_of` includes cross-file callers even when same-file callers exist.
 - **Install/runtime reliability**: Generated Codex/Claude hooks drain stdin, bundled docs are available from wheels, missing local embeddings report unavailable status, and `.svn` roots pass validation.
 - **CLI reliability**: `build --skip-postprocess` and `update --skip-flows` honor the requested post-processing level.
-- **Broad parser surface**: Python, JavaScript/TypeScript/TSX, Go, Rust, C/C++, shell scripts, Zig, Julia, ReScript, Nix, Verilog/SystemVerilog, Terraform/OpenTofu structure (`.tf`; generic `.hcl` files are recognized as file nodes), Ansible playbooks/roles/tasks, Vue/Svelte SFCs, Astro files parsed through the TypeScript parser, and Jupyter/Databricks notebooks. Generic YAML is not treated as source code.
+- **Broad parser surface**: Python, JavaScript/TypeScript/TSX, Go, Rust, C/C++, shell scripts, Zig, Julia, ReScript, Nix, Verilog/SystemVerilog, Ansible playbooks/roles/tasks, Vue/Svelte SFCs, Astro files parsed through the TypeScript parser, and Jupyter/Databricks notebooks. Generic YAML is not treated as source code.
 - **Local-first by design**: SQLite graph storage remains local, with no telemetry and no cloud-default behavior.
 
 ## v2.0.0

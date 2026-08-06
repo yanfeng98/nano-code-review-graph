@@ -97,17 +97,6 @@ def _run_rescript_resolver(store: GraphStore) -> Optional[dict]:
         logger.warning("ReScript cross-module resolver failed: %s", exc)
         return None
 
-
-def _run_hcl_resolver(store: GraphStore) -> Optional[dict]:
-    """Run Terraform module-scope resolution without failing a build."""
-    try:
-        from .hcl_resolver import resolve_hcl_module_references
-        return resolve_hcl_module_references(store)
-    except Exception as exc:  # noqa: BLE001 - best-effort post-pass
-        logger.warning("Terraform/HCL resolver failed: %s", exc)
-        return None
-
-
 def _run_scoped_resolver(store: GraphStore) -> Optional[dict]:
     """Resolve static/scoped ``Class::method`` calls without failing a build."""
     try:
@@ -1091,7 +1080,6 @@ def full_build(
 
     python_stats = _run_python_resolver(store)
     rescript_stats = _run_rescript_resolver(store)
-    hcl_stats = _run_hcl_resolver(store)
     scoped_stats = _run_scoped_resolver(store)
 
     return {
@@ -1102,7 +1090,6 @@ def full_build(
         "errors": errors,
         "python_resolution": python_stats,
         "rescript_resolution": rescript_stats,
-        "hcl_resolution": hcl_stats,
         "scoped_resolution": scoped_stats,
     }
 
@@ -1136,7 +1123,6 @@ def incremental_update(
             "identity_rebuild": True,
             "python_resolution": rebuilt["python_resolution"],
             "rescript_resolution": rebuilt["rescript_resolution"],
-            "hcl_resolution": rebuilt["hcl_resolution"],
         }
 
     # Determine changed files
@@ -1265,8 +1251,6 @@ def incremental_update(
         _run_rescript_resolver(store) if rescript_changed else None
     )
 
-    hcl_changed = any(rp.endswith((".tf", ".hcl")) for rp in all_files)
-    hcl_stats = _run_hcl_resolver(store) if hcl_changed else None
     scoped_changed = any(rp.endswith(".rs") for rp in all_files)
     scoped_stats = _run_scoped_resolver(store) if scoped_changed else None
 
@@ -1280,7 +1264,6 @@ def incremental_update(
         "errors": errors,
         "python_resolution": python_stats,
         "rescript_resolution": rescript_stats,
-        "hcl_resolution": hcl_stats,
         "scoped_resolution": scoped_stats,
     }
 

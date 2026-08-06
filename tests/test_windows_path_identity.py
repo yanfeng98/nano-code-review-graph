@@ -64,32 +64,6 @@ def test_julia_identity_uses_forward_slashes_for_windows_paths():
     assert all(e.file_path == "/repo/case.jl" for e in edges)
 
 
-def test_hcl_references_use_forward_slashes_for_windows_paths():
-    """The test_hcl_parser.py failure from issue #774, driven via a Windows path."""
-    source = b"""\
-variable "items" {}
-variable "enabled" {}
-
-locals {
-  selected = [
-    for item in var.items : item.name
-    if var.enabled
-  ]
-}
-"""
-    _, edges = CodeParser().parse_bytes(PureWindowsPath("infra") / "locals.tf", source)
-
-    targets = {
-        e.target
-        for e in edges
-        if e.kind == "REFERENCES" and e.source == "infra/locals.tf::local.selected"
-    }
-    assert targets == {
-        "infra/locals.tf::var.items",
-        "infra/locals.tf::var.enabled",
-    }
-
-
 def test_python_identity_uses_forward_slashes_for_windows_paths():
     nodes, edges = CodeParser().parse_bytes(
         PureWindowsPath(r"C:\repo\pkg\mod.py"),
