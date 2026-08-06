@@ -55,16 +55,6 @@ _SQL_TABLE_RE = re.compile(
     re.IGNORECASE,
 )
 
-# dbt model dependencies: {{ ref('model') }}, {{ ref('package', 'model') }}
-# and {{ source('source_name', 'table') }}. String-literal arguments only —
-# dynamic ref() calls cannot be resolved statically.
-_DBT_REF_RE = re.compile(
-    r"\{\{-?\s*(ref|source)\s*\(\s*"
-    r"['\"]([^'\"]+)['\"]"
-    r"(?:\s*,\s*['\"]([^'\"]+)['\"])?"
-    r"\s*\)",
-)
-
 _PYTHON_STAR_CACHE_MAX = 15_000
 _PYTHON_STAR_EXPORT_CACHE: dict[tuple[str, int, int], dict[str, str]] = {}
 _PYTHON_STAR_EXPORT_CACHE_LOCK = threading.RLock()
@@ -435,16 +425,6 @@ def _is_in_static_dead_guard(node) -> bool:
 
     return False
 
-
-# SQL keywords that can appear after FROM/JOIN but are NOT table names.
-_SQL_KEYWORDS: frozenset[str] = frozenset({
-    "SELECT", "WHERE", "GROUP", "ORDER", "HAVING", "LIMIT", "OFFSET",
-    "UNION", "INTERSECT", "EXCEPT", "AS", "ON", "USING", "SET",
-    "VALUES", "DEFAULT", "NULL", "TRUE", "FALSE",
-    "INNER", "OUTER", "LEFT", "RIGHT", "FULL", "CROSS", "NATURAL",
-    "LATERAL", "RECURSIVE", "ONLY", "WITH",
-})
-
 logger = logging.getLogger(__name__)
 
 _DEFAULT_PARSER_LOAD_TIMEOUT_SECONDS = 5.0
@@ -685,7 +665,6 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".svh": "verilog",
     ".v": "verilog",
     ".vh": "verilog",
-    ".sql": "sql",
     ".tf": "hcl",
     ".hcl": "hcl",
     ".properties": "properties",
@@ -839,8 +818,6 @@ _CLASS_TYPES: dict[str, list[str]] = {
         "class_declaration",
         "package_declaration",
     ],
-    # SQL: CREATE TABLE / CREATE VIEW are handled via _parse_sql dispatch.
-    "sql": [],
     # HCL/Terraform: all constructs are blocks; dispatched via
     # _extract_hcl_constructs.
     "hcl": [],
@@ -886,8 +863,6 @@ _FUNCTION_TYPES: dict[str, list[str]] = {
         "macro_definition",
     ],
     "verilog": ["task_declaration", "function_declaration", "always_construct"],
-    # SQL: CREATE FUNCTION / CREATE PROCEDURE handled via _parse_sql dispatch.
-    "sql": [],
     # HCL/Terraform: dispatched via _extract_hcl_constructs.
     "hcl": [],
 }
@@ -914,8 +889,6 @@ _IMPORT_TYPES: dict[str, list[str]] = {
     # Julia: import/using are import_statement nodes.
     "julia": ["import_statement", "using_statement"],
     "verilog": ["package_import_declaration"],
-    # SQL: table references extracted as IMPORTS_FROM via _parse_sql dispatch.
-    "sql": [],
     # HCL/Terraform: module source attributes become IMPORTS_FROM via
     # _extract_hcl_constructs.
     "hcl": [],
@@ -952,8 +925,6 @@ _CALL_TYPES: dict[str, list[str]] = {
         "subroutine_call",
         "system_tf_call",
     ],
-    # SQL: no call edges extracted (grammar too unreliable for procedure calls).
-    "sql": [],
     # HCL/Terraform: resource references dispatched via _extract_hcl_constructs.
     "hcl": [],
 }
@@ -1682,7 +1653,6 @@ class CodeParser:
 
     def __init__(self, repo_root: Optional[Path] = None) -> None:
         self._repo_root = Path(repo_root).resolve() if repo_root is not None else None
-        self._dbt_model_paths_cache: dict[Path, tuple[Path, ...]] = {}
         self._parsers: dict[str, object] = {}
         self._module_file_cache: dict[str, Optional[str]] = {}
         # Absolute file paths to treat as absent during import resolution.
@@ -1908,11 +1878,6 @@ class CodeParser:
         # ReScript: regex-based parser (no tree-sitter grammar bundled).
         if language == "rescript":
             return self._parse_rescript(path, source)
-
-        # SQL: dedicated parser — tree-sitter for tables/views/functions +
-        # regex fallback for CREATE PROCEDURE (unsupported by the grammar).
-        if language == "sql":
-            return self._parse_sql(path, source)
 
         # Ansible YAML: path heuristic promoted to "ansible".
         if language == "ansible":
@@ -3078,323 +3043,6 @@ class CodeParser:
                     ))
 
         return nodes, edges
-
-    # ------------------------------------------------------------------
-    # SQL parser
-    # ------------------------------------------------------------------
-
-    # Regex for CREATE PROCEDURE — tree-sitter SQL grammar emits an ERROR node
-    # for this statement, so we fall back to a regex scan.
-    _SQL_PROC_RE = re.compile(
-        r"CREATE\s+(?:OR\s+REPLACE\s+)?PROCEDURE\s+(\w+(?:\.\w+)*)",
-        re.IGNORECASE,
-    )
-
-    # Named DDL statements supported by tree-sitter-sql.
-    _SQL_DDL_NODE_TYPES = frozenset({
-        "create_table",
-        "create_view",
-        "create_function",
-    })
-
-    def _parse_sql(
-        self, path: Path, source: bytes,
-    ) -> tuple[list[NodeInfo], list[EdgeInfo]]:
-        """Parse a `.sql` file.
-
-        Extracts:
-        - Tables (CREATE TABLE) → Class nodes with extra["sql_kind"]="table"
-        - Views  (CREATE VIEW)  → Class nodes with extra["sql_kind"]="view"
-        - Functions (CREATE FUNCTION) → Function nodes with extra["sql_kind"]="function"
-        - Procedures (CREATE PROCEDURE, regex fallback) → Function nodes with
-          extra["sql_kind"]="procedure"
-
-        Data dependencies (FROM/JOIN table references) are recorded as
-        IMPORTS_FROM edges so the impact-radius query can follow them.
-
-        dbt models use a dedicated extraction instead: one Class node per
-        model, named after the file stem, with IMPORTS_FROM edges from the
-        Jinja dependency calls. Within a dbt project, model membership comes
-        from ``model-paths`` in ``dbt_project.yml``; without project context,
-        a ``ref()`` / ``source()`` call remains a best-effort content signal.
-        """
-        text = source.decode("utf-8", errors="replace")
-        file_path_str = normalize_file_path(path)
-        test_file = _is_test_file(file_path_str)
-
-        nodes: list[NodeInfo] = []
-        edges: list[EdgeInfo] = []
-
-        nodes.append(NodeInfo(
-            kind="File",
-            name=file_path_str,
-            file_path=file_path_str,
-            line_start=1,
-            line_end=text.count("\n") + 1,
-            language="sql",
-            is_test=test_file,
-        ))
-
-        # --- dbt model pass ---
-        # A dbt model has no DDL (dbt wraps the SELECT at build time), its
-        # dependencies live in Jinja calls the FROM/JOIN regex cannot see,
-        # and the plain-SQL passes below would only pick up CTE names as
-        # phantom IMPORTS_FROM targets. Handle it separately and skip them.
-        dbt_refs = list(_DBT_REF_RE.finditer(text))
-        dbt_model_path = self._is_dbt_model_path(path)
-        if dbt_model_path is True or (dbt_model_path is None and dbt_refs):
-            self._extract_dbt_model(
-                path, text, dbt_refs, file_path_str, test_file, nodes, edges,
-            )
-            return nodes, edges
-
-        # --- tree-sitter pass ---
-        parser = self._get_parser("sql")
-        if parser:
-            tree = parser.parse(source)
-            self._walk_sql_tree(
-                tree.root_node, source, file_path_str, nodes, edges,
-            )
-
-        # --- regex fallback for CREATE PROCEDURE ---
-        for m in self._SQL_PROC_RE.finditer(text):
-            raw_name = m.group(1)
-            name = raw_name.split(".")[-1]  # strip schema prefix
-            line = text[: m.start()].count("\n") + 1
-            qualified = f"{file_path_str}::{name}"
-            nodes.append(NodeInfo(
-                kind="Function",
-                name=name,
-                file_path=file_path_str,
-                line_start=line,
-                line_end=line,
-                language="sql",
-                extra={"sql_kind": "procedure"},
-            ))
-            edges.append(EdgeInfo(
-                kind="CONTAINS",
-                source=file_path_str,
-                target=qualified,
-                file_path=file_path_str,
-                line=line,
-            ))
-
-        # --- table-reference pass (FROM / JOIN targets) ---
-        seen_refs: set[str] = set()
-        for m in _SQL_TABLE_RE.finditer(text):
-            raw_ref = m.group(1).strip("`")
-            ref = raw_ref.split(".")[-1]  # strip schema/db prefix
-            if ref and ref.upper() not in _SQL_KEYWORDS and ref not in seen_refs:
-                seen_refs.add(ref)
-                line = text[: m.start()].count("\n") + 1
-                edges.append(EdgeInfo(
-                    kind="IMPORTS_FROM",
-                    source=file_path_str,
-                    target=ref,
-                    file_path=file_path_str,
-                    line=line,
-                ))
-
-        return nodes, edges
-
-    def _is_dbt_model_path(self, path: Path) -> Optional[bool]:
-        """Return whether *path* belongs to a configured dbt model directory.
-
-        ``None`` means there is no enclosing dbt project in this parser's
-        repository context, so callers may use content sniffing as a fallback.
-        """
-        if self._repo_root is None:
-            return None
-
-        resolved_path = path.resolve()
-        try:
-            resolved_path.relative_to(self._repo_root)
-        except ValueError:
-            return None
-
-        directory = resolved_path.parent
-        while True:
-            project_file = directory / "dbt_project.yml"
-            if project_file.is_file():
-                return any(
-                    resolved_path.is_relative_to(model_path)
-                    for model_path in self._dbt_model_paths(project_file)
-                )
-            if directory == self._repo_root:
-                return None
-            parent = directory.parent
-            if parent == directory or not parent.is_relative_to(self._repo_root):
-                return None
-            directory = parent
-
-    def _dbt_model_paths(self, project_file: Path) -> tuple[Path, ...]:
-        """Read and cache the model directories for one dbt project."""
-        cached = self._dbt_model_paths_cache.get(project_file)
-        if cached is not None:
-            return cached
-
-        configured_paths: object = ["models"]
-        if _yaml is not None:
-            try:
-                config = _yaml.safe_load(project_file.read_text(encoding="utf-8"))
-                if isinstance(config, dict):
-                    configured_paths = config.get("model-paths", ["models"])
-            except (OSError, _yaml.YAMLError):
-                configured_paths = ["models"]
-
-        if isinstance(configured_paths, str):
-            configured_paths = [configured_paths]
-        if not isinstance(configured_paths, list):
-            configured_paths = ["models"]
-
-        model_paths = tuple(
-            (project_file.parent / configured_path).resolve()
-            for configured_path in configured_paths
-            if isinstance(configured_path, str) and configured_path
-        )
-        self._dbt_model_paths_cache[project_file] = model_paths
-        return model_paths
-
-    def _extract_dbt_model(
-        self,
-        path: Path,
-        text: str,
-        dbt_refs: list[re.Match],
-        file_path_str: str,
-        test_file: bool,
-        nodes: list[NodeInfo],
-        edges: list[EdgeInfo],
-    ) -> None:
-        """Extract a dbt model file: one Class node plus its Jinja deps.
-
-        dbt materializes each model file as a table or view named after the
-        file stem, so the stem is the node name.
-
-        - `{{ ref('m') }}` → IMPORTS_FROM target `m`
-        - `{{ ref('pkg', 'm') }}` → IMPORTS_FROM target `pkg.m`
-        - `{{ source('src', 'tbl') }}` → IMPORTS_FROM target `src.tbl`
-          (kept qualified: sources are external tables, not project models,
-          so the target must not collide with a model node of the same name)
-        """
-        model_name = path.stem
-        qualified = f"{file_path_str}::{model_name}"
-        nodes.append(NodeInfo(
-            kind="Class",
-            name=model_name,
-            file_path=file_path_str,
-            line_start=1,
-            line_end=text.count("\n") + 1,
-            language="sql",
-            is_test=test_file,
-            extra={"sql_kind": "dbt_model"},
-        ))
-        edges.append(EdgeInfo(
-            kind="CONTAINS",
-            source=file_path_str,
-            target=qualified,
-            file_path=file_path_str,
-            line=1,
-        ))
-
-        seen_targets: set[str] = set()
-        for m in dbt_refs:
-            func, first_arg, second_arg = m.group(1), m.group(2), m.group(3)
-            if func == "source":
-                if second_arg is None:
-                    continue  # source() requires two args; malformed call
-                target = f"{first_arg}.{second_arg}"
-            elif second_arg is not None:
-                target = f"{first_arg}.{second_arg}"
-            else:
-                target = first_arg
-            if target and target != model_name and target not in seen_targets:
-                seen_targets.add(target)
-                edges.append(EdgeInfo(
-                    kind="IMPORTS_FROM",
-                    source=file_path_str,
-                    target=target,
-                    file_path=file_path_str,
-                    line=text[: m.start()].count("\n") + 1,
-                ))
-
-    def _walk_sql_tree(
-        self,
-        node,
-        source: bytes,
-        file_path_str: str,
-        nodes: list[NodeInfo],
-        edges: list[EdgeInfo],
-    ) -> None:
-        """Recursively walk a tree-sitter SQL AST and extract DDL entities."""
-        if node.type in self._SQL_DDL_NODE_TYPES:
-            self._extract_sql_ddl(node, source, file_path_str, nodes, edges)
-            return  # don't recurse into the DDL body — no nested DDL expected
-        for child in node.children:
-            self._walk_sql_tree(child, source, file_path_str, nodes, edges)
-
-    def _extract_sql_ddl(
-        self,
-        node,
-        source: bytes,
-        file_path_str: str,
-        nodes: list[NodeInfo],
-        edges: list[EdgeInfo],
-    ) -> None:
-        """Extract a single CREATE TABLE / VIEW / FUNCTION DDL node."""
-        node_type = node.type
-        line_start = node.start_point[0] + 1
-        line_end = node.end_point[0] + 1
-
-        # Locate the identifier / object_reference child that holds the name.
-        name: Optional[str] = None
-        for child in node.children:
-            if child.type in ("identifier", "object_reference", "dotted_name"):
-                raw = source[child.start_byte: child.end_byte].decode("utf-8", errors="replace")
-                # Strip schema prefix (schema.name → name)
-                name = raw.strip("`\"").split(".")[-1]
-                break
-            # Some grammars nest: relation > object_reference > identifier
-            if child.type == "relation":
-                for gc in child.children:
-                    if gc.type in ("object_reference", "identifier"):
-                        raw = source[gc.start_byte: gc.end_byte].decode(
-                            "utf-8", errors="replace",
-                        )
-                        name = raw.strip("`\"").split(".")[-1]
-                        break
-                if name:
-                    break
-
-        if not name:
-            return
-
-        if node_type == "create_table":
-            kind = "Class"
-            sql_kind = "table"
-        elif node_type == "create_view":
-            kind = "Class"
-            sql_kind = "view"
-        else:  # create_function
-            kind = "Function"
-            sql_kind = "function"
-
-        qualified = f"{file_path_str}::{name}"
-        nodes.append(NodeInfo(
-            kind=kind,
-            name=name,
-            file_path=file_path_str,
-            line_start=line_start,
-            line_end=line_end,
-            language="sql",
-            extra={"sql_kind": sql_kind},
-        ))
-        edges.append(EdgeInfo(
-            kind="CONTAINS",
-            source=file_path_str,
-            target=qualified,
-            file_path=file_path_str,
-            line=line_start,
-        ))
 
     def _resolve_call_targets(
         self,
