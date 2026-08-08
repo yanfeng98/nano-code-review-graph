@@ -78,7 +78,7 @@ class TestJsconfigResolution:
             target = root / "src" / "composables" / "useThing.js"
             target.parent.mkdir(parents=True)
             target.write_text("export function useThing() {}\n", encoding="utf-8")
-            importer = root / "src" / "App.vue"
+            importer = root / "src" / "App.js"
             importer.write_text("import '@/composables/useThing'\n", encoding="utf-8")
 
             result = self.resolver.resolve_alias("@/composables/useThing", str(importer))

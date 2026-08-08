@@ -1,4 +1,4 @@
-"""Tests for Rust, C, C++, and Vue parsing."""
+"""Tests for Rust, C, and C++ parsing."""
 
 from pathlib import Path
 
@@ -132,40 +132,6 @@ class TestHhParsing:
     def test_finds_inheritance(self):
         inherits = [e for e in self.edges if e.kind == "INHERITS"]
         assert len(inherits) >= 1
-
-
-class TestVueParsing:
-    def setup_method(self):
-        self.parser = CodeParser()
-        self.nodes, self.edges = self.parser.parse_file(FIXTURES / "sample_vue.vue")
-
-    def test_detects_language(self):
-        assert self.parser.detect_language(Path("App.vue")) == "vue"
-
-    def test_finds_functions(self):
-        funcs = [n for n in self.nodes if n.kind == "Function"]
-        names = {f.name for f in funcs}
-        assert "increment" in names
-        assert "onSelectUser" in names
-        assert "fetchUsers" in names
-
-    def test_finds_imports(self):
-        imports = [e for e in self.edges if e.kind == "IMPORTS_FROM"]
-        targets = {e.target for e in imports}
-        assert "vue" in targets
-        assert "./UserList.vue" in targets
-
-    def test_finds_contains(self):
-        contains = [e for e in self.edges if e.kind == "CONTAINS"]
-        assert len(contains) >= 3
-
-    def test_nodes_have_vue_language(self):
-        for node in self.nodes:
-            assert node.language == "vue"
-
-    def test_finds_calls(self):
-        calls = [e for e in self.edges if e.kind == "CALLS"]
-        assert len(calls) >= 1
 
 
 class TestBashParsing:

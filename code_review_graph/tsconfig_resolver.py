@@ -2,8 +2,8 @@
 
 Resolves TypeScript path aliases (e.g., ``@/ -> src/``) declared in
 ``compilerOptions.paths`` so that ``IMPORTS_FROM`` edges can point to
-real file paths instead of raw alias strings. Plain-JS projects (Vue,
-Nuxt, Vite) declare the same aliases in ``jsconfig.json``, which shares
+real file paths instead of raw alias strings. Plain-JS projects (Nuxt,
+Vite) declare the same aliases in ``jsconfig.json``, which shares
 the ``compilerOptions`` schema, so it is handled by the same parser.
 """
 
@@ -18,7 +18,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # Extensions probed when resolving an alias target
-_PROBE_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".vue"]
+_PROBE_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx"]
 
 # Config filenames to look for when walking up the directory tree.
 # Order defines precedence within a directory: tsconfig.json wins over
