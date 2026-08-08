@@ -1,79 +1,75 @@
-# Code Review Graph — User Guide
+# Code Review Graph — 用户指南
 
-**Applies to:** v2.3.6
+**适用于：** v2.3.7
 
-## Installation
+## 安装
 
 ```bash
 pip install code-review-graph
-code-review-graph install    # auto-detects and configures all supported platforms
-code-review-graph build      # parse your codebase
+code-review-graph install    # 自动检测并配置所有受支持的 platform
+code-review-graph build      # 解析你的 codebase
 ```
 
-`install` detects which AI coding tools you have, writes the correct MCP configuration for each one, and installs platform-native hooks where supported. Restart your editor/tool after installing.
+`install` 会检测你已安装的 AI 编码工具，为每个工具写入正确的 MCP 配置，并在支持的地方安装 platform 原生的 hooks。安装后请重启你的编辑器/工具。
 
-To target a specific platform instead of auto-detecting all:
+若要针对特定 platform 而非自动检测全部：
 
 ```bash
 code-review-graph install --platform codex
-code-review-graph install --platform cursor
 code-review-graph install --platform claude-code
-code-review-graph install --platform codebuddy
+code-review-graph install --platform opencode
 ```
 
-### Supported Platforms
+### 受支持的 Platforms
 
 | Platform | Config file |
 |----------|-------------|
 | **Codex** | `~/.codex/config.toml` + `~/.codex/hooks.json` |
 | **Claude Code** | `.mcp.json` + `.claude/settings.json` |
-| **OpenCode** | `opencode.jsonc` (preferred) or `opencode.json` |
+| **OpenCode** | `opencode.jsonc`（首选）或 `opencode.json` |
 
-## Core Workflow
+## 核心工作流
 
-### 1. Build the graph (first time only)
+### 1. 构建 graph（仅首次）
 ```
 /code-review-graph:build-graph
 ```
-Parses your entire codebase. Takes ~10s for 500 files.
+解析你的整个 codebase。500 个文件约需 10 秒。
 
-### 2. Review changes (daily use)
+### 2. 审查变更（日常使用）
 ```
 /code-review-graph:review-delta
 ```
-Reviews only files changed since last commit plus the graph-derived impact radius. Relevant review and impact responses include compact estimated `context_savings` metadata. Across the 6 benchmark repositories, graph queries use ~82x fewer tokens per question (median; range 38x–528x) than reading the whole corpus — see the [README benchmarks](../README.md#benchmarks) and [REPRODUCING.md](REPRODUCING.md) for the methodology.
+仅审查自上次 commit 以来变更的文件，再加上 graph 衍生的 impact radius。相关的 review 和 impact 响应中包含紧凑的估算 `context_savings` 元数据。在 5 个 benchmark 仓库中，graph 查询每个问题使用的 token 比阅读整个语料库少约 71 倍（中位数；范围 38 倍–528 倍）——方法详见 [README 基准测试](../README.md#基准测试) 与 [REPRODUCING.md](REPRODUCING.md)。
 
-### 3. Review a PR
+### 3. 审查一个 PR
 ```
 /code-review-graph:review-pr
 ```
-Comprehensive structural review of a branch diff with blast-radius analysis.
+对 branch diff 进行全面的结构性 review，并带 blast-radius 分析。
 
-### 4. Watch mode (optional)
+### 4. Watch 模式（可选）
 ```bash
 code-review-graph watch
 ```
-Auto-updates the graph on every file save. Zero manual work.
+每次保存文件时自动更新 graph。零手动操作。
 
-### 5. Visualize the graph (optional)
+### 5. 可视化 graph（可选）
 ```bash
 code-review-graph visualize
 open .code-review-graph/graph.html
 ```
-Interactive D3.js force-directed graph. Starts collapsed (File nodes only) — click a file to expand its children. Use the search bar to filter, and click legend edge types to toggle visibility.
+交互式 D3.js force-directed graph。初始为折叠状态（仅 File nodes）——点击文件展开其 children。使用搜索栏过滤，点击图例中的 edge 类型可切换可见性。
 
-### 6. Semantic search (optional)
+### 6. 语义搜索（可选）
 ```bash
 pip install "code-review-graph[embeddings]"
 ```
-Then use `embed_graph_tool` to compute vectors. `semantic_search_nodes_tool` automatically uses vector similarity when matching embeddings are available and falls back to keyword/FTS search otherwise.
+然后使用 `embed_graph_tool` 计算 vectors。`semantic_search_nodes_tool` 在存在匹配的 embeddings 时自动使用 vector 相似度，否则回退到 keyword/FTS 搜索。
 
-Embedding providers are local sentence-transformers, OpenAI-compatible endpoints, Google Gemini, MiniMax, and Voyage. Local embeddings use `CRG_EMBEDDING_MODEL`; OpenAI-compatible providers use `CRG_OPENAI_BASE_URL`, `CRG_OPENAI_API_KEY`, and `CRG_OPENAI_MODEL`; Voyage uses `VOYAGE_API_KEY` and optionally `CRG_VOYAGE_MODEL`. Cloud providers are opt-in and print an egress warning unless `CRG_ACCEPT_CLOUD_EMBEDDINGS=1` is set.
+Embedding providers 包括本地 sentence-transformers、OpenAI 兼容端点、Google Gemini、MiniMax 和 Voyage。本地 embeddings 使用 `CRG_EMBEDDING_MODEL`；OpenAI 兼容 providers 使用 `CRG_OPENAI_BASE_URL`、`CRG_OPENAI_API_KEY` 和 `CRG_OPENAI_MODEL`；Voyage 使用 `VOYAGE_API_KEY`，可选 `CRG_VOYAGE_MODEL`。Cloud providers 为 opt-in，除非设置 `CRG_ACCEPT_CLOUD_EMBEDDINGS=1`，否则会打印出 egress 警告。
 
-Function/class documentation summaries are included in embedding text. For a
-graph created by an older release, run a full build once before re-embedding so
-all files gain that metadata. Embedding refresh after build/update/watch is
-always default-off; opt in with an exact provider and model, for example:
+Function/class 的文档摘要会包含在 embedding 文本中。对于由旧版本创建的 graph，在重新 embedding 前先运行一次完整 build，以便所有文件都获得该元数据。build/update/watch 之后的 embedding 刷新始终默认关闭；使用精确的 provider 和 model 选择启用，例如：
 
 ```bash
 code-review-graph build \
@@ -81,63 +77,60 @@ code-review-graph build \
   --embedding-model all-MiniLM-L6-v2
 ```
 
-The same two options work with `update`, `postprocess`, and `watch`. They must be
-provided together. A refresh only updates a previously embedded graph, refuses
-to migrate vectors to a different provider/model/endpoint, purges deleted-node
-vectors, and degrades provider or transport failures to graph-build warnings.
+同样的两个选项适用于 `update`、`postprocess` 和 `watch`。它们必须一起提供。刷新只会更新此前已 embedding 的 graph，拒绝将 vectors 迁移到不同的 provider/model/endpoint，清除已删除节点对应的 vectors，并将 provider 或传输失败降级为 graph-build 警告。
 
-### 7. Detect changes with risk scoring (v2)
+### 7. 用 risk scoring 检测变更（v2）
 ```
-Ask your MCP client: "Review my recent changes with risk scoring"
+向你的 MCP client 提问："Review my recent changes with risk scoring"
 ```
-Uses `detect_changes_tool` to map diffs to affected functions, flows, communities, and test gaps.
+使用 `detect_changes_tool` 将 diffs 映射到受影响的 functions、flows、communities 和测试缺口。
 
-### 8. Explore architecture (v2)
+### 8. 探索 architecture（v2）
 ```
-Ask your MCP client: "Show me the architecture of this project"
+向你的 MCP client 提问："Show me the architecture of this project"
 ```
-Uses `get_architecture_overview_tool` for community-based architecture map with coupling warnings.
+使用 `get_architecture_overview_tool` 生成基于 community 的 architecture 图，并带 coupling 警告。
 
-### 9. Generate wiki (v2)
+### 9. 生成 wiki（v2）
 ```bash
 code-review-graph wiki
 ```
-Creates markdown wiki pages for each detected community in `.code-review-graph/wiki/`.
+在 `.code-review-graph/wiki/` 中为每个检测到的 community 创建 markdown wiki 页面。
 
-### 10. Multi-repo search (v2)
+### 10. Multi-repo 搜索（v2）
 ```bash
 code-review-graph register /path/to/other/repo --alias mylib
 ```
-Then use `cross_repo_search_tool` to search across all registered repositories.
+然后使用 `cross_repo_search_tool` 在所有已注册的 repositories 中搜索。
 
-## Context Savings
+## Context Savings（上下文节省）
 
-CRG reduces review context by sending graph-derived structural context instead of broad file dumps. The exact reduction depends on the repository and change shape. The evaluation runner reports the current benchmark data used in the README:
+CRG 通过发送 graph 衍生的结构性上下文而非大段的文件转储来减少 review context。具体减少量取决于 repository 和变更的形态。evaluation runner 会报告 README 中使用的当前 benchmark 数据：
 
 ```bash
 code-review-graph eval --all
 ```
 
-Since v2.3.4, review and impact tools include compact `context_savings` metadata. In v2.3.5 the CLI surfaces this as a boxed `Token Savings` panel on both `detect-changes --brief` and `update --brief`, with a per-category breakdown (Functions / Tests / Risk / Other) that sums exactly to the graph response size. Add `--verify` to cross-check the displayed numbers against OpenAI's `cl100k_base` tokenizer (requires `pip install tiktoken`). All numbers are labelled estimated because they use a conservative approximation rather than model-specific tokenisation; calibration shows the estimate stays within ~1% of real GPT-4 tokens in aggregate. Small single-file changes can occasionally use more context than the raw file because graph metadata has overhead.
+自 v2.3.4 起，review 和 impact tools 包含紧凑的 `context_savings` 元数据。在 v2.3.5 中，CLI 在 `detect-changes --brief` 和 `update --brief` 上以带边框的 `Token Savings` 面板展示，含按类别细分（Functions / Tests / Risk / Other），其总和恰好等于 graph 响应大小。添加 `--verify` 可与 OpenAI 的 `cl100k_base` tokenizer 交叉核对显示的数字（需要 `pip install tiktoken`）。所有数字都标注为估算值，因为它们使用保守的近似而非针对具体模型的 tokenization；校准显示，该估算在整体上与实际 GPT-4 tokens 的误差保持在约 4% 以内。单文件的小变更偶尔会比原始文件消耗更多 context，因为 graph 元数据有开销。
 
-## Supported Languages
+## 受支持的语言
 
-The parser currently covers Python, JavaScript, TypeScript/TSX, Rust, C/C++, shell scripts, Verilog/SystemVerilog, Astro files parsed through the TypeScript parser, and Jupyter notebooks (`.ipynb`).
+parser 当前覆盖 Python、JavaScript、TypeScript/TSX、Rust、C/C++、shell 脚本、Verilog/SystemVerilog、通过 TypeScript parser 解析的 Astro 文件，以及 Jupyter notebooks（`.ipynb`）。
 
-Extension-less scripts are detected by shebang for common bash/sh/dash/ash, Python, Node interpreters.
+无扩展名的脚本通过 shebang 检测常见的 bash/sh/dash/ash、Python、Node 解释器。
 
-Languages not covered yet can be added without a fork via a `.code-review-graph/languages.toml` config — see [CUSTOM_LANGUAGES.md](CUSTOM_LANGUAGES.md).
+尚未覆盖的语言无需 fork 即可通过 `.code-review-graph/languages.toml` 配置添加——参见 [CUSTOM_LANGUAGES.md](CUSTOM_LANGUAGES.md)。
 
-## What Gets Indexed
+## 会被索引的内容
 
-- **Nodes**: Files, Classes, Functions/Methods, Types, Tests
-- **Edges**: CALLS, IMPORTS_FROM, INHERITS, IMPLEMENTS, CONTAINS, TESTED_BY, DEPENDS_ON
+- **Nodes**：Files、Classes、Functions/Methods、Types、Tests
+- **Edges**：CALLS、IMPORTS_FROM、INHERITS、IMPLEMENTS、CONTAINS、TESTED_BY、DEPENDS_ON
 
-See [schema.md](schema.md) for full details.
+完整细节参见 [schema.md](schema.md)。
 
-## Ignore Patterns
+## Ignore 模式
 
-By default, these paths are excluded from indexing:
+默认情况下，以下路径会从索引中排除：
 
 ```
 .code-review-graph/**    node_modules/**    .git/**
@@ -149,7 +142,7 @@ package-lock.json        yarn.lock          *.db
 *.sqlite                 *.db-journal
 ```
 
-To add custom patterns, create a `.code-review-graphignore` file in your repo root (same syntax as `.gitignore`):
+要添加自定义模式，请在 repo 根目录创建 `.code-review-graphignore` 文件（语法与 `.gitignore` 相同）：
 
 ```
 generated/**
@@ -157,4 +150,4 @@ vendor/**
 *.generated.ts
 ```
 
-In git repos, indexing is based on tracked files (`git ls-files`), so gitignored files are skipped automatically. Use `.code-review-graphignore` to exclude tracked files or when git isn't available.
+在 git repos 中，索引基于已跟踪的文件（`git ls-files`），因此 gitignored 文件会被自动跳过。使用 `.code-review-graphignore` 来排除已跟踪的文件，或在 git 不可用时使用它。

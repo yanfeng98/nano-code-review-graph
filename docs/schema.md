@@ -1,153 +1,153 @@
-# Knowledge Graph Schema
+# 知识图谱 Schema
 
-## Node Types
+## Node 类型
 
 ### File
-Represents a source code file.
+表示一个源码文件。
 
-| Property | Type | Description |
-|----------|------|-------------|
-| name | string | Absolute file path |
-| file_path | string | Same as name for File nodes |
-| language | string | Detected language (python, typescript, etc.) |
-| line_start | int | Always 1 |
-| line_end | int | Total line count |
-| file_hash | string | SHA-256 of file contents (for change detection) |
+| 属性 | 类型 | 描述 |
+|------|------|------|
+| name | string | 绝对文件路径 |
+| file_path | string | 对 File nodes 与 name 相同 |
+| language | string | 检测到的语言（python、typescript 等） |
+| line_start | int | 始终为 1 |
+| line_end | int | 总行数 |
+| file_hash | string | 文件内容的 SHA-256（用于变更检测） |
 
 ### Class
-Represents a class, struct, interface, enum, or module definition.
+表示 class、struct、interface、enum 或 module 定义。
 
-| Property | Type | Description |
-|----------|------|-------------|
-| name | string | Class name |
-| file_path | string | File containing the class |
-| line_start | int | Definition start line |
-| line_end | int | Definition end line |
-| language | string | Source language |
-| parent_name | string? | Enclosing class (for nested classes) |
-| modifiers | string? | Access modifiers (public, abstract, etc.) |
+| 属性 | 类型 | 描述 |
+|------|------|------|
+| name | string | Class 名称 |
+| file_path | string | 包含该 class 的文件 |
+| line_start | int | 定义起始行 |
+| line_end | int | 定义结束行 |
+| language | string | 源语言 |
+| parent_name | string? | 包围它的 class（用于嵌套 classes） |
+| modifiers | string? | 访问修饰符（public、abstract 等） |
 
 ### Function
-Represents a function, method, or constructor definition.
+表示 function、method 或 constructor 定义。
 
-| Property | Type | Description |
-|----------|------|-------------|
-| name | string | Function name |
-| file_path | string | File containing the function |
-| line_start | int | Definition start line |
-| line_end | int | Definition end line |
-| language | string | Source language |
-| parent_name | string? | Enclosing class (for methods) |
-| params | string? | Parameter list as source text |
-| return_type | string? | Return type annotation |
-| is_test | bool | Whether this is a test function |
+| 属性 | 类型 | 描述 |
+|------|------|------|
+| name | string | 函数名称 |
+| file_path | string | 包含该函数的文件 |
+| line_start | int | 定义起始行 |
+| line_end | int | 定义结束行 |
+| language | string | 源语言 |
+| parent_name | string? | 包围它的 class（用于 methods） |
+| params | string? | 作为源码文本的参数列表 |
+| return_type | string? | 返回类型注解 |
+| is_test | bool | 是否为一个 test 函数 |
 
 ### Test
-Same schema as Function, but `kind = "Test"` and `is_test = true`. Identified by:
-- Name starts with `test_` or `Test`
-- Name ends with `_test` or `_spec`
-- File matches test file patterns (`test_*.py`, `*.test.ts`, etc.)
-- Language-specific test markers where supported, such as common Rust test attributes
+与 Function 相同的 schema，但 `kind = "Test"` 且 `is_test = true`。识别依据：
+- 名称以 `test_` 或 `Test` 开头
+- 名称以 `_test` 或 `_spec` 结尾
+- 文件匹配 test 文件模式（`test_*.py`、`*.test.ts` 等）
+- 语言特定的 test markers（如支持的情况下，常见的 Rust test attributes）
 
 ### Type
-Represents a type alias, interface, enum, struct-like type, or parser-specific type construct where the language exposes one.
+表示 type alias、interface、enum、struct 式类型，或语言暴露出来的 parser 特定 type 构造。
 
-| Property | Type | Description |
-|----------|------|-------------|
-| name | string | Type name |
-| file_path | string | File containing the type |
-| line_start | int | Definition start line |
-| line_end | int | Definition end line |
+| 属性 | 类型 | 描述 |
+|------|------|------|
+| name | string | Type 名称 |
+| file_path | string | 包含该 type 的文件 |
+| line_start | int | 定义起始行 |
+| line_end | int | 定义结束行 |
 
-## Edge Types
+## Edge 类型
 
 ### CALLS
-A function calls another function.
+一个函数调用另一个函数。
 
-| Property | Type | Description |
-|----------|------|-------------|
-| source | string | Qualified name of the caller |
-| target | string | Name of the called function (may be unqualified) |
-| file_path | string | File where the call occurs |
-| line | int | Line number of the call |
+| 属性 | 类型 | 描述 |
+|------|------|------|
+| source | string | 调用者的 qualified name |
+| target | string | 被调用函数的名称（可能未限定） |
+| file_path | string | 调用发生的文件 |
+| line | int | 调用的行号 |
 
 ### IMPORTS_FROM
-A file imports from another module or file.
+一个文件从另一个模块或文件导入。
 
-| Property | Type | Description |
-|----------|------|-------------|
-| source | string | Importing file path |
-| target | string | Imported module/path |
-| file_path | string | Same as source |
-| line | int | Line number of the import |
+| 属性 | 类型 | 描述 |
+|------|------|------|
+| source | string | 导入方文件路径 |
+| target | string | 被导入的 module/path |
+| file_path | string | 与 source 相同 |
+| line | int | import 的行号 |
 
 ### INHERITS
-A class extends/inherits from another class.
+一个 class 继承自另一个 class。
 
-| Property | Type | Description |
-|----------|------|-------------|
-| source | string | Child class qualified name |
-| target | string | Parent class name |
-| file_path | string | File containing the child class |
+| 属性 | 类型 | 描述 |
+|------|------|------|
+| source | string | 子 class 的 qualified name |
+| target | string | 父 class 名称 |
+| file_path | string | 包含子 class 的文件 |
 
 ### IMPLEMENTS
-A class implements an interface (TypeScript).
+一个 class 实现一个 interface（TypeScript）。
 
-| Property | Type | Description |
-|----------|------|-------------|
-| source | string | Implementing class |
-| target | string | Interface name |
+| 属性 | 类型 | 描述 |
+|------|------|------|
+| source | string | 实现该 interface 的 class |
+| target | string | Interface 名称 |
 
 ### CONTAINS
-Structural containment: a file contains a class, a class contains a method.
+结构性包含：一个文件包含一个 class，一个 class 包含一个 method。
 
-| Property | Type | Description |
-|----------|------|-------------|
-| source | string | Container (file path or class qualified name) |
-| target | string | Contained node qualified name |
+| 属性 | 类型 | 描述 |
+|------|------|------|
+| source | string | 容器（文件路径或 class qualified name） |
+| target | string | 被包含 node 的 qualified name |
 
 ### TESTED_BY
-A function is tested by a test function.
+一个函数被一个 test 函数测试。
 
-| Property | Type | Description |
-|----------|------|-------------|
-| source | string | Function being tested |
-| target | string | Test function qualified name |
+| 属性 | 类型 | 描述 |
+|------|------|------|
+| source | string | 被测试的函数 |
+| target | string | Test 函数的 qualified name |
 
 ### DEPENDS_ON
-General dependency relationship (used for non-specific dependencies).
+通用依赖关系（用于非特定依赖）。
 
 ### REFERENCES
-A value-level reference to another symbol, often used for function-as-value patterns such as callback maps, arrays, or assignment.
+对另一个 symbol 的值级引用，常用于 function-as-value 模式，例如回调映射、数组或赋值。
 
 ### INJECTS
-A dependency-injection relationship for injected fields and constructor parameters (reserved edge kind; no current producer).
+用于被注入字段和构造器参数的依赖注入关系（保留 edge kind；当前无生产者）。
 
 ### CONSUMES / PRODUCES
-Data or event flow relationships emitted by specialised parsers when a source consumes or produces a named resource (reserved edge kinds; no current producer).
+当某个源消费或产出命名资源时，由专门的 parsers 发出的数据或事件流关系（保留 edge kinds；当前无生产者）。
 
-## Qualified Name Format
+## Qualified Name 格式
 
-Nodes are uniquely identified by qualified names:
+Nodes 由 qualified names 唯一标识：
 
 ```
-# File node
+# 文件 node
 /absolute/path/to/file.py
 
-# Top-level function
+# 顶层函数
 /absolute/path/to/file.py::function_name
 
-# Method in a class
+# 类中的方法
 /absolute/path/to/file.py::ClassName.method_name
 
-# Nested class method
+# 嵌套类方法
 /absolute/path/to/file.py::OuterClass.InnerClass.method_name
 ```
 
-## SQLite Tables
+## SQLite 表
 
 ```sql
--- Nodes table
+-- Nodes 表
 CREATE TABLE nodes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     kind TEXT NOT NULL,
@@ -165,10 +165,11 @@ CREATE TABLE nodes (
     file_hash TEXT,
     extra TEXT DEFAULT '{}',
     community_id INTEGER,
-    updated_at REAL NOT NULL
+    updated_at REAL NOT NULL,
+    signature TEXT   -- migration v2 添加
 );
 
--- Edges table
+-- Edges 表
 CREATE TABLE edges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     kind TEXT NOT NULL,
@@ -182,13 +183,13 @@ CREATE TABLE edges (
     updated_at REAL NOT NULL
 );
 
--- Metadata table
+-- Metadata 表
 CREATE TABLE metadata (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
 
--- Flows table (v2.0)
+-- Flows 表（v2.0）
 CREATE TABLE flows (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -202,7 +203,7 @@ CREATE TABLE flows (
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Flow memberships table (v2.0)
+-- Flow memberships 表（v2.0）
 CREATE TABLE flow_memberships (
     flow_id INTEGER NOT NULL,
     node_id INTEGER NOT NULL,
@@ -210,7 +211,7 @@ CREATE TABLE flow_memberships (
     PRIMARY KEY (flow_id, node_id)
 );
 
--- Communities table (v2.0)
+-- Communities 表（v2.0）
 CREATE TABLE communities (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -223,14 +224,14 @@ CREATE TABLE communities (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Full-text search virtual table (v2.0)
+-- Full-text search 虚拟表（v2.0）
 CREATE VIRTUAL TABLE nodes_fts USING fts5(
     name, qualified_name, file_path, signature,
     content='nodes', content_rowid='rowid',
     tokenize='porter unicode61'
 );
 
--- Token-efficient summary tables (v6)
+-- Token 高效摘要表（v6）
 CREATE TABLE community_summaries (
     community_id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
@@ -261,7 +262,7 @@ CREATE TABLE risk_index (
     last_computed TEXT DEFAULT ''
 );
 
--- Embeddings table, stored in the embeddings database
+-- Embeddings 表，存储在 embeddings 数据库中
 CREATE TABLE embeddings (
     qualified_name TEXT PRIMARY KEY,
     vector BLOB NOT NULL,
@@ -270,4 +271,4 @@ CREATE TABLE embeddings (
 );
 ```
 
-Indexes include qualified-name, file-path, node-kind, edge source/target/kind, community, flow criticality, risk score, compound edge lookup indexes, and the composite edge upsert index.
+索引包括 qualified-name、file-path、node-kind、edge source/target/kind、community、flow criticality、risk score、复合 edge 查找索引，以及复合 edge upsert 索引。

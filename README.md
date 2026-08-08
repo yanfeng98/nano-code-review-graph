@@ -5,10 +5,6 @@
 </p>
 
 <p align="center">
-  <a href="https://code-review-graph.com"><img src="https://img.shields.io/badge/website-code--review--graph.com-blue?style=flat-square" alt="Website"></a>
-</p>
-
-<p align="center">
   <a href="docs/USAGE.md">使用指南</a> ·
   <a href="docs/COMMANDS.md">命令参考</a> ·
   <a href="docs/FAQ.md">常见问题</a> ·
@@ -23,7 +19,7 @@
 `code-review-graph` 使用 [Tree-sitter](https://tree-sitter.github.io/tree-sitter/) 构建代码的结构化映射，增量跟踪变更，并通过 [MCP](https://modelcontextprotocol.io/) 为 AI 助手提供精准的上下文，使其只读取真正需要的内容。
 
 <p align="center">
-  <img src="diagrams/diagram1_before_vs_after.png" alt="Token 问题：在 6 个真实仓库中实现 38 倍到 528 倍的 token 削减" width="85%" />
+  <img src="diagrams/diagram1_before_vs_after.png" alt="Token 问题：在 5 个真实仓库中实现 38 倍到 528 倍的 token 削减" width="85%" />
 </p>
 
 ---
@@ -152,7 +148,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: tirth8205/code-review-graph@v2.3.6
+      - uses: tirth8205/code-review-graph@v2.3.7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -164,43 +160,42 @@ jobs:
 ## 基准测试
 
 <p align="center">
-  <img src="diagrams/diagram5_benchmark_board.png" alt="6 个真实仓库的基准测试：每个问题约 82 倍中位数 token 削减（最大 528 倍），基于图派生的 ground truth 平均 F1 0.71" width="85%" />
+  <img src="diagrams/diagram5_benchmark_board.png" alt="5 个真实仓库的基准测试：每个问题约 71 倍中位数 token 削减（最大 528 倍），基于图派生的 ground truth 平均 F1 0.745" width="85%" />
 </p>
 
-**核心数据：6 个仓库中每个问题的中位数 token 削减约为 82 倍**（全语料库基线 vs 图查询）。常被引用的 **528 倍是最大值** ——单个最佳仓库（fastapi）的结果，而不是典型情况。
+**核心数据：5 个仓库中每个问题的中位数 token 削减约为 71 倍**（全语料库基线 vs 图查询）。常被引用的 **528 倍是最大值** ——单个最佳仓库（fastapi）的结果，而不是典型情况。
 
-所有数据来自自动评估运行器，针对 6 个真实开源仓库（共 13 个提交）。每个配置都固定了上游 SHA，Leiden 社区检测使用固定种子运行，嵌入向量在 CPU 上是确定性的——因此两次在不同机器上运行会产生完全相同的结果。完整的复现配方及预期输出见 [`docs/REPRODUCING.md`](docs/REPRODUCING.md)。两个最小配置的每周仅报告运行在 [`.github/workflows/eval.yml`](.github/workflows/eval.yml) 中。
+所有数据来自自动评估运行器，针对 5 个真实开源仓库（共 10 个提交）。每个配置都固定了上游 SHA，Leiden 社区检测使用固定种子运行，嵌入向量在 CPU 上是确定性的——因此两次在不同机器上运行会产生完全相同的结果。完整的复现配方及预期输出见 [`docs/REPRODUCING.md`](docs/REPRODUCING.md)。两个最小配置的每周仅报告运行在 [`.github/workflows/eval.yml`](.github/workflows/eval.yml) 中。
 
 <details>
-<summary><strong>Token 效率：每个问题约 82 倍中位数削减（范围 38x – 528x；全语料库 vs 图查询）</strong></summary>
+<summary><strong>Token 效率：每个问题约 71 倍中位数削减（范围 38x – 528x；全语料库 vs 图查询）</strong></summary>
 <br>
 
 对于一个典型的 agent 提问（如"认证如何工作"、"主入口点是什么"等），图返回约 2,000–3,500 token 的精准搜索结果 + 邻居边，而不是强制 agent 读取每个源文件。下表对 `code_review_graph/token_benchmark.py` 中定义的 5 个样本问题进行平均。
 
 | 仓库 | 快照 SHA | 原始语料库 token | 平均图 token | 削减 |
 |------|---|-----------------:|----------------:|----------:|
-| fastapi | `0227991a` | 951,071 | 2,169 | **528.4x** |
+| fastapi | `22381558` | 951,071 | 2,169 | **528.4x** |
 | code-review-graph | `84bde354` | 208,821 | 2,495 | **93.0x** |
-| gin | `5c00df8a` | 166,868 | 1,990 | **91.8x** |
 | flask | `a29f88ce` | 125,022 | 1,986 | **71.4x** |
 | express | `b4ab7d65` | 135,955 | 3,465 | **40.6x** |
 | httpx | `b55d4635` | 89,492 | 2,438 | **38.0x** |
 
-6 个仓库每个问题的中位数削减：**约 82 倍**。范围是 38x – 528x，其中 **528x 是最佳情况**（fastapi，最大的语料库），而非标题数字。
+5 个仓库每个问题的中位数削减：**约 71 倍**。范围是 38x – 528x，其中 **528x 是最佳情况**（fastapi，最大的语料库），而非标题数字。
 
 全语料库基线是真实 agent 不会触及的上限：合格的 agent 会通过 grep 搜索标识符并仅读取最佳匹配的文件。`agent_baseline` 评估基准测量了这一现实基线——对语料库进行纯 Python grep，按匹配数量取前 3 个文件，进行 token 计数并与图查询成本进行比较（`evaluate/results/<仓库>_agent_baseline_*.csv`）。
 
 正式的 `eval/benchmarks/token_efficiency.py` 基准测试测量了不同的场景——完整的 `get_review_context()` JSON 与提交中仅变更文件的内容对比——对于小提交来说报告比值低于 1，因为审查上下文响应携带了影响半径边和源码片段，可能超过一个微小的单文件差异。这不是 bug，两个基准回答了不同的问题。完整方法论见 [`docs/REPRODUCING.md`](docs/REPRODUCING.md)。
 
-自 v2.3.4 起，审查和影响工具附带紧凑的 `context_savings` 估算值，以便 MCP 客户端可以看到每次调用大约节省的上下文量。在 v2.3.5 中，CLI 通过上方显示的方框 `Token Savings` 面板展示此信息（参见"使用指南"中的"Token Savings 面板"），并添加 `--verify` 以对照 OpenAI 的 `cl100k_base` 分词器进行交叉检查。[`docs/REPRODUCING.md`](docs/REPRODUCING.md) 中的校准数据显示，在 222 个样本文件上，该估算值与真实 GPT-4 token 的总体偏差在约 1% 以内。
+自 v2.3.4 起，审查和影响工具附带紧凑的 `context_savings` 估算值，以便 MCP 客户端可以看到每次调用大约节省的上下文量。在 v2.3.5 中，CLI 通过上方显示的方框 `Token Savings` 面板展示此信息（参见"使用指南"中的"Token Savings 面板"），并添加 `--verify` 以对照 OpenAI 的 `cl100k_base` 分词器进行交叉检查。[`docs/REPRODUCING.md`](docs/REPRODUCING.md) 中的校准数据显示，在 192 个样本文件上，该估算值与真实 GPT-4 token 的总体偏差在约 4% 以内。
 
 </details>
 
 <details>
-<summary><strong>影响准确性：基于图派生的 ground truth 平均 F1 为 0.71（召回率 1.0 是循环上限，并非"100% 召回率"）</strong></summary>
+<summary><strong>影响准确性：基于图派生的 ground truth 平均 F1 为 0.745（召回率 1.0 是循环上限，并非"100% 召回率"）</strong></summary>
 <br>
 
-影响半径分析在所有 13 个评估提交上恢复了 ground truth 中的每个文件——**但请将其理解为上限，而非"100% 召回率"**：在此模式下，ground truth（变更文件 + 与其有调用/导入边连接的文件）来自预测器遍历的同一图结构，因此它在构造上是循环的。精度列中可见的过度预测是一种有意的取舍：宁可标记过多文件，也不愿遗漏一个损坏的依赖。
+影响半径分析在所有 10 个评估提交上恢复了 ground truth 中的每个文件——**但请将其理解为上限，而非"100% 召回率"**：在此模式下，ground truth（变更文件 + 与其有调用/导入边连接的文件）来自预测器遍历的同一图结构，因此它在构造上是循环的。精度列中可见的过度预测是一种有意的取舍：宁可标记过多文件，也不愿遗漏一个损坏的依赖。
 
 | 仓库 | 提交数 | 平均 F1 | 平均精度 | 召回率（图派生的上限） |
 |------|--------:|-------:|--------------:|-------:|
@@ -209,8 +204,7 @@ jobs:
 | code-review-graph | 2 | 0.734 | 0.584 | 1.0 |
 | express | 2 | 0.667 | 0.500 | 1.0 |
 | flask | 2 | 0.628 | 0.481 | 1.0 |
-| gin | 3 | 0.609 | 0.439 | 1.0 |
-| **平均** | **13** | **0.714** | **0.578** | **1.000** |
+| **平均** | **10** | **0.745** | **0.620** | **1.000** |
 
 基准测试还运行了诚实的**协同变更模式**：预测器以单个变更文件为种子，以同一提交中作者实际修改的*其他*文件为评分标准——来自 git 历史的独立证据，而非来自图。两种模式并列出现在结果 CSV 中（`ground_truth_mode` 列）。协同变更数据将在评估运行器捕获后加入标准统计；在测量完成前我们不会引用它们。
 
@@ -225,7 +219,6 @@ jobs:
 | express | 141 | 1,910 | 17,553 | 106ms | 0.7ms |
 | fastapi | 1,122 | 6,285 | 27,117 | 128ms | 1.5ms |
 | flask | 83 | 1,446 | 7,974 | 95ms | 0.7ms |
-| gin | 99 | 1,286 | 16,762 | 111ms | 0.5ms |
 | httpx | 60 | 1,253 | 7,896 | 96ms | 0.4ms |
 
 </details>
@@ -351,7 +344,7 @@ JSON 导出保留在本地图数据目录中，Git 默认忽略。它们可能�
 
 两者最终显示**相同的面板**，因为最后都调用同一个 `analyze_changes()` 步骤。区别仅在于该分析运行前图是否被刷新。
 
-对任一命令添加 `--verify` 可对照 OpenAI 的 `cl100k_base` 分词器（GPT-4 系列）交叉检查显示的数字。需要 `pip install tiktoken`。在典型变更集上估算值与真实 token 的偏差保持在约 1% 以内——校准数据见 [`docs/REPRODUCING.md`](docs/REPRODUCING.md)。
+对任一命令添加 `--verify` 可对照 OpenAI 的 `cl100k_base` 分词器（GPT-4 系列）交叉检查显示的数字。需要 `pip install tiktoken`。在典型变更集上估算值与真实 token 的偏差保持在约 4% 以内——校准数据见 [`docs/REPRODUCING.md`](docs/REPRODUCING.md)。
 
 相同的 `context_savings` 元数据也会自动附加到 `get_impact_radius`、`get_review_context`、`detect_changes` 和 `get_architecture_overview` MCP 工具的 JSON 响应中，使 AI agent 能够在对话中向人类展示节省效果，无需额外提示。
 

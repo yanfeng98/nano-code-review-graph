@@ -1,246 +1,139 @@
-# FAQ — how code-review-graph compares
+# FAQ — code-review-graph 的对比
 
-Honest answers to the questions we get most often. Where another tool is genuinely
-better for a job, this page says so.
+对我们最常被问到的问题的诚实回答。如果某个任务确实有别的工具做得更好，本页会直说。
 
-- [How is this different from LSP and language servers?](#how-is-this-different-from-lsp-and-language-servers)
-- [Isn't this just RAG?](#isnt-this-just-rag)
-- [Why not just grep?](#why-not-just-grep)
-- [How does it compare to Serena, codegraph, claude-context, and repomix?](#how-does-it-compare-to-serena-codegraph-claude-context-and-repomix)
-- [When should I not use it?](#when-should-i-not-use-it)
-- [Does it phone home?](#does-it-phone-home)
-- [How do I verify it is working?](#how-do-i-verify-it-is-working)
-- [How big a codebase justifies it?](#how-big-a-codebase-justifies-it)
-- [How does it handle monorepos, git worktrees, and multiple repos?](#how-does-it-handle-monorepos-git-worktrees-and-multiple-repos)
+- [与 LSP 和 language servers 有何不同？](#与-lsp-和-language-servers-有何不同)
+- [这不就是 RAG 吗？](#这不就是-rag-吗)
+- [为什么不用 grep？](#为什么不用-grep)
+- [与 Serena、codegraph、claude-context 和 repomix 相比如何？](#与-serena-codegraph-claude-context-和-repomix-相比如何)
+- [何时不应使用它？](#何时不应使用它)
+- [它会回传数据吗？](#它会回传数据吗)
+- [如何验证它正常工作？](#如何验证它正常工作)
+- [多大的 codebase 才值得使用它？](#多大的-codebase-才值得使用它)
+- [如何处理 monorepos、git worktrees 和多个 repos？](#如何处理-monorepos-git-worktrees-和多个-repos)
 
 ---
 
-## How is this different from LSP and language servers?
+## 与 LSP 和 language servers 有何不同？
 
-Language servers and code-review-graph (CRG) both build a structural model of your
-code, but they optimize for different things.
+Language servers 和 code-review-graph（CRG）都会为你的代码构建结构性模型，但它们优化的目标不同。
 
-**What LSP does better.** A language server is backed by a real compiler frontend (or
-something close to it), so it gives you type-aware, semantically precise results:
-exact go-to-definition through generics and overloads, find-references that
-understands scoping, live diagnostics, completions, and renames that are safe by
-construction. If you need a *provably complete* reference list for one symbol in one
-language, an LSP server is the gold standard and CRG does not try to replace it.
+**LSP 做得更好的地方。** language server 由真正的编译器前端（或接近它的东西）支撑，因此能给你类型感知、语义精确的结果：穿过 generics 和 overloads 的精确 go-to-definition、理解 scoping 的 find-references、实时 diagnostics、completions，以及结构上保证安全的 renames。如果你需要某个语言中某个 symbol 的*可证明完整*的引用列表，LSP server 是黄金标准，CRG 并不试图取代它。
 
-**What CRG does differently:**
+**CRG 的不同之处：**
 
-- **One persistent graph instead of per-language daemons.** Language servers run one
-  process per language and (with a few exceptions that cache an index on disk) rebuild
-  or revalidate state per session. CRG parses once with Tree-sitter, stores nodes and
-  edges in a single SQLite file (`.code-review-graph/graph.db`), and answers queries
-  across roughly 35 languages plus notebooks from one process — including cross-language
-  edges that no single LSP server models.
-- **It survives sessions and commits.** The graph is updated incrementally (changed
-  files only, under 2 seconds on a ~2,900-file repo) rather than rebuilt per editor
-  session.
-- **Review-oriented edges.** `tests_for`, execution flows, community membership,
-  risk-scored change analysis — relationships LSP does not model because they are not
-  needed for editing.
+- **一个持久化的 graph，而非每种语言一个 daemon。** Language servers 每种语言运行一个进程，并且（除了少数在磁盘上缓存索引的例外）会在每次 session 重建或重新校验状态。CRG 用 Tree-sitter 解析一次，将 nodes 和 edges 存储在单个 SQLite 文件（`.code-review-graph/graph.db`）中，并从单一进程在约 13 种内置语言外加 notebooks 上回答查询——包括没有任何单个 LSP server 建模的 cross-language edges。
+- **它跨越 sessions 和 commits 持续存在。** graph 采用增量更新（仅变更的文件，在约 2,900 个文件的 repo 上不到 2 秒），而非每次 editor session 都重建。
+- **面向 review 的 edges。** `tests_for`、execution flows、community membership、risk-scored 的变更分析——这些关系 LSP 不建模，因为编辑时并不需要它们。
 
-**The honest trade-off:** CRG's call resolution is AST-level and heuristic, not
-compiler-backed. Dynamic dispatch, metaprogramming, and duck typing can produce
-inferred or ambiguous edges — which is exactly why every edge carries a confidence
-tier (`EXTRACTED` / `INFERRED` / `AMBIGUOUS`). LSP is more precise per symbol; CRG is
-broader, persistent, and cheaper to query across the whole repo.
+**诚实的权衡：** CRG 的 call 解析是 AST 级别且启发式的，并非由编译器支撑。Dynamic dispatch、metaprogramming 和 duck typing 可能产生推断或模糊的 edges——这正是每条 edge 都带有 confidence tier（`EXTRACTED` / `INFERRED` / `AMBIGUOUS`）的原因。LSP 对单个 symbol 更精确；CRG 更广、更持久，并且在整个 repo 上查询更便宜。
 
-## Isn't this just RAG?
+## 这不就是 RAG 吗？
 
-No. RAG splits your code into text chunks, embeds them, and retrieves chunks by
-similarity to the query. That answers "find code that *talks about* X." It cannot
-answer "who *calls* X" — similarity between two functions tells you nothing about
-whether one invokes the other.
+不是。RAG 把你的代码切成文本 chunks，对它们做 embedding，然后按与查询的相似度检索 chunks。它能回答"找到*提到* X 的代码"，却无法回答"谁*调用* X"——两个函数之间的相似度说明不了其中一个是否会调用另一个。
 
-CRG stores **structural edges parsed from the AST**: calls, imports, inheritance,
-test coverage. "Who calls `login()`" is a graph lookup, not a similarity guess.
-Embeddings exist in CRG but they are optional and play a supporting role — one input
-to hybrid search (FTS5 BM25 keyword + vector) used to find a *starting node*, after
-which traversal follows real edges. Currently only function signatures are embedded
-(~10 tokens per node), not bodies.
+CRG 存储的是**从 AST 解析出的结构性 edges**：calls、imports、inheritance、测试覆盖。"谁调用 `login()`"是一次 graph 查找，而不是相似度猜测。Embeddings 在 CRG 中确实存在，但它们是可选的，扮演辅助角色——作为 hybrid search（FTS5 BM25 keyword + vector）的一种输入，用于找到*起始 node*，之后 traversal 沿真实 edges 进行。目前只对函数签名做 embedding（每个 node 约 10 tokens），不包括函数体。
 
-The benchmark that captures the difference is multi-hop retrieval: natural-language
-query → anchor node → one-hop traversal (`callers_of`, `tests_for`, ...). CRG scores
-0.909 across 11 hand-curated tasks on 6 real repos (see
-[REPRODUCING.md](REPRODUCING.md)). Pure similarity retrieval has no equivalent of the
-second hop.
+最能体现差异的 benchmark 是 multi-hop retrieval：自然语言查询 → anchor node → 一跳 traversal（`callers_of`、`tests_for`……）。CRG 在 5 个真实 repo 上的 9 个手工整理的 tasks 中得分 0.889（参见 [REPRODUCING.md](REPRODUCING.md)）。纯相似度检索没有对应的第二跳。
 
-**Where RAG-style search is better:** purely conceptual questions ("where is rate
-limiting discussed?") over prose, comments, and docs. CRG's own keyword search
-ranking is a documented weakness (MRR 0.35 — see the limitations section in the
-[README](../README.md#benchmarks)).
+**RAG 式搜索更好的地方：** 针对散文、注释和文档的纯概念性问题（"哪里讨论了 rate limiting？"）。CRG 自身的关键词搜索排名是一个已记录的弱点（MRR 0.35——参见 [README](../README.md#基准测试) 中的局限性一节）。
 
-## Why not just grep?
+## 为什么不用 grep？
 
-Fair question — Anthropic has been explicit that Claude Code deliberately ships
-*without* a code index. Agentic search (glob, grep, targeted file reads) is always
-exactly as fresh as your working tree, has no chunking or staleness failure modes,
-and needs zero setup. For one-hop questions — "where is `parse_file` defined?" —
-that approach works well, and CRG will not beat it by much.
+问得好——Anthropic 已经明确表示 Claude Code 刻意*不带*代码索引发布。Agentic 搜索（glob、grep、定向文件读取）总是与你的工作区一样新鲜，没有 chunking 或过期的失败模式，且零配置。对于单跳问题——"`parse_file` 定义在哪里？"——这种方式效果很好，CRG 不会比它好太多。
 
-The gap appears on **multi-hop structural questions**, where each hop costs the agent
-another round of grep + read + reasoning, and token spend compounds:
+差距出现在**多跳结构性问题上**，每一跳都会让 agent 多花一轮 grep + read + 推理，token 开销会累积：
 
-- **Impact radius** — "what could break if I change this file?" requires callers,
-  dependents, *and* their tests. One `get_impact_radius` call returns all three.
-- **Callers of callers** — transitive tracing via `traverse_graph` or repeated
-  `query_graph(pattern="callers_of")`, instead of N rounds of grepping for each
-  intermediate name (and grep matches *text*, so overloaded or re-exported names
-  produce false hits the agent must read to rule out).
-- **Tests for** — `query_graph(pattern="tests_for")` maps code to covering tests via
-  parsed edges plus naming conventions, and `detect_changes` adds transitive test
-  coverage. Grep only finds tests that mention the name literally.
-- **Affected flows** — "which execution paths does this change touch?" has no grep
-  equivalent at all.
+- **Impact radius**——"如果我改动这个文件，什么可能被破坏？"需要 callers、dependents *以及*它们的 tests。一次 `get_impact_radius` 调用即可返回全部三类。
+- **Callers of callers**——通过 `traverse_graph` 或重复的 `query_graph(pattern="callers_of")` 进行传递追踪，而非为每个中间名做 N 轮 grep（而且 grep 匹配的是*文本*，所以重载或 re-export 的名字会产生 agent 必须读取才能排除的误报）。
+- **Tests for**——`query_graph(pattern="tests_for")` 通过解析出的 edges 加命名约定，把代码映射到覆盖它的 tests；`detect_changes` 再补充传递性的测试覆盖。Grep 只能找到字面提到该名字的 tests。
+- **Affected flows**——"这次变更触及哪些执行路径？"完全没有 grep 等价物。
 
-The graph also persists: agentic search re-derives the same structure from scratch
-every session, while CRG keeps it in SQLite and updates incrementally.
+graph 还是持久化的：agentic 搜索每次 session 都从头重新推导同样的结构，而 CRG 把它放在 SQLite 中并增量更新。
 
-One honest caveat on the numbers: the whole-corpus token-reduction numbers (~82x median,
-38x–528x range) compare graph responses against reading the **whole corpus**, not
-against a skilled agentic-grep session (see [REPRODUCING.md](REPRODUCING.md) for what
-each benchmark measures). For single-hop lookups in a small repo, grep is cheap and
-good. The multi-hop review workflow is where the graph earns its keep.
+关于这些数字的一个诚实提醒：全语料库 token 削减数据（~71x 中位数，38x–528x 范围）是将 graph 响应与阅读**整个语料库**相比，而非与一次熟练的 agentic-grep 会话相比（每个 benchmark 测量什么参见 [REPRODUCING.md](REPRODUCING.md)）。对于小型 repo 中的单跳查找，grep 便宜又好用。multi-hop 的 review 工作流才是 graph 真正体现价值之处。
 
-## How does it compare to Serena, codegraph, claude-context, and repomix?
+## 与 Serena、codegraph、claude-context 和 repomix 相比如何？
 
-These are good tools solving adjacent problems. Short factual comparison, based on
-each project's public documentation (check upstream docs for current behavior):
+这些都是解决相邻问题的好工具。基于各项目公开文档的简短事实对比（当前行为请查阅上游文档）：
 
-| Tool | Approach | Persistence | External deps | Review focus |
+| Tool | 方法 | 持久化 | 外部依赖 | 审查重点 |
 |---|---|---|---|---|
-| **code-review-graph** | Tree-sitter AST → structural graph (calls, imports, inheritance, tests) over MCP + CLI | SQLite in `.code-review-graph/`, incremental updates | None for the core; embeddings optional | Yes — blast radius, risk-scored change analysis, test-gap detection |
-| **Serena** | LSP-backed symbol retrieval and editing tools over MCP | Language-server state plus per-project memories | A language server per language | General coding-agent toolkit, not review-specific |
-| **codegraph** | AST/call-graph indexing over MCP (several projects share this name; details vary by implementation) | Varies by implementation | Varies by implementation | Generally retrieval-focused |
-| **claude-context** | Chunk + embed semantic code search over MCP | Vector index in a vector database | Embedding provider + vector DB (cloud or self-hosted) | Search-focused, not review-specific |
-| **repomix** | Packs the whole repo into one AI-friendly file | None — regenerated per run | Node.js | One-shot context packing; no structural queries |
+| **code-review-graph** | Tree-sitter AST → 结构性 graph（calls、imports、inheritance、tests），通过 MCP + CLI | SQLite 位于 `.code-review-graph/`，增量更新 | 核心无依赖；embeddings 可选 | 是 —— blast radius、risk-scored 变更分析、test-gap 检测 |
+| **Serena** | 基于 LSP 的 symbol 检索与编辑工具，通过 MCP | Language-server 状态 + 按项目 memories | 每种语言一个 language server | 通用编码 agent 工具包，非审查专用 |
+| **codegraph** | 基于 MCP 的 AST/call-graph 索引（多个项目共用此名；细节因实现而异） | 因实现而异 | 因实现而异 | 通常以检索为主 |
+| **claude-context** | 基于 MCP 的 chunk + embed 语义代码搜索 | 向量数据库中的 vector index | Embedding provider + vector DB（云端或自托管） | 以搜索为主，非审查专用 |
+| **repomix** | 将整个 repo 打包成一个 AI 友好文件 | 无 —— 每次运行重新生成 | Node.js | 一次性 context 打包；无结构性查询 |
 
-Rough guidance: if you want symbol-precise *editing* tools, Serena's LSP approach is
-a better fit. If you want semantic *search* and are happy running a vector store,
-claude-context covers that. If your repo is small enough to paste wholesale into a
-large context window, repomix is the simplest thing that works. CRG's niche is the
-persistent structural graph for **review**: impact analysis, risk scoring, and
-test-coverage tracing with no external services.
+大致建议：如果你想要 symbol 精确的*编辑*工具，Serena 的 LSP 方式更合适。如果你想要语义*搜索*，并且愿意运行一个 vector store，claude-context 覆盖了这一点。如果你的 repo 小到足以整体粘贴进一个大的 context window，repomix 是最简单的可行方案。CRG 的定位是用于**审查**的持久化结构性 graph：影响分析、risk scoring 和测试覆盖追踪，且无外部服务。
 
-## When should I not use it?
+## 何时不应使用它？
 
-Consistent with the limitations section in the [README](../README.md#benchmarks):
+与 [README](../README.md#基准测试) 中的局限性一节一致：
 
-- **Repos under a few hundred files.** An agent can often just read everything
-  relevant directly; the graph's structural metadata adds overhead that a small repo
-  doesn't repay. See [How big a codebase justifies it?](#how-big-a-codebase-justifies-it)
-- **Trivial single-file changes.** The graph response carries impact-radius edges and
-  source snippets, which can exceed the raw content of a one-file diff. This is
-  measured and documented (the formal `token_efficiency` benchmark reports ratios
-  below 1.0 for small commits — by design, see [REPRODUCING.md](REPRODUCING.md)).
-- **One-off questions on a repo you won't revisit.** The build is fast (~10 seconds
-  for a 500-file project) but the payoff comes from *reuse* across queries and
-  sessions. For a single question, agentic search is fine.
-- **Flow detection on JS.** Entry-point detection is currently reliable mainly for
-  Python framework patterns; JavaScript flow detection needs work (33% recall,
-  documented in the README limitations).
+- **几百个文件以下的 repos。** Agent 通常可以直接读取所有相关内容；graph 的结构性元数据会带来小型 repo 不值得付出的开销。参见 [多大的 codebase 才值得使用它？](#多大的-codebase-才值得使用它)
+- **琐碎的单文件变更。** Graph 响应携带 impact-radius edges 和源码片段，可能超过一个单文件 diff 的原始内容。这一点已被测量并记录（正式的 `token_efficiency` benchmark 对小提交报告低于 1.0 的比值——这是有意设计，参见 [REPRODUCING.md](REPRODUCING.md)）。
+- **对不会再回访的 repo 的一次性问题。** 构建很快（500 个文件的项目约 10 秒），但回报来自跨查询和跨 sessions 的*复用*。对于单个问题，agentic 搜索就足够了。
+- **JS 上的 flow 检测。** 入口点检测目前主要对 Python 框架模式可靠；JavaScript 的 flow 检测有待改进（33% 召回率，见 README 局限性）。
 
-## Does it phone home?
+## 它会回传数据吗？
 
-No. There is zero telemetry. The graph is a SQLite file in `.code-review-graph/`
-inside your repo, and the core build / review / search / MCP workflows run entirely
-locally. The streamable-HTTP MCP transport binds to localhost by default.
+不会。零遥测。Graph 是 repo 内 `.code-review-graph/` 中的一个 SQLite 文件，核心的 build / review / search / MCP 工作流完全在本地运行。Streamable-HTTP 的 MCP transport 默认绑定到 localhost。
 
-The only network activity is opt-in:
+唯一的网络活动是 opt-in：
 
-- **Local embeddings** (`pip install "code-review-graph[embeddings]"`) download the
-  sentence-transformers model from HuggingFace on first use. Your code does not leave
-  the machine.
-- **Cloud embeddings** (OpenAI-compatible, Google Gemini, MiniMax) send the text being
-  embedded — currently function signatures — to the provider you explicitly configure
-  via environment variables. CRG prints an egress warning unless you acknowledge it
-  with `CRG_ACCEPT_CLOUD_EMBEDDINGS=1`; the warning is skipped automatically when the
-  endpoint is localhost.
+- **本地 embeddings**（`pip install "code-review-graph[embeddings]"`）首次使用时从 HuggingFace 下载 sentence-transformers 模型。你的代码不会离开本机。
+- **Cloud embeddings**（OpenAI 兼容、Google Gemini、MiniMax）会把正在 embedding 的文本——目前是函数签名——发送给你通过环境变量显式配置的 provider。除非你用 `CRG_ACCEPT_CLOUD_EMBEDDINGS=1` 确认，CRG 会打印出 egress 警告；当端点是 localhost 时，该警告会自动跳过。
 
-See [LEGAL.md](LEGAL.md) for the full privacy notes.
+完整隐私说明参见 [LEGAL.md](LEGAL.md)。
 
-## How do I verify it is working?
+## 如何验证它正常工作？
 
-1. **Check the graph exists and has content:**
+1. **检查 graph 存在且有内容：**
 
    ```bash
    code-review-graph status
    ```
 
-   You should see node/edge counts and graph statistics. Zero nodes means the build
-   didn't run or found nothing to parse.
+   你应该看到 node/edge 计数和 graph 统计。零 nodes 意味着 build 没有运行，或没有找到可解析的内容。
 
-2. **See the savings on a real change** — make any edit, then:
+2. **在真实变更上查看节省量**——做任意编辑，然后：
 
    ```bash
    code-review-graph detect-changes --brief
    ```
 
-   This prints the risk summary and the boxed **Token Savings** panel against the
-   existing graph (read-only). Add `--verify` to cross-check the estimate against
-   OpenAI's `cl100k_base` tokenizer (requires `pip install tiktoken`). If you suspect
-   the graph is stale, `code-review-graph update --brief` re-parses changed files
-   first and prints the same panel.
+   这会基于现有 graph 打印 risk 摘要和带边框的 **Token Savings** 面板（只读）。添加 `--verify` 可与 OpenAI 的 `cl100k_base` tokenizer 交叉核对估算值（需要 `pip install tiktoken`）。如果你怀疑 graph 过期，`code-review-graph update --brief` 会先重新解析变更的文件，然后打印同样的面板。
 
-3. **Check the MCP wiring** — in Claude Code, run `/mcp` and confirm the
-   `code-review-graph` server is connected with its tools listed. Then ask the
-   assistant something structural ("what calls `parse_file`?") and watch it use
-   `query_graph` instead of grepping.
+3. **检查 MCP 接线**——在 Claude Code 中运行 `/mcp`，确认 `code-review-graph` server 已连接并列出其 tools。然后问 assistant 一个结构性问题（"什么调用了 `parse_file`？"），观察它使用 `query_graph` 而不是 grep。
 
-If any of these fail, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+如果其中任何一步失败，参见 [TROUBLESHOOTING.md](TROUBLESHOOTING.md)。
 
-## How big a codebase justifies it?
+## 多大的 codebase 才值得使用它？
 
-This comes up often (see #414). Honest guidance, tied to the documented small-repo
-overhead:
+这个问题经常出现（参见 #414）。诚实建议，与已记录的小型 repo 开销相关联：
 
-- **Below a few hundred files:** marginal. The graph builds in seconds and works
-  fine, but an agent can already hold most of the repo in context, and for trivial
-  diffs the structural response can cost more tokens than it saves (the documented
-  overhead regime — see [When should I not use it?](#when-should-i-not-use-it)).
-- **A few hundred to a few thousand files:** this is where the benchmarks live. The
-  six evaluation repos range from 60 to ~1,100 files and show 38x–528x reductions on
-  whole-corpus agent questions, with the caveat noted above about what that baseline
-  measures.
-- **Multi-thousand-file repos and monorepos:** the strongest case. No agent can read
-  the corpus per question (FastAPI alone is ~950k tokens of source), re-deriving
-  structure by search every session is the dominant cost, and incremental updates
-  keep the graph fresh in under 2 seconds.
+- **低于几百个文件：** 收益有限。Graph 几秒内构建完成且工作正常，但 agent 通常已经能在 context 中容纳大部分 repo，而且对于琐碎 diffs，结构性响应消耗的 token 可能比省下的还多（已记录的开销区间——参见 [何时不应使用它？](#何时不应使用它)）。
+- **几百到几千个文件：** 这正是 benchmarks 发挥作用的地方。五个 evaluation repos 的文件数从 60 到约 1,100 不等，在整语料库 agent 问题上实现了 38x–528x 的削减，并带上面提到的关于该 baseline 测量什么的前提说明。
+- **数千文件级 repos 和 monorepos：** 最强的论据。没有 agent 能每个问题都通读语料库（单是 FastAPI 就有约 95 万 token 的源码），每次 session 都靠搜索重新推导结构是主要成本，而增量更新能在 2 秒内保持 graph 新鲜。
 
-A second axis matters as much as file count: **how often you ask multi-file
-questions**. A 300-file repo you review daily benefits more than a 3,000-file repo
-you touch once.
+另一个轴与文件数同等重要：**你多久问一次多文件问题**。每天审查的 300 文件 repo，比一次性的 3,000 文件 repo 收益更大。
 
-## How does it handle monorepos, git worktrees, and multiple repos?
+## 如何处理 monorepos、git worktrees 和多个 repos？
 
-**Monorepos.** One graph per repository root by default — commands auto-detect the
-root by walking up to the nearest `.git`, and in git repos only tracked files are
-indexed (`git ls-files`), so gitignored build artifacts are skipped automatically.
-Use a `.code-review-graphignore` file to exclude tracked paths (e.g. `vendor/**`,
-generated code), or pass `--repo <path>` to point a command at a specific directory.
+**Monorepos。** 默认每个 repository root 一个 graph——命令通过向上走到最近的 `.git` 自动检测 root，且 git repos 中只索引已跟踪的文件（`git ls-files`），所以 gitignored 的构建产物会被自动跳过。使用 `.code-review-graphignore` 文件排除已跟踪的路径（例如 `vendor/**`、生成的代码），或传 `--repo <path>` 让某个命令指向特定目录。
 
-**Git worktrees.** Each worktree is detected as its own root, so each gets its own
-`.code-review-graph/` database matching its checkout. Don't try to share one database
-across worktrees at different commits — the graph reflects one working tree. If you
-want the database outside the working tree entirely (ephemeral workspaces, network
-shares), use `--data-dir <path>` on `build`/`update`/etc., or set the `CRG_DATA_DIR`
-environment variable.
+**Git worktrees。** 每个 worktree 被检测为独立的 root，所以各自有自己的 `.code-review-graph/` 数据库，与其 checkout 对应。不要试图让不同 commit 的 worktrees 共享一个数据库——graph 反映的是某一个 working tree。如果你想完全把数据库放在 working tree 之外（临时 workspace、网络共享），在 `build`/`update` 等命令上使用 `--data-dir <path>`，或设置 `CRG_DATA_DIR` 环境变量。
 
-**Multiple repos.** A lightweight registry (stored at
-`~/.code-review-graph/registry.json`) lets MCP clients search across projects:
+**多个 repos。** 一个轻量级 registry（存储在 `~/.code-review-graph/registry.json`）让 MCP clients 可以跨项目搜索：
 
 ```bash
-code-review-graph register ~/work/api --alias api   # add a repo (optional alias)
-code-review-graph repos                             # list registered repos
-code-review-graph unregister api                    # remove by path or alias
+code-review-graph register ~/work/api --alias api   # 添加 repo（可选 alias）
+code-review-graph repos                             # 列出已注册的 repos
+code-review-graph unregister api                    # 按路径或 alias 移除
 ```
 
-Once registered, the `list_repos_tool` and `cross_repo_search_tool` MCP tools work
-across all of them. To keep several graphs fresh automatically, the bundled daemon watches
-registered repos as child processes:
+注册后，`list_repos_tool` 和 `cross_repo_search_tool` 这两个 MCP tools 可以跨所有 repos 工作。要让多个 graphs 自动保持新鲜，内置 daemon 会把已注册的 repos 作为子进程监控：
 
 ```bash
 crg-daemon add ~/work/api --alias api
@@ -248,5 +141,4 @@ crg-daemon start
 crg-daemon status
 ```
 
-(Also available as `code-review-graph daemon start|stop|status`.) See
-[COMMANDS.md](COMMANDS.md) for the full daemon reference.
+（也可用 `code-review-graph daemon start|stop|status`。）完整的 daemon 参考参见 [COMMANDS.md](COMMANDS.md)。

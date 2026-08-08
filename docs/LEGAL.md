@@ -1,16 +1,16 @@
-# Legal & Privacy
+# 法律与隐私
 
-**License:** MIT (see [LICENSE](../LICENSE) in project root)
+**许可证：** MIT（见项目根目录的 [LICENSE](../LICENSE)）
 
-**Privacy:**
-- Zero telemetry
-- All graph data stored locally in `.code-review-graph/graph.db`
-- Core graph build, review, search, and CLI/MCP workflows run locally
-- Optional local embeddings may download a sentence-transformers model from HuggingFace when first used
-- Optional cloud embedding providers (`openai`, `google`, `minimax`, `voyage`) send embedded source snippets to the configured provider only when explicitly selected
-- Remote embedding providers print an egress warning unless `CRG_ACCEPT_CLOUD_EMBEDDINGS=1` is set
-- Streamable HTTP MCP transport binds to localhost by default
+**隐私：**
+- 零遥测
+- 所有 graph 数据本地存储在 `.code-review-graph/graph.db`
+- 核心 graph build、review、search 和 CLI/MCP 工作流在本地运行
+- 可选的本地 embeddings 首次使用时可能从 HuggingFace 下载 sentence-transformers 模型
+- 可选的 cloud embedding providers（`openai`、`google`、`minimax`、`voyage`）仅在显式选择时把被 embedding 的源码片段发送给配置的 provider
+- 远程 embedding providers 除非设置 `CRG_ACCEPT_CLOUD_EMBEDDINGS=1`，否则会打印 egress 警告
+- Streamable HTTP MCP transport 默认绑定到 localhost
 
-**Data:** Core graph data stays on your machine. If you opt into a cloud embedding provider, the text being embedded leaves your machine under that provider's terms.
+**数据：** 核心 graph 数据留在你的机器上。如果你选择使用 cloud embedding provider，被 embedding 的文本会在该 provider 的条款下离开你的机器。
 
-**Warranty:** Provided as-is, without warranty of any kind.
+**保证：** 按现状提供，不附带任何形式的保证。
