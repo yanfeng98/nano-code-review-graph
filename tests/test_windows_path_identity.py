@@ -44,26 +44,6 @@ def test_normalize_file_path_relative_windows_path():
 # ---------------------------------------------------------------------------
 
 
-def test_julia_identity_uses_forward_slashes_for_windows_paths():
-    """The exact failure from issue #774: '\\repo\\case.jl::Demo.greet'."""
-    nodes, edges = CodeParser().parse_bytes(
-        PureWindowsPath(r"\repo\case.jl"),
-        b"module Demo\ngreet() = 1\ndelegate() = greet()\nend\n",
-    )
-
-    assert all(n.file_path == "/repo/case.jl" for n in nodes)
-    file_node = next(n for n in nodes if n.kind == "File")
-    assert file_node.name == "/repo/case.jl"
-
-    calls = [e for e in edges if e.kind == "CALLS"]
-    assert any(
-        e.source == "/repo/case.jl::Demo.delegate"
-        and e.target == "/repo/case.jl::Demo.greet"
-        for e in calls
-    )
-    assert all(e.file_path == "/repo/case.jl" for e in edges)
-
-
 def test_python_identity_uses_forward_slashes_for_windows_paths():
     nodes, edges = CodeParser().parse_bytes(
         PureWindowsPath(r"C:\repo\pkg\mod.py"),
@@ -77,8 +57,8 @@ def test_python_identity_uses_forward_slashes_for_windows_paths():
 
 def test_qualify_normalizes_file_path_component():
     parser = CodeParser()
-    assert parser._qualify("greet", "\\repo\\case.jl", "Demo") == "/repo/case.jl::Demo.greet"
-    assert parser._qualify("greet", "/repo/case.jl", None) == "/repo/case.jl::greet"
+    assert parser._qualify("greet", "\\repo\\case.py", "Demo") == "/repo/case.py::Demo.greet"
+    assert parser._qualify("greet", "/repo/case.py", None) == "/repo/case.py::greet"
 
 
 def test_dataclass_file_path_is_normalized_defensively():

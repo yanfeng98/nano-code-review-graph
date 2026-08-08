@@ -651,7 +651,6 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".ksh": "bash",  # Korn shell — close enough to bash for tree-sitter-bash (#235)
     ".ipynb": "notebook",
     ".zig": "zig",
-    ".jl": "julia",
     # ReScript: .res is implementation, .resi is interface. Both share one
     # language label; the parser flags interface files via extra metadata.
     # No tree-sitter grammar is bundled in tree_sitter_language_pack, so
@@ -806,9 +805,6 @@ _CLASS_TYPES: dict[str, list[str]] = {
     # whose RHS is a SuffixExpr > ContainerDecl. Dispatched via
     # _extract_zig_constructs.
     "zig": [],
-    "julia": [
-        "struct_definition", "abstract_definition", "module_definition",
-    ],
     "verilog": [
         "module_declaration",
         "interface_declaration",
@@ -849,13 +845,6 @@ _FUNCTION_TYPES: dict[str, list[str]] = {
     # walker can't bridge the FnProto signature to its sibling Block body,
     # so the whole thing is dispatched via _extract_zig_constructs.
     "zig": [],
-    # Julia: short-form functions `f(x) = expr` parse as `assignment` nodes
-    # (not a dedicated definition node) and are handled in
-    # _extract_julia_constructs.
-    "julia": [
-        "function_definition",
-        "macro_definition",
-    ],
     "verilog": ["task_declaration", "function_declaration", "always_construct"],
 }
 
@@ -878,8 +867,6 @@ _IMPORT_TYPES: dict[str, list[str]] = {
     # "@import" + FnCallArguments holding a STRINGLITERALSINGLE. Handled in
     # _extract_zig_constructs as part of VarDecl processing.
     "zig": [],
-    # Julia: import/using are import_statement nodes.
-    "julia": ["import_statement", "using_statement"],
     "verilog": ["package_import_declaration"],
 }
 
@@ -902,11 +889,6 @@ _CALL_TYPES: dict[str, list[str]] = {
     # SuffixExpr); calls are walked explicitly in
     # _extract_zig_calls_in_subtree from inside function bodies.
     "zig": [],
-    "julia": [
-        "call_expression",
-        "broadcast_call_expression",
-        "macrocall_expression",
-    ],
     "verilog": [
         "module_instantiation",
         "interface_instantiation",
@@ -952,8 +934,6 @@ _TEST_FILE_PATTERNS = [
     re.compile(r"[\\/]__tests__[\\/]"),
     re.compile(r".*_test\.resi?$"),
     re.compile(r".*\.test\.resi?$"),
-    re.compile(r"test/runtests\.jl$"),
-    re.compile(r"test/.*\.jl$"),
 ]
 
 _TEST_RUNNER_NAMES = frozenset({
@@ -2744,10 +2724,6 @@ class CodeParser:
 
         External calls (names not defined in this file) remain bare.
         """
-        if any(node.language == "julia" for node in nodes):
-            return self._resolve_julia_call_targets(
-                nodes, edges, file_path,
-            )
 
         is_cpp = any(node.language == "cpp" for node in nodes)
 
@@ -2795,12 +2771,6 @@ class CodeParser:
 
         resolved: list[EdgeInfo] = []
         for edge in edges:
-            if (
-                edge.kind == "REFERENCES"
-                and edge.extra.get("julia_qualified_def")
-            ):
-                resolved.append(edge)
-                continue
             receiver = edge.extra.get("receiver")
             has_receiver = bool(receiver)
             if edge.kind in ("CALLS", "REFERENCES") and "::" not in edge.target:
@@ -2985,114 +2955,6 @@ class CodeParser:
             resolved.append(edge)
         return resolved
 
-    def _resolve_julia_call_targets(
-        self,
-        nodes: list[NodeInfo],
-        edges: list[EdgeInfo],
-        file_path: str,
-    ) -> list[EdgeInfo]:
-        """Resolve Julia calls from the nearest lexical scope outward."""
-        prefix = f"{file_path}::"
-
-        # Qualified methods retain their explicit identity path, but that
-        # module qualifier is not a lexical parent. Record the method
-        # boundary and the scope to jump to after searching definitions
-        # nested inside that exact method body.
-        qualified_boundaries: list[tuple[str, str]] = []
-        for node in nodes:
-            qualifier = node.extra.get("julia_module_qualifier")
-            if not isinstance(qualifier, str) or not qualifier:
-                continue
-            identity_parent = node.parent_name or ""
-            parent_parts = identity_parent.split(".") if identity_parent else []
-            qualifier_parts = qualifier.split(".")
-            if parent_parts[-len(qualifier_parts):] != qualifier_parts:
-                continue
-            lexical_parent = ".".join(
-                parent_parts[:-len(qualifier_parts)],
-            )
-            identity_path = ".".join(
-                part for part in (identity_parent, node.name) if part
-            )
-            qualified_boundaries.append((identity_path, lexical_parent))
-        qualified_boundaries.sort(
-            key=lambda item: len(item[0]), reverse=True,
-        )
-
-        symbols: dict[str, str] = {}
-        for node in nodes:
-            if node.kind not in ("Function", "Class", "Type", "Test"):
-                continue
-            qualified = self._qualify(
-                node.name, file_path, node.parent_name,
-            )
-            identity_path = qualified.removeprefix(prefix)
-            symbols[identity_path] = qualified
-
-        def _search_scopes(
-            source_scope: str,
-            seen: frozenset[str] = frozenset(),
-        ):
-            if source_scope in seen:
-                return
-            next_seen = seen | {source_scope}
-            boundary = next(
-                (
-                    item for item in qualified_boundaries
-                    if source_scope == item[0]
-                    or source_scope.startswith(f"{item[0]}.")
-                ),
-                None,
-            )
-            scope_parts = source_scope.split(".") if source_scope else []
-            if boundary is None:
-                for size in range(len(scope_parts), -1, -1):
-                    yield ".".join(scope_parts[:size])
-                return
-
-            identity_boundary, lexical_parent = boundary
-            boundary_depth = len(identity_boundary.split("."))
-            for size in range(len(scope_parts), boundary_depth - 1, -1):
-                yield ".".join(scope_parts[:size])
-            yield from _search_scopes(lexical_parent, next_seen)
-
-        resolved: list[EdgeInfo] = []
-        for edge in edges:
-            if (
-                edge.kind == "REFERENCES"
-                and edge.extra.get("julia_qualified_def")
-            ):
-                resolved.append(edge)
-                continue
-            if (
-                edge.kind not in ("CALLS", "REFERENCES")
-                or "::" in edge.target
-            ):
-                resolved.append(edge)
-                continue
-
-            source_tail = (
-                edge.source.removeprefix(prefix)
-                if edge.source.startswith(prefix)
-                else ""
-            )
-            target = None
-            for scope in _search_scopes(source_tail):
-                candidate = f"{scope}.{edge.target}" if scope else edge.target
-                target = symbols.get(candidate)
-                if target is not None:
-                    break
-            if target is not None:
-                edge = EdgeInfo(
-                    kind=edge.kind,
-                    source=edge.source,
-                    target=target,
-                    file_path=edge.file_path,
-                    line=edge.line,
-                    extra=edge.extra,
-                )
-            resolved.append(edge)
-        return resolved
 
     _TYPED_CALL_LANGUAGES = frozenset({
         "python", "javascript", "typescript", "tsx",
@@ -3990,19 +3852,6 @@ class CodeParser:
                 ):
                     continue
 
-            # --- Julia-specific constructs ---
-            # Short-form functions (`f(x) = expr`) parse as ``assignment``,
-            # ``include("file.jl")`` as a call_expression, exports as
-            # ``export_statement``, and macrocalls (including ``@testset``)
-            # need recursion into bodies that may themselves contain
-            # function definitions (e.g. ``@inline function f ... end``).
-            if language == "julia" and self._extract_julia_constructs(
-                child, node_type, source, language, file_path,
-                nodes, edges, enclosing_class, enclosing_func,
-                import_map, defined_names, _depth,
-            ):
-                continue
-
             # --- Verilog/SystemVerilog structural declarations ---
             if language == "verilog" and self._extract_verilog_constructs(
                 child,
@@ -4467,597 +4316,6 @@ class CodeParser:
             return True
         return False
 
-    # ------------------------------------------------------------------
-    # Julia-specific helpers
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _julia_component_name(node) -> Optional[str]:
-        """Return an identifier or quoted operator component name."""
-        if node.type in ("identifier", "operator"):
-            return node.text.decode("utf-8", errors="replace")
-        if node.type in ("quote_expression", "parenthesized_expression"):
-            for child in node.children:
-                name = CodeParser._julia_component_name(child)
-                if name is not None:
-                    return name
-        return None
-
-    def _julia_field_parts(self, field_expr) -> list[str]:
-        """Flatten the identifier prefix of a Julia field expression."""
-        parts: list[str] = []
-        for child in field_expr.children:
-            if child.type == "field_expression":
-                parts.extend(self._julia_field_parts(child))
-            elif child.type == "identifier":
-                parts.append(
-                    child.text.decode("utf-8", errors="replace"),
-                )
-        return parts
-
-    def _julia_field_info(
-        self, field_expr,
-    ) -> tuple[Optional[str], Optional[str]]:
-        """Return ``(qualifier, leaf)`` for a Julia field expression."""
-        semantic_children = [
-            child for child in field_expr.children
-            if child.type in (
-                "field_expression",
-                "identifier",
-                "quote_expression",
-            )
-        ]
-        if not semantic_children:
-            return None, None
-        name = self._julia_component_name(semantic_children[-1])
-        qualifier_parts: list[str] = []
-        for child in semantic_children[:-1]:
-            if child.type == "field_expression":
-                qualifier_parts.extend(self._julia_field_parts(child))
-            elif child.type == "identifier":
-                qualifier_parts.append(
-                    child.text.decode("utf-8", errors="replace"),
-                )
-        qualifier = ".".join(qualifier_parts) or None
-        return qualifier, name
-
-    @staticmethod
-    def _julia_scope_join(
-        outer: Optional[str], inner: Optional[str],
-    ) -> Optional[str]:
-        """Join Julia scope paths without repeating an existing prefix."""
-        if not outer:
-            return inner
-        if not inner:
-            return outer
-        if inner == outer or inner.startswith(f"{outer}."):
-            return inner
-        return f"{outer}.{inner}"
-
-    def _julia_signature_call(self, function_node):
-        """Return the outer definition call inside a Julia signature."""
-        signature = next(
-            (
-                child for child in function_node.children
-                if child.type == "signature"
-            ),
-            None,
-        )
-        if signature is None:
-            return None
-        scope = signature
-        for _ in range(4):
-            call = next(
-                (
-                    child for child in scope.children
-                    if child.type == "call_expression"
-                ),
-                None,
-            )
-            if call is not None:
-                return call
-            wrapper = next(
-                (
-                    child for child in scope.children
-                    if child.type in (
-                        "where_expression", "typed_expression",
-                    )
-                ),
-                None,
-            )
-            if wrapper is None:
-                break
-            scope = wrapper
-        return None
-
-    def _julia_signature_callee(self, function_node):
-        """Return the definition target inside a Julia signature."""
-        call = self._julia_signature_call(function_node)
-        if call is not None:
-            return call.children[0] if call.children else None
-        signature = next(
-            (
-                child for child in function_node.children
-                if child.type == "signature"
-            ),
-            None,
-        )
-        if signature is None:
-            return None
-        return next(
-            (
-                child for child in signature.children
-                if child.type in (
-                    "field_expression", "identifier", "operator",
-                )
-            ),
-            None,
-        )
-
-    def _julia_definition_qualifier(
-        self, function_node,
-    ) -> Optional[str]:
-        callee = self._julia_signature_callee(function_node)
-        if callee is None or callee.type != "field_expression":
-            return None
-        qualifier, _ = self._julia_field_info(callee)
-        return qualifier
-
-    def _julia_short_qualifier(self, call_expr) -> Optional[str]:
-        if not call_expr.children:
-            return None
-        callee = call_expr.children[0]
-        if callee.type != "field_expression":
-            return None
-        qualifier, _ = self._julia_field_info(callee)
-        return qualifier
-
-    def _resolve_julia_import_alias(
-        self,
-        alias: str,
-        enclosing_class: Optional[str],
-        enclosing_func: Optional[str],
-        import_map: dict[str, str],
-    ) -> Optional[str]:
-        """Resolve a Julia import alias from the nearest lexical scope."""
-        scope = self._julia_scope_join(enclosing_class, enclosing_func)
-        scope_parts = scope.split(".") if scope else []
-        for size in range(len(scope_parts), -1, -1):
-            prefix = ".".join(scope_parts[:size])
-            key = f"{prefix}.{alias}" if prefix else alias
-            if key in import_map:
-                return import_map[key]
-        return None
-
-    def _julia_call_is_in_signature(self, call_node) -> bool:
-        """Return whether this is the signature's definition call."""
-        parent = call_node.parent
-        while parent is not None:
-            if parent.type in ("function_definition", "macro_definition"):
-                return self._julia_signature_call(parent) == call_node
-            if parent.type == "source_file":
-                break
-            parent = parent.parent
-        return False
-
-    def _julia_short_func_name(self, call_expr) -> Optional[str]:
-        """Extract the name from a ``call_expression`` that is the LHS of
-        a short-form function ``f(x) = expr`` or ``Base.f(x) = expr`` or
-        ``Foo{T}(x) = expr``.
-        """
-        for child in call_expr.children:
-            if child.type == "identifier":
-                return child.text.decode("utf-8", errors="replace")
-            if child.type == "operator":
-                return child.text.decode("utf-8", errors="replace")
-            if child.type == "field_expression":
-                _, name = self._julia_field_info(child)
-                return name
-            if child.type == "parametrized_type_expression":
-                for ident in child.children:
-                    if ident.type == "identifier":
-                        return ident.text.decode("utf-8", errors="replace")
-                return None
-        return None
-
-    def _julia_string_arg(self, call_expr) -> Optional[str]:
-        """Return the first string literal argument of a call_expression."""
-        for child in call_expr.children:
-            if child.type != "argument_list":
-                continue
-            for arg in child.children:
-                if arg.type == "string_literal":
-                    for sub in arg.children:
-                        if sub.type == "content":
-                            return sub.text.decode("utf-8", errors="replace")
-                    raw = arg.text.decode("utf-8", errors="replace")
-                    return raw.strip('"').strip("'")
-        return None
-
-    def _julia_call_first_identifier(self, call_expr) -> Optional[str]:
-        """First identifier of a ``call_expression`` (the function being
-        called). Used to detect ``include("...")``.
-        """
-        for child in call_expr.children:
-            if child.type == "identifier":
-                return child.text.decode("utf-8", errors="replace")
-        return None
-
-    def _extract_julia_constructs(
-        self,
-        child,
-        node_type: str,
-        source: bytes,
-        language: str,
-        file_path: str,
-        nodes: list[NodeInfo],
-        edges: list[EdgeInfo],
-        enclosing_class: Optional[str],
-        enclosing_func: Optional[str],
-        import_map: Optional[dict[str, str]],
-        defined_names: Optional[set[str]],
-        _depth: int,
-    ) -> bool:
-        """Handle Julia-specific constructs the type tables can't cover.
-
-        Returns True if the child was fully handled and should be skipped
-        by the main dispatch loop.
-        """
-        # Parameterized const aliases are type declarations. Ordinary value
-        # constants stay on the generic path.
-        if node_type == "const_statement":
-            assignment = next(
-                (
-                    sub for sub in child.children
-                    if sub.type == "assignment"
-                ),
-                None,
-            )
-            if assignment is not None and len(assignment.children) >= 3:
-                name_node = assignment.children[0]
-                value_node = assignment.children[-1]
-                if (
-                    name_node.type == "identifier"
-                    and value_node.type in (
-                        "parametrized_type_expression",
-                        "curly_expression",
-                    )
-                ):
-                    name = name_node.text.decode(
-                        "utf-8", errors="replace",
-                    )
-                    qualified = self._qualify(
-                        name, file_path, enclosing_class,
-                    )
-                    nodes.append(NodeInfo(
-                        kind="Type",
-                        name=name,
-                        file_path=file_path,
-                        line_start=child.start_point[0] + 1,
-                        line_end=child.end_point[0] + 1,
-                        language=language,
-                        parent_name=enclosing_class,
-                    ))
-                    container = (
-                        self._qualify(enclosing_class, file_path, None)
-                        if enclosing_class
-                        else file_path
-                    )
-                    edges.append(EdgeInfo(
-                        kind="CONTAINS",
-                        source=container,
-                        target=qualified,
-                        file_path=file_path,
-                        line=child.start_point[0] + 1,
-                    ))
-                    return True
-
-        # --- Short-form function: assignment with call_expression LHS ---
-        # ``f(x) = expr`` or ``Base.f(x) = expr``.  Anything else with an
-        # ``=`` (plain variable, const) is left to the generic path.
-        if node_type == "assignment":
-            lhs = child.children[0] if child.children else None
-            # Unwrap typed LHS: ``f(x)::RetT = expr`` parses as
-            # ``assignment > typed_expression > call_expression``.
-            if lhs is not None and lhs.type == "typed_expression":
-                for sub in lhs.children:
-                    if sub.type == "call_expression":
-                        lhs = sub
-                        break
-            if lhs is not None and lhs.type == "call_expression":
-                name = self._julia_short_func_name(lhs)
-                if name:
-                    is_test = _is_test_function(name, file_path, ())
-                    kind = "Test" if is_test else "Function"
-                    lexical_parent = self._julia_scope_join(
-                        enclosing_class, enclosing_func,
-                    )
-                    qualifier = self._julia_short_qualifier(lhs)
-                    identity_parent = self._julia_scope_join(
-                        lexical_parent, qualifier,
-                    )
-                    qualified = self._qualify(
-                        name, file_path, identity_parent,
-                    )
-                    extra = {}
-                    if qualifier:
-                        extra["julia_module_qualifier"] = qualifier
-                    nodes.append(NodeInfo(
-                        kind=kind,
-                        name=name,
-                        file_path=file_path,
-                        line_start=child.start_point[0] + 1,
-                        line_end=child.end_point[0] + 1,
-                        language=language,
-                        parent_name=identity_parent,
-                        is_test=is_test,
-                        extra=extra,
-                    ))
-                    container = (
-                        self._qualify(lexical_parent, file_path, None)
-                        if lexical_parent
-                        else file_path
-                    )
-                    edges.append(EdgeInfo(
-                        kind="CONTAINS",
-                        source=container,
-                        target=qualified,
-                        file_path=file_path,
-                        line=child.start_point[0] + 1,
-                    ))
-                    if qualifier:
-                        edges.append(EdgeInfo(
-                            kind="REFERENCES",
-                            source=qualified,
-                            target=qualifier,
-                            file_path=file_path,
-                            line=child.start_point[0] + 1,
-                            extra={"julia_qualified_def": True},
-                        ))
-                    # Recurse into the RHS only (children after the ``=``
-                    # operator) with this function as the enclosing scope
-                    # so internal calls wire up correctly. Visiting the
-                    # whole assignment would re-treat the LHS
-                    # ``call_expression`` as a self-call.
-                    call_types = set(_CALL_TYPES.get(language, []))
-                    seen_op = False
-                    for sub in child.children:
-                        if not seen_op:
-                            if sub.type == "operator":
-                                seen_op = True
-                            continue
-                        # The RHS call itself sits at this level, while the
-                        # generic walker only visits a node's children.
-                        if sub.type in call_types:
-                            self._extract_calls(
-                                sub, source, language, file_path,
-                                nodes, edges, identity_parent, name,
-                                import_map, defined_names, _depth + 1,
-                            )
-                        self._extract_from_tree(
-                            sub, source, language, file_path, nodes, edges,
-                            enclosing_class=identity_parent,
-                            enclosing_func=name,
-                            import_map=import_map,
-                            defined_names=defined_names,
-                            _depth=_depth + 1,
-                        )
-                    return True
-
-        # --- Skip call_expression nodes that are actually function
-        # signatures (``function foo(x) ... end`` has a ``signature >
-        # call_expression`` that describes the definition, not a call).
-        if (
-            node_type == "call_expression"
-            and self._julia_call_is_in_signature(child)
-        ):
-            return True
-
-        # --- include("file.jl") -> IMPORTS_FROM edge ---
-        if node_type == "call_expression":
-            if self._julia_call_first_identifier(child) == "include":
-                path_arg = self._julia_string_arg(child)
-                if path_arg:
-                    resolved = self._resolve_module_to_file(
-                        path_arg, file_path, language,
-                    )
-                    edges.append(EdgeInfo(
-                        kind="IMPORTS_FROM",
-                        source=file_path,
-                        target=resolved if resolved else path_arg,
-                        file_path=file_path,
-                        line=child.start_point[0] + 1,
-                    ))
-                    # Fall through - let generic call dispatch also record
-                    # the CALLS edge and recurse for nested calls.
-                    return False
-
-        # --- export_statement / public_statement -> REFERENCES edges ---
-        # ``public`` (1.11+) is a softer variant of ``export`` — symbols
-        # are part of the public API but not brought into scope by
-        # ``using``. Track both so review tools can answer "what's the
-        # public surface of this module?".
-        if node_type in ("export_statement", "public_statement"):
-            source_qual = (
-                self._qualify(enclosing_class, file_path, None)
-                if enclosing_class
-                else file_path
-            )
-            marker = (
-                "julia_export"
-                if node_type == "export_statement"
-                else "julia_public"
-            )
-            for sub in child.children:
-                if sub.type == "identifier":
-                    name = sub.text.decode("utf-8", errors="replace")
-                    edges.append(EdgeInfo(
-                        kind="REFERENCES",
-                        source=source_qual,
-                        target=name,
-                        file_path=file_path,
-                        line=child.start_point[0] + 1,
-                        extra={marker: True},
-                    ))
-            return True
-
-        # --- macrocall_expression ---
-        if node_type == "macrocall_expression":
-            macro_name = None
-            for sub in child.children:
-                if sub.type == "macro_identifier":
-                    for ident in sub.children:
-                        if ident.type == "identifier":
-                            macro_name = ident.text.decode(
-                                "utf-8", errors="replace",
-                            )
-                            break
-                    break
-
-            if macro_name == "enum":
-                # @enum Color RED BLUE GREEN
-                # First argument is the enum type name; the rest are
-                # variant names. Model the type as a Class and each
-                # variant as a Function child, so callers referencing a
-                # variant resolve to something in the graph.
-                type_name: Optional[str] = None
-                variant_identifiers: list = []
-                for sub in child.children:
-                    if sub.type != "macro_argument_list":
-                        continue
-                    for arg in sub.children:
-                        if arg.type != "identifier":
-                            continue
-                        if type_name is None:
-                            type_name = arg.text.decode(
-                                "utf-8", errors="replace",
-                            )
-                        else:
-                            variant_identifiers.append(arg)
-                    break
-                if type_name:
-                    line_start = child.start_point[0] + 1
-                    line_end = child.end_point[0] + 1
-                    qualified_type = self._qualify(
-                        type_name, file_path, enclosing_class,
-                    )
-                    nodes.append(NodeInfo(
-                        kind="Class",
-                        name=type_name,
-                        file_path=file_path,
-                        line_start=line_start,
-                        line_end=line_end,
-                        language=language,
-                        parent_name=enclosing_class,
-                        extra={"julia_kind": "enum"},
-                    ))
-                    container = (
-                        self._qualify(enclosing_class, file_path, None)
-                        if enclosing_class
-                        else file_path
-                    )
-                    edges.append(EdgeInfo(
-                        kind="CONTAINS",
-                        source=container,
-                        target=qualified_type,
-                        file_path=file_path,
-                        line=line_start,
-                    ))
-                    for variant in variant_identifiers:
-                        vname = variant.text.decode(
-                            "utf-8", errors="replace",
-                        )
-                        variant_parent = self._julia_scope_join(
-                            enclosing_class, type_name,
-                        )
-                        qualified_v = self._qualify(
-                            vname, file_path, variant_parent,
-                        )
-                        nodes.append(NodeInfo(
-                            kind="Function",
-                            name=vname,
-                            file_path=file_path,
-                            line_start=variant.start_point[0] + 1,
-                            line_end=variant.end_point[0] + 1,
-                            language=language,
-                            parent_name=variant_parent,
-                            extra={"julia_kind": "enum_variant"},
-                        ))
-                        edges.append(EdgeInfo(
-                            kind="CONTAINS",
-                            source=qualified_type,
-                            target=qualified_v,
-                            file_path=file_path,
-                            line=variant.start_point[0] + 1,
-                        ))
-                return True
-
-            if macro_name == "testset":
-                # @testset "desc" begin ... end
-                desc = None
-                body_parent = None
-                for sub in child.children:
-                    if sub.type != "macro_argument_list":
-                        continue
-                    body_parent = sub
-                    for arg in sub.children:
-                        if arg.type == "string_literal":
-                            for c in arg.children:
-                                if c.type == "content":
-                                    desc = c.text.decode(
-                                        "utf-8", errors="replace",
-                                    )
-                                    break
-                            break
-                line_no = child.start_point[0] + 1
-                synth_base = f"testset:{desc}" if desc else "testset"
-                synth_name = f"{synth_base}@L{line_no}"
-                lexical_parent = self._julia_scope_join(
-                    enclosing_class, enclosing_func,
-                )
-                qualified = self._qualify(
-                    synth_name, file_path, lexical_parent,
-                )
-                nodes.append(NodeInfo(
-                    kind="Test",
-                    name=synth_name,
-                    file_path=file_path,
-                    line_start=child.start_point[0] + 1,
-                    line_end=child.end_point[0] + 1,
-                    language=language,
-                    parent_name=lexical_parent,
-                    is_test=True,
-                ))
-                container = (
-                    self._qualify(lexical_parent, file_path, None)
-                    if lexical_parent
-                    else file_path
-                )
-                edges.append(EdgeInfo(
-                    kind="CONTAINS",
-                    source=container,
-                    target=qualified,
-                    file_path=file_path,
-                    line=child.start_point[0] + 1,
-                ))
-                if body_parent is not None:
-                    self._extract_from_tree(
-                        body_parent, source, language, file_path, nodes, edges,
-                        enclosing_class=lexical_parent,
-                        enclosing_func=synth_name,
-                        import_map=import_map, defined_names=defined_names,
-                        _depth=_depth + 1,
-                    )
-                return True
-
-            # Other macrocalls: let the generic CALLS path emit the edge,
-            # but also recurse into the macro_argument_list so that any
-            # function defs nested under @inline / @generated / etc. get
-            # captured. We return False so the generic dispatcher still
-            # runs for the CALLS edge.
-            return False
-
-        return False
 
     # ------------------------------------------------------------------
     # Zig-specific helpers
@@ -5906,11 +5164,7 @@ class CodeParser:
         nodes.append(node)
 
         # CONTAINS edge
-        class_container = (
-            self._qualify(enclosing_class, file_path, None)
-            if language == "julia" and enclosing_class
-            else file_path
-        )
+        class_container = file_path
         edges.append(EdgeInfo(
             kind="CONTAINS",
             source=class_container,
@@ -5933,10 +5187,7 @@ class CodeParser:
             ))
 
         # Recurse into class body
-        if language == "julia":
-            recursive_class = self._julia_scope_join(enclosing_class, name)
-        else:
-            recursive_class = name
+        recursive_class = name
         self._extract_from_tree(
             child, source, language, file_path, nodes, edges,
             enclosing_class=recursive_class, enclosing_func=None,
@@ -6016,16 +5267,6 @@ class CodeParser:
 
         parent_name = enclosing_class
         container_scope = enclosing_class
-        julia_qualifier: Optional[str] = None
-        if language == "julia":
-            lexical_parent = self._julia_scope_join(
-                enclosing_class, enclosing_func,
-            )
-            julia_qualifier = self._julia_definition_qualifier(child)
-            parent_name = self._julia_scope_join(
-                lexical_parent, julia_qualifier,
-            )
-            container_scope = lexical_parent
 
         identity_name = name
         params = self._get_params(child, language, source)
@@ -6051,8 +5292,6 @@ class CodeParser:
         ret_type = self._get_return_type(child, language, source)
 
         method_extra: dict = {}
-        if julia_qualifier:
-            method_extra["julia_module_qualifier"] = julia_qualifier
 
         # Persist annotations/decorators so consumers can filter on them
         # (e.g. "show me all @Composable functions").  Stored in BOTH
@@ -6098,21 +5337,9 @@ class CodeParser:
             line=child.start_point[0] + 1,
         ))
 
-        # Qualified Julia methods extend a foreign module while remaining
-        # structurally contained by their lexical module.
-        if julia_qualifier:
-            edges.append(EdgeInfo(
-                kind="REFERENCES",
-                source=qualified,
-                target=julia_qualifier,
-                file_path=file_path,
-                line=child.start_point[0] + 1,
-                extra={"julia_qualified_def": True},
-            ))
-
         # Recurse to find calls inside the function
         recursive_class = (
-            parent_name if language in ("julia", "cpp") else enclosing_class
+            parent_name if language == "cpp" else enclosing_class
         )
         self._extract_from_tree(
             child, source, language, file_path, nodes, edges,
@@ -6262,14 +5489,13 @@ class CodeParser:
             # any function called only from top-level script glue, CLI
             # entrypoints, or Jupyter/Databricks notebook cells is flagged
             # as dead by find_dead_code.
-            # For Verilog module instantiations and Julia module-level calls,
-            # create CALLS edges from the enclosing module. Julia needs this
-            # lexical source so same-file resolution can find module members.
+            # For Verilog module instantiations, create CALLS edges from the
+            # enclosing module.
             if enclosing_func:
                 caller = self._qualify(
                     enclosing_func, file_path, enclosing_class,
                 )
-            elif language in ("verilog", "julia") and enclosing_class:
+            elif language == "verilog" and enclosing_class:
                 caller = self._qualify(
                     enclosing_class, file_path, None
                 )
@@ -6294,36 +5520,6 @@ class CodeParser:
                     call_name = method_name
                 if receiver:
                     call_extra["receiver"] = receiver
-
-            # Keep Julia module qualification in the canonical target. The
-            # same-file resolver can then distinguish ``run`` from ``A.B.run``.
-            if (
-                language == "julia"
-                and child.children
-                and child.children[0].type == "field_expression"
-            ):
-                qualifier, qualified_name = self._julia_field_info(
-                    child.children[0],
-                )
-                if qualifier and qualified_name:
-                    module_parts = qualifier.split(".")
-                    imported_module = self._resolve_julia_import_alias(
-                        module_parts[0], enclosing_class, enclosing_func,
-                        import_map or {},
-                    )
-                    if imported_module:
-                        module_parts[0] = imported_module
-                    resolved_qualifier = ".".join(module_parts)
-                    call_name = f"{resolved_qualifier}.{qualified_name}"
-                    call_extra["julia_call_module"] = resolved_qualifier
-
-            if language == "julia" and "." not in call_name:
-                imported_symbol = self._resolve_julia_import_alias(
-                    call_name, enclosing_class, enclosing_func,
-                    import_map or {},
-                )
-                if imported_symbol:
-                    call_name = imported_symbol
 
             # When a receiver is present, skip scope-based resolution: the method
             # lives on the receiver's type, not in the current file's scope.
@@ -7391,47 +6587,8 @@ class CodeParser:
             ):
                 self._collect_js_require_names(child, import_map)
 
-        if language == "julia":
-            self._collect_julia_scoped_import_names(
-                root, source, import_map,
-            )
-
         return import_map, defined_names
 
-    def _collect_julia_scoped_import_names(
-        self,
-        node,
-        source: bytes,
-        import_map: dict[str, str],
-        scope: Optional[str] = None,
-    ) -> None:
-        """Collect Julia aliases without leaking them across modules."""
-        current_scope = scope
-        if node.type == "module_definition":
-            name_node = node.child_by_field_name("name")
-            if name_node is not None:
-                module_name = name_node.text.decode(
-                    "utf-8", errors="replace",
-                )
-                current_scope = self._julia_scope_join(
-                    current_scope, module_name,
-                )
-
-        import_types = set(self._import_types.get("julia", []))
-        for child in node.children:
-            if child.type in import_types:
-                local_imports: dict[str, str] = {}
-                self._collect_import_names(
-                    child, "julia", source, local_imports,
-                )
-                for alias, target in local_imports.items():
-                    key = self._julia_scope_join(current_scope, alias)
-                    if key:
-                        import_map[key] = target
-                continue
-            self._collect_julia_scoped_import_names(
-                child, source, import_map, current_scope,
-            )
 
     def _expand_python_star_imports(
         self,
@@ -7783,57 +6940,6 @@ class CodeParser:
                 if local_name != "*":
                     import_map[local_name] = original_path
 
-        elif language == "julia":
-            def _alias_parts(alias_node) -> tuple[Optional[str], Optional[str]]:
-                names: list[str] = []
-                for part in alias_node.children:
-                    if part.type == "identifier":
-                        names.append(
-                            part.text.decode("utf-8", errors="replace"),
-                        )
-                    elif part.type == "import_path":
-                        names.append(
-                            ".".join(
-                                child.text.decode(
-                                    "utf-8", errors="replace",
-                                )
-                                for child in part.children
-                                if child.type == "identifier"
-                            ),
-                        )
-                if len(names) < 2:
-                    return None, None
-                return names[0], names[-1]
-
-            for child in node.children:
-                if child.type == "import_alias":
-                    real_name, alias = _alias_parts(child)
-                    if real_name and alias:
-                        import_map[alias] = real_name
-                    continue
-                if child.type != "selected_import":
-                    continue
-                module_name: Optional[str] = None
-                seen_colon = False
-                for part in child.children:
-                    if part.type == ":":
-                        seen_colon = True
-                    elif not seen_colon and part.type == "identifier":
-                        module_name = part.text.decode(
-                            "utf-8", errors="replace",
-                        )
-                    elif not seen_colon and part.type == "import_path":
-                        module_name = ".".join(
-                            component.text.decode(
-                                "utf-8", errors="replace",
-                            )
-                            for component in part.children
-                            if component.type == "identifier"
-                        )
-                    elif seen_colon and part.type == "import_alias":
-                        real_name, alias = _alias_parts(part)
-                        if module_name and real_name and alias:
-                            import_map[alias] = f"{module_name}.{real_name}"
 
     def _collect_js_import_names(
         self, clause_node, module: str, import_map: dict[str, str],
@@ -8312,8 +7418,6 @@ class CodeParser:
                 return call_name
             return self._qualify(call_name, file_path, None)
         if call_name in import_map:
-            if language == "julia":
-                return import_map[call_name]
             resolved = self._resolve_imported_symbol(
                 self._js_imported_symbol_name(call_name, import_map),
                 import_map[call_name],
@@ -8696,66 +7800,6 @@ class CodeParser:
                             if sub.type == "function_identifier":
                                 return sub.text.decode("utf-8", errors="replace")
 
-        # Julia: functions / macros nest the name inside
-        # ``signature > call_expression > identifier``. Qualified names
-        # (``function Base.show``) store the method name as the last
-        # identifier of a ``field_expression``. ``where`` clauses wrap the
-        # call in a ``where_expression``.
-        # Structs and abstract types put the name inside ``type_head``,
-        # possibly wrapped in ``binary_expression`` (``<:``) or
-        # ``parametrized_type_expression`` (``{T}``).
-        if language == "julia":
-            if node.type in ("function_definition", "macro_definition"):
-                callee = self._julia_signature_callee(node)
-                if callee is None:
-                    return None
-                if callee.type == "field_expression":
-                    _, name = self._julia_field_info(callee)
-                    return name
-                if callee.type == "parametrized_type_expression":
-                    # Parametric constructor: ``Foo{T}(x)``.
-                    for part in callee.children:
-                        if part.type == "identifier":
-                            return part.text.decode(
-                                "utf-8", errors="replace",
-                            )
-                    return None
-                return self._julia_component_name(callee)
-            if node.type in ("struct_definition", "abstract_definition"):
-                for child in node.children:
-                    if child.type == "type_head":
-                        # Direct identifier: struct Foo ... end
-                        for sub in child.children:
-                            if sub.type == "identifier":
-                                return sub.text.decode(
-                                    "utf-8", errors="replace",
-                                )
-                        # Subtyped: type_head > binary_expression > identifier (first)
-                        for sub in child.children:
-                            if sub.type == "binary_expression":
-                                for ident in sub.children:
-                                    if ident.type == "identifier":
-                                        return ident.text.decode(
-                                            "utf-8", errors="replace",
-                                        )
-                                    if ident.type == "parametrized_type_expression":
-                                        for p in ident.children:
-                                            if p.type == "identifier":
-                                                return p.text.decode(
-                                                    "utf-8", errors="replace",
-                                                )
-                                        return None
-                                return None
-                        # Parametric (no <:): type_head > parametrized_type_expression
-                        for sub in child.children:
-                            if sub.type == "parametrized_type_expression":
-                                for p in sub.children:
-                                    if p.type == "identifier":
-                                        return p.text.decode(
-                                            "utf-8", errors="replace",
-                                        )
-                                return None
-                return None
 
         # Config-driven custom languages make ``name_field`` authoritative.
         # Resolve it before the generic direct-child heuristic so an unrelated
@@ -9150,43 +8194,6 @@ class CodeParser:
                                     for f in field_node.children:
                                         if f.type == "type_identifier":
                                             bases.append(f.text.decode("utf-8", errors="replace"))
-        elif language == "julia":
-            # Julia: struct Foo <: Bar / abstract type Foo <: Bar end
-            # AST: type_head > binary_expression with operator "<:" and
-            # identifier children; the identifier AFTER the operator is the
-            # supertype.
-            if node.type in ("struct_definition", "abstract_definition"):
-                for child in node.children:
-                    if child.type != "type_head":
-                        continue
-                    for sub in child.children:
-                        if sub.type != "binary_expression":
-                            continue
-                        has_subtype_op = False
-                        for op_child in sub.children:
-                            if (
-                                op_child.type == "operator"
-                                and op_child.text == b"<:"
-                            ):
-                                has_subtype_op = True
-                                break
-                        if not has_subtype_op:
-                            continue
-                        idents = [
-                            c for c in sub.children if c.type == "identifier"
-                        ]
-                        # First identifier is the type being defined; the
-                        # second (if present) is the supertype.
-                        if len(idents) >= 2:
-                            bases.append(
-                                idents[1].text.decode("utf-8", errors="replace"),
-                            )
-                        elif len(idents) == 1:
-                            # Could be `Parametric{T} <: Super` where the
-                            # first side is parametrized_type_expression.
-                            bases.append(
-                                idents[0].text.decode("utf-8", errors="replace"),
-                            )
         return bases
 
     def _extract_import(self, node, language: str, source: bytes) -> list[str]:
@@ -9244,74 +8251,6 @@ class CodeParser:
                     for subchild in child.children:
                         if subchild.type == "package_identifier":
                             imports.append(subchild.text.decode("utf-8", errors="replace"))
-        elif language == "julia":
-            # using/import statements. Children can be:
-            # - identifier (simple: `using Foo`)
-            # - import_path (dotted: `using Foo.Bar`)
-            # - selected_import (`using Foo: bar, baz` — first child is the
-            #   module as identifier/import_path, remaining identifiers after
-            #   the ':' are imported names to record as ``Module.name``)
-            def _import_path_text(n) -> str:
-                parts: list[str] = []
-                for sub in n.children:
-                    if sub.type == "identifier":
-                        parts.append(sub.text.decode("utf-8", errors="replace"))
-                return ".".join(parts)
-
-            def _alias_real_name(alias_node) -> Optional[str]:
-                for sub in alias_node.children:
-                    if sub.type == "as":
-                        break
-                    if sub.type == "identifier":
-                        return sub.text.decode(
-                            "utf-8", errors="replace",
-                        )
-                    if sub.type == "import_path":
-                        path = _import_path_text(sub)
-                        return path or None
-                return None
-
-            for child in node.children:
-                if child.type == "identifier":
-                    imports.append(
-                        child.text.decode("utf-8", errors="replace"),
-                    )
-                elif child.type == "import_path":
-                    path = _import_path_text(child)
-                    if path:
-                        imports.append(path)
-                elif child.type == "import_alias":
-                    real_name = _alias_real_name(child)
-                    if real_name:
-                        imports.append(real_name)
-                elif child.type == "selected_import":
-                    module_name: Optional[str] = None
-                    seen_colon = False
-                    for sub in child.children:
-                        if sub.type == ":":
-                            seen_colon = True
-                            continue
-                        if not seen_colon:
-                            if sub.type == "identifier":
-                                module_name = sub.text.decode(
-                                    "utf-8", errors="replace",
-                                )
-                            elif sub.type == "import_path":
-                                path = _import_path_text(sub)
-                                if path:
-                                    module_name = path
-                        else:
-                            if sub.type == "identifier" and module_name:
-                                imported = sub.text.decode(
-                                    "utf-8", errors="replace",
-                                )
-                                imports.append(f"{module_name}.{imported}")
-                            elif sub.type == "import_alias" and module_name:
-                                real_name = _alias_real_name(sub)
-                                if real_name:
-                                    imports.append(
-                                        f"{module_name}.{real_name}",
-                                    )
         elif language in self._custom_languages:
             # Custom languages (languages.toml): prefer the grammar's
             # module-ish field over the raw statement text (e.g. Erlang
@@ -9352,22 +8291,6 @@ class CodeParser:
                 if field is not None:
                     return field.text.decode("utf-8", errors="replace")
 
-        # Julia macrocall: ``@test expr`` — name is inside
-        # ``macro_identifier > identifier``. Prefix with ``@`` to distinguish
-        # from ordinary calls.
-        if language == "julia" and node.type == "macrocall_expression":
-            for child in node.children:
-                if child.type == "macro_identifier":
-                    for sub in child.children:
-                        if sub.type == "identifier":
-                            raw = sub.text.decode("utf-8", errors="replace")
-                            return f"@{raw}"
-                    return None
-            return None
-
-        # Julia broadcast call: ``sin.(x)`` — same structure as
-        # call_expression (first child is identifier or field_expression)
-        # so the generic paths below handle it.
 
         # Bash: `command` node's first child is the command name.
         if language == "bash" and node.type == "command":

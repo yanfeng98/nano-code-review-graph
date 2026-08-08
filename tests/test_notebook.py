@@ -88,12 +88,12 @@ class TestNotebookParsing:
             "cells": [
                 {"cell_type": "code", "source": ["println(\"hello\")"], "outputs": []},
             ],
-            "metadata": {"kernelspec": {"language": "julia"}},
+            "metadata": {"kernelspec": {"language": "go"}},
             "nbformat": 4,
         }
         source = json.dumps(nb).encode("utf-8")
         nodes, edges = self.parser.parse_bytes(
-            Path("julia_notebook.ipynb"), source,
+            Path("go_notebook.ipynb"), source,
         )
         assert nodes == []
         assert edges == []
@@ -380,7 +380,7 @@ class TestNotebookEdgeCases:
             ],
             "metadata": {
                 "kernelspec": {"language": "python"},
-                "language_info": {"name": "julia"},
+                "language_info": {"name": "go"},
             },
             "nbformat": 4,
         }
