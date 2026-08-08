@@ -650,7 +650,6 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".ksh": "bash",  # Korn shell — close enough to bash for tree-sitter-bash (#235)
     ".ipynb": "notebook",
     ".zig": "zig",
-    ".nix": "nix",
     # SystemVerilog/Verilog
     ".sv": "verilog",
     ".svh": "verilog",
@@ -790,9 +789,6 @@ _CLASS_TYPES: dict[str, list[str]] = {
     "c": ["struct_specifier", "type_definition"],
     "cpp": ["class_specifier", "struct_specifier"],
     "bash": [],  # Shell has no classes
-    # Nix: attrset bindings aren't "classes"; dispatched via
-    # _extract_nix_constructs.
-    "nix": [],
     # Zig has no single class node; struct/union/enum/opaque are VarDecl
     # whose RHS is a SuffixExpr > ContainerDecl. Dispatched via
     # _extract_zig_constructs.
@@ -829,9 +825,6 @@ _FUNCTION_TYPES: dict[str, list[str]] = {
     "cpp": ["function_definition", "declaration", "field_declaration"],
     # Bash: only function_definition; everything else is a command.
     "bash": ["function_definition"],
-    # Nix: `attrpath = expr;` bindings become Function nodes —
-    # handled in _extract_nix_constructs.
-    "nix": [],
     # Zig: FnProto+Block pairs sit inside a Decl node; the standard generic
     # walker can't bridge the FnProto signature to its sibling Block body,
     # so the whole thing is dispatched via _extract_zig_constructs.
@@ -849,10 +842,6 @@ _IMPORT_TYPES: dict[str, list[str]] = {
     "cpp": ["preproc_include"],
     # Bash: source / . <file> is a command — handled in _extract_bash_source below.
     "bash": [],
-    # Nix: `import ./x.nix`, `callPackage ./y.nix {}`, and flake
-    # `inputs.*.url` strings become IMPORTS_FROM edges —
-    # handled in _extract_nix_constructs.
-    "nix": [],
     # Zig: @import("path") is a SuffixExpr containing a BUILTINIDENTIFIER
     # "@import" + FnCallArguments holding a STRINGLITERALSINGLE. Handled in
     # _extract_zig_constructs as part of VarDecl processing.
@@ -870,9 +859,6 @@ _CALL_TYPES: dict[str, list[str]] = {
     "cpp": ["call_expression"],
     # Bash: every command invocation is a "command" node.
     "bash": ["command"],
-    # Nix: function application is ubiquitous; only import/callPackage
-    # produce edges, in _extract_nix_constructs.
-    "nix": [],
     # Zig calls are SuffixExpr/FieldOrFnCall nodes containing FnCallArguments.
     # Mapping SuffixExpr here would over-match (every expression is a
     # SuffixExpr); calls are walked explicitly in
@@ -3189,20 +3175,6 @@ class CodeParser:
                 ):
                     continue
 
-            # --- Nix-specific constructs ---
-            # Nix bindings (``attrpath = expr;``) are the graph's addressable
-            # things; dispatch via _extract_nix_constructs to flatten dotted
-            # attrpaths into Function nodes and to emit IMPORTS_FROM edges for
-            # flake ``inputs.*.url`` strings and ``import``/``callPackage``
-            # applications. See: #366 follow-up (flake-aware Nix support).
-            if language == "nix" and node_type == "binding":
-                if self._extract_nix_constructs(
-                    child, source, language, file_path, nodes, edges,
-                    enclosing_class, enclosing_func,
-                    import_map, defined_names, _depth,
-                ):
-                    continue
-
             # --- Verilog/SystemVerilog structural declarations ---
             if language == "verilog" and self._extract_verilog_constructs(
                 child,
@@ -3344,292 +3316,6 @@ class CodeParser:
                 import_map=import_map, defined_names=defined_names,
                 _depth=_depth + 1,
             )
-
-    @staticmethod
-    def _is_nix_flake_file(file_path: str) -> bool:
-        """Return True for files whose basename is ``flake.nix``."""
-        return Path(file_path).name == "flake.nix"
-
-    def _nix_attrpath_parts(self, attrpath_node) -> list[str]:
-        """Flatten a Nix ``attrpath`` node into a list of identifier parts.
-
-        ``packages.default`` → ``["packages", "default"]``;
-        ``inputs.nixpkgs.url`` → ``["inputs", "nixpkgs", "url"]``. Dotted
-        attrpaths have ``identifier`` children separated by ``.`` tokens.
-        """
-        parts: list[str] = []
-        for child in attrpath_node.children:
-            if child.type == "identifier":
-                parts.append(child.text.decode("utf-8", errors="replace"))
-        return parts
-
-    def _extract_nix_flake_input_urls(
-        self, attrset_node,
-    ) -> list[tuple[str, int]]:
-        """Walk a Nix ``attrset_expression`` looking for ``*.url = "..."``
-        bindings whose RHS is a literal string. Returns ``(url, line)``
-        tuples. Used when the enclosing attrpath is ``inputs`` so that both
-        the nested form
-
-            inputs = { nixpkgs.url = "..."; flake-utils.url = "..."; };
-
-        and the mixed form (an inner input with its own nested attrset)
-        surface the URL strings as IMPORTS_FROM targets.
-        """
-        results: list[tuple[str, int]] = []
-
-        def visit(n) -> None:
-            if n is None:
-                return
-            if n.type == "binding":
-                inner_path = None
-                inner_rhs = None
-                for sub in n.children:
-                    if sub.type == "attrpath":
-                        inner_path = sub
-                    elif sub.type not in ("=", ";") and inner_path is not None:
-                        if inner_rhs is None:
-                            inner_rhs = sub
-                if inner_path is not None and inner_rhs is not None:
-                    parts = self._nix_attrpath_parts(inner_path)
-                    if (
-                        parts
-                        and parts[-1] == "url"
-                        and inner_rhs.type == "string_expression"
-                    ):
-                        for c in inner_rhs.children:
-                            if c.type == "string_fragment":
-                                url = c.text.decode("utf-8", errors="replace")
-                                results.append((url, n.start_point[0] + 1))
-                                break
-                        return  # leaf binding — no children to recurse into
-                    # Non-url binding: still recurse so a deeper url survives
-                    if inner_rhs.type == "attrset_expression":
-                        visit(inner_rhs)
-                        return
-            for c in n.children:
-                visit(c)
-
-        visit(attrset_node)
-        return results
-
-    def _extract_nix_import_targets(self, rhs_node) -> list[tuple[str, int]]:
-        """Walk an expression looking for ``import <path>`` and
-        ``callPackage <path> <args>`` applications. Returns a list of
-        ``(target_path, line)`` tuples for each match.
-
-        Recurses through ``apply_expression`` (so ``import ./x.nix { ... }``
-        and ``pkgs.callPackage ./y.nix { }`` are both caught) and descends
-        into bodies of ``let_expression`` / ``parenthesized_expression`` /
-        ``function_expression`` / ``attrset_expression`` / ``list_expression``
-        so a ``let pkgs = import nixpkgs; in { ... }`` body is scanned too.
-        """
-        results: list[tuple[str, int]] = []
-
-        def head_call_name(apply) -> Optional[str]:
-            """Drill down the left-most side of nested apply_expressions to
-            the callee identifier. ``import ./x`` → ``"import"``;
-            ``pkgs.callPackage ./y { }`` → ``"callPackage"`` (last dotted
-            segment of the select_expression)."""
-            cur = apply
-            while cur is not None and cur.type == "apply_expression":
-                cur = cur.children[0] if cur.children else None
-            if cur is None:
-                return None
-            if cur.type == "variable_expression":
-                for c in cur.children:
-                    if c.type == "identifier":
-                        return c.text.decode("utf-8", errors="replace")
-            if cur.type == "select_expression":
-                # Last identifier in the attrpath portion.
-                last: Optional[str] = None
-                for c in cur.children:
-                    if c.type == "attrpath":
-                        for ac in c.children:
-                            if ac.type == "identifier":
-                                last = ac.text.decode("utf-8", errors="replace")
-                    elif c.type == "identifier":
-                        last = c.text.decode("utf-8", errors="replace")
-                return last
-            if cur.type == "identifier":
-                return cur.text.decode("utf-8", errors="replace")
-            return None
-
-        def first_path_arg(apply) -> Optional[str]:
-            """For nested apply_expressions like ``import ./x.nix { }``, walk
-            down collecting arguments; return the first ``path_expression``
-            we find."""
-            # Descend left spine collecting right-hand args in outer→inner order
-            stack: list = []
-            cur = apply
-            while cur is not None and cur.type == "apply_expression":
-                if len(cur.children) >= 2:
-                    stack.append(cur.children[1])
-                cur = cur.children[0] if cur.children else None
-            # Args closest to the callee come last in stack; try them in
-            # that order (innermost first) so ``import ./x { }`` picks
-            # ``./x`` not ``{ }``.
-            for arg in reversed(stack):
-                if arg.type == "path_expression":
-                    return arg.text.decode("utf-8", errors="replace").strip()
-            return None
-
-        def visit(n) -> None:
-            if n is None:
-                return
-            if n.type == "apply_expression":
-                name = head_call_name(n)
-                if name in ("import", "callPackage"):
-                    path = first_path_arg(n)
-                    if path:
-                        results.append((path, n.start_point[0] + 1))
-                # Still recurse into children so nested imports inside
-                # argument attrsets/lets are caught.
-            for c in n.children:
-                visit(c)
-
-        visit(rhs_node)
-        return results
-
-    def _extract_nix_constructs(
-        self,
-        node,
-        source: bytes,
-        language: str,
-        file_path: str,
-        nodes: list[NodeInfo],
-        edges: list[EdgeInfo],
-        enclosing_class: Optional[str],
-        enclosing_func: Optional[str],
-        import_map: Optional[dict[str, str]],
-        defined_names: Optional[set[str]],
-        _depth: int,
-    ) -> bool:
-        """Handle a Nix ``binding`` node (``attrpath = expr;``).
-
-        - Flattens dotted attrpaths into a single dotted node name
-          (``packages.default``).
-        - In ``flake.nix``, ``inputs.<name>.url = "..."`` bindings emit an
-          ``IMPORTS_FROM`` edge with target = the URL string, and no node.
-        - All other bindings become ``Function`` nodes (matching the
-          Bash convention for "the graph's addressable things") with a
-          CONTAINS edge from the File.
-        - The RHS is scanned for ``import <path>`` / ``callPackage <path> ...``
-          applications; each emits an ``IMPORTS_FROM`` edge (relative paths
-          are resolved against the caller's directory when possible).
-        - Recurses into the RHS so nested bindings (e.g. inside
-          ``let ... in { ... }`` or ``outputs = { ... }: { ... }``) are
-          discovered and flattened as their own top-level nodes.
-
-        Returns True (Nix has no other node-type dispatches in the walker).
-        """
-        attrpath_node = None
-        rhs_node = None
-        for sub in node.children:
-            if sub.type == "attrpath":
-                attrpath_node = sub
-            elif sub.type not in ("=", ";") and attrpath_node is not None:
-                # First non-attrpath, non-punctuation child is the RHS.
-                if rhs_node is None:
-                    rhs_node = sub
-        if attrpath_node is None or rhs_node is None:
-            return False
-
-        parts = self._nix_attrpath_parts(attrpath_node)
-        if not parts:
-            return False
-        name = ".".join(parts)
-        line = node.start_point[0] + 1
-
-        # --- Flake input URL: inputs.<name>.url = "..." ------------------
-        # Flat form: ``inputs.nixpkgs.url = "github:...";`` — emit one edge,
-        # skip node creation (this is metadata, not a graph "thing").
-        if (
-            self._is_nix_flake_file(file_path)
-            and len(parts) >= 2
-            and parts[0] == "inputs"
-            and parts[-1] == "url"
-            and rhs_node.type == "string_expression"
-        ):
-            url: Optional[str] = None
-            for c in rhs_node.children:
-                if c.type == "string_fragment":
-                    url = c.text.decode("utf-8", errors="replace")
-                    break
-            if url:
-                edges.append(EdgeInfo(
-                    kind="IMPORTS_FROM",
-                    source=file_path,
-                    target=url,
-                    file_path=file_path,
-                    line=line,
-                ))
-                return True
-
-        # Nested form: ``inputs = { nixpkgs.url = "..."; ... };`` — emit an
-        # edge per inner url string. Still fall through so the ``inputs``
-        # binding itself becomes a Function node and the default recursion
-        # continues (the recursion won't re-emit these urls as separate
-        # Function nodes because the flat form above short-circuits).
-        if (
-            self._is_nix_flake_file(file_path)
-            and parts == ["inputs"]
-            and rhs_node.type == "attrset_expression"
-        ):
-            for url, uline in self._extract_nix_flake_input_urls(rhs_node):
-                edges.append(EdgeInfo(
-                    kind="IMPORTS_FROM",
-                    source=file_path,
-                    target=url,
-                    file_path=file_path,
-                    line=uline,
-                ))
-
-        # --- Regular binding → Function node -----------------------------
-        qualified = self._qualify(name, file_path, enclosing_class)
-        nodes.append(NodeInfo(
-            kind="Function",
-            name=name,
-            file_path=file_path,
-            line_start=line,
-            line_end=node.end_point[0] + 1,
-            language=language,
-            parent_name=enclosing_class,
-        ))
-        container = (
-            self._qualify(enclosing_class, file_path, None)
-            if enclosing_class else file_path
-        )
-        edges.append(EdgeInfo(
-            kind="CONTAINS",
-            source=container,
-            target=qualified,
-            file_path=file_path,
-            line=line,
-        ))
-
-        # --- IMPORTS_FROM edges for import / callPackage inside the RHS --
-        for target, tline in self._extract_nix_import_targets(rhs_node):
-            resolved = self._resolve_module_to_file(target, file_path, "nix")
-            edges.append(EdgeInfo(
-                kind="IMPORTS_FROM",
-                source=file_path,
-                target=resolved if resolved else target,
-                file_path=file_path,
-                line=tline,
-            ))
-
-        # Recurse into the RHS so nested bindings become their own nodes
-        # (e.g. ``outputs = ...: { packages.default = ...; }`` surfaces
-        # ``packages.default`` as a top-level-named Function node too).
-        self._extract_from_tree(
-            rhs_node, source, language, file_path, nodes, edges,
-            enclosing_class=enclosing_class,
-            enclosing_func=enclosing_func,
-            import_map=import_map, defined_names=defined_names,
-            _depth=_depth + 1,
-        )
-        return True
 
     def _extract_bash_source_command(
         self,
@@ -6377,18 +6063,6 @@ class CodeParser:
         if language == "bash":
             # ``source ./lib.sh`` or ``source lib.sh`` — resolve relative
             # to the caller's directory. See: #197
-            try:
-                target = (caller_dir / module).resolve()
-                if target.is_file():
-                    return str(target)
-            except (OSError, ValueError):
-                pass
-            return None
-
-        if language == "nix":
-            # ``import ./x.nix`` / ``callPackage ./x.nix { }`` — relative to
-            # the caller's directory. Non-relative targets (URLs, bare
-            # identifiers like ``nixpkgs``) are left unresolved.
             try:
                 target = (caller_dir / module).resolve()
                 if target.is_file():

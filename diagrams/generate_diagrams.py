@@ -654,7 +654,7 @@ def d9():
         ("Backend",    ["Python", "Rust"],                           GRN, GRN_BG),
         ("Systems",    ["C", "C++", "Zig"],                           ORG, ORG_BG),
         ("Shells",     ["Bash"],                                       RED, RED_BG),
-        ("Domain",     ["Verilog", "Nix"],                    GRY, GRY_BG),
+        ("Domain",     ["Verilog"],                           GRY, GRY_BG),
         ("Other",      ["Jupyter/.ipynb"],                                            PRP, PRP_BG),
     ]
 
