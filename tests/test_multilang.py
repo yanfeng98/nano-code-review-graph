@@ -144,7 +144,6 @@ class TestBashParsing:
     def test_detects_language(self):
         assert self.parser.detect_language(Path("build.sh")) == "bash"
         assert self.parser.detect_language(Path("build.bash")) == "bash"
-        assert self.parser.detect_language(Path("run.zsh")) == "bash"
         # Regression for #235 — Korn shell (.ksh) should parse as bash.
         assert self.parser.detect_language(Path("legacy.ksh")) == "bash"
 

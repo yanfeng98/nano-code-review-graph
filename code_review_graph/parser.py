@@ -645,7 +645,6 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".astro": "typescript",
     ".sh": "bash",
     ".bash": "bash",
-    ".zsh": "bash",
     ".ksh": "bash",  # Korn shell — close enough to bash for tree-sitter-bash (#235)
     ".ipynb": "notebook",
     # SystemVerilog/Verilog
@@ -696,7 +695,6 @@ SHEBANG_INTERPRETER_TO_LANGUAGE: dict[str, str] = {
     # POSIX / bash-compatible shells — all routed through tree-sitter-bash
     "bash": "bash",
     "sh": "bash",
-    "zsh": "bash",
     "ksh": "bash",
     "dash": "bash",
     "ash": "bash",
