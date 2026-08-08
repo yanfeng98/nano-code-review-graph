@@ -689,7 +689,7 @@ def d9():
         fx = x0 + i * feat_w + feat_w/2
         els.append(TC(fx, fy, "\u2713 " + feat, 13, sc=GRN))
 
-    els.append(TC(700, fy+28, "Tree-sitter grammars + Jupyter / Databricks notebook handling", 13, sc=GRY))
+    els.append(TC(700, fy+28, "Tree-sitter grammars + Jupyter notebook handling", 13, sc=GRY))
 
     return els
 

@@ -1357,21 +1357,6 @@ class CodeParser:
         if language == "notebook":
             return self._parse_notebook(path, source)
 
-        # Databricks .py notebook exports.  The header is ALWAYS the very
-        # first line, but the file may have CRLF line endings on Windows
-        # (git's core.autocrlf=true default).  Match the first line robustly
-        # after stripping any trailing ``\r`` so the detection works on both
-        # platforms.  See issue #239.
-        if language == "python":
-            first_newline = source.find(b"\n")
-            first_line = (
-                source[:first_newline].rstrip(b"\r")
-                if first_newline != -1
-                else source.rstrip(b"\r")
-            )
-            if first_line == b"# Databricks notebook source":
-                return self._parse_databricks_py_notebook(path, source)
-
         # Ansible YAML: path heuristic promoted to "ansible".
         if language == "ansible":
             if _yaml is None:
@@ -1814,103 +1799,6 @@ class CodeParser:
                     ))
 
         return all_nodes, all_edges
-
-    def _parse_databricks_py_notebook(
-        self, path: Path, source: bytes,
-    ) -> tuple[list[NodeInfo], list[EdgeInfo]]:
-        """Parse a Databricks .py notebook export."""
-        text = source.decode("utf-8", errors="replace")
-
-        # Strip the header line
-        lines = text.split("\n")
-        if lines and lines[0].strip() == "# Databricks notebook source":
-            lines = lines[1:]
-
-        # Split on COMMAND delimiters
-        cell_chunks: list[list[str]] = [[]]
-        for line in lines:
-            if re.match(r"^# COMMAND\s*-+\s*$", line):
-                cell_chunks.append([])
-            else:
-                cell_chunks[-1].append(line)
-
-        # Classify each cell
-        cells: list[CellInfo] = []
-        magic_lang_map = {
-            "# MAGIC %sql": "sql",
-        }
-        skip_prefixes = ("# MAGIC %md", "# MAGIC %sh")
-
-        for cell_idx, chunk in enumerate(cell_chunks):
-            non_empty = [ln for ln in chunk if ln.strip()]
-            if not non_empty:
-                continue
-
-            first_line = non_empty[0]
-
-            # Check if all non-empty lines are MAGIC lines
-            all_magic = all(ln.startswith("# MAGIC ") for ln in non_empty)
-
-            # Detect language from the first MAGIC line (e.g. "# MAGIC %sql")
-            cell_lang = None
-            if all_magic:
-                for prefix, lang in magic_lang_map.items():
-                    if first_line.startswith(prefix):
-                        cell_lang = lang
-                        break
-
-            if cell_lang:
-                # Strip "# MAGIC " prefix (8 chars) then skip the %lang directive line
-                stripped = [
-                    ln[8:] if ln.startswith("# MAGIC ") else ln
-                    for ln in chunk
-                ]
-                # Remove the first non-empty line if it's just the %lang directive
-                stripped_non_empty = [ln for ln in stripped if ln.strip()]
-                if stripped_non_empty and stripped_non_empty[0].strip().startswith("%"):
-                    # Drop the directive line from the source
-                    first_directive = stripped_non_empty[0]
-                    stripped = [ln for ln in stripped if ln != first_directive]
-                cell_source = "\n".join(stripped)
-                cells.append(CellInfo(
-                    cell_index=cell_idx, language=cell_lang, source=cell_source,
-                ))
-                continue
-
-            # Check for skip prefixes (md, sh)
-            if all_magic and first_line.startswith(skip_prefixes):
-                continue
-
-            # Default: Python cell (mixed or no MAGIC)
-            py_lines = [ln for ln in chunk if not ln.startswith("# MAGIC ")]
-            cell_source = "\n".join(py_lines)
-            cells.append(CellInfo(
-                cell_index=cell_idx, language="python", source=cell_source,
-            ))
-
-        if not cells:
-            file_path_str = normalize_file_path(path)
-            file_node = NodeInfo(
-                kind="File",
-                name=file_path_str,
-                file_path=file_path_str,
-                line_start=1,
-                line_end=1,
-                language="python",
-                is_test=_is_test_file(file_path_str),
-            )
-            file_node.extra["notebook_format"] = "databricks_py"
-            return [file_node], []
-
-        nodes, edges = self._parse_notebook_cells(path, cells, "python")
-
-        # Tag File node with notebook_format
-        for node in nodes:
-            if node.kind == "File":
-                node.extra["notebook_format"] = "databricks_py"
-                break
-
-        return nodes, edges
 
     def _resolve_call_targets(
         self,
@@ -3990,7 +3878,7 @@ class CodeParser:
             # the File node. Matches the existing convention for CONTAINS
             # edges and _extract_value_references. Without this fallback,
             # any function called only from top-level script glue, CLI
-            # entrypoints, or Jupyter/Databricks notebook cells is flagged
+            # entrypoints, or Jupyter notebook cells is flagged
             # as dead by find_dead_code.
             # For Verilog module instantiations, create CALLS edges from the
             # enclosing module.

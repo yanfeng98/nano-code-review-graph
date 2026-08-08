@@ -122,7 +122,7 @@ Since v2.3.4, review and impact tools include compact `context_savings` metadata
 
 ## Supported Languages
 
-The parser currently covers Python, JavaScript, TypeScript/TSX, Rust, C/C++, shell scripts, Verilog/SystemVerilog, Astro files parsed through the TypeScript parser, and Jupyter/Databricks notebooks (`.ipynb`).
+The parser currently covers Python, JavaScript, TypeScript/TSX, Rust, C/C++, shell scripts, Verilog/SystemVerilog, Astro files parsed through the TypeScript parser, and Jupyter notebooks (`.ipynb`).
 
 Extension-less scripts are detected by shebang for common bash/sh/zsh/ksh/dash/ash, Python, Node interpreters.
 
