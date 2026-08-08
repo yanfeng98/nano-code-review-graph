@@ -78,14 +78,13 @@ class TestDocumentationSummaryExtraction:
 
         assert "docstring" not in node.extra
 
-    def test_go_plain_comment_block_is_documentation(self):
+    def test_ts_plain_comment_block_is_documentation(self):
         node = _parsed_node(
-            "module.go",
+            "module.ts",
             (
-                b"package parser\n\n"
-                b"// Parse reads an uploaded sheet\n"
-                b"// and returns normalized rows.\n"
-                b"func Parse() {}\n"
+                b"/// Parse reads an uploaded sheet\n"
+                b"/// and returns normalized rows.\n"
+                b"export function Parse(): void {}\n"
             ),
             "Parse",
         )
@@ -93,20 +92,6 @@ class TestDocumentationSummaryExtraction:
         assert node.extra["docstring"] == (
             "Parse reads an uploaded sheet and returns normalized rows."
         )
-
-    def test_go_compiler_directive_is_not_embedding_text(self):
-        node = _parsed_node(
-            "module.go",
-            (
-                b"package parser\n\n"
-                b"// Parse reads an uploaded sheet.\n"
-                b"//go:noinline\n"
-                b"func Parse() {}\n"
-            ),
-            "Parse",
-        )
-
-        assert node.extra["docstring"] == "Parse reads an uploaded sheet."
 
     def test_rust_outer_docs_cross_attributes_but_inner_docs_do_not_attach(self):
         documented = _parsed_node(

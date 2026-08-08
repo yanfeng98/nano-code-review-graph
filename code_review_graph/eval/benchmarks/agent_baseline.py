@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_TOP_K = 3
 
 _SOURCE_EXTS = (
-    ".py", ".js", ".ts", ".tsx", ".go", ".rs",
+    ".py", ".js", ".ts", ".tsx", ".rs",
     ".c", ".cpp", ".h",
 )
 

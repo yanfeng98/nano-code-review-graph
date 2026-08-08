@@ -139,8 +139,8 @@ Consistent with the limitations section in the [README](../README.md#benchmarks)
 - **One-off questions on a repo you won't revisit.** The build is fast (~10 seconds
   for a 500-file project) but the payoff comes from *reuse* across queries and
   sessions. For a single question, agentic search is fine.
-- **Flow detection on JS/Go.** Entry-point detection is currently reliable mainly for
-  Python framework patterns; JavaScript and Go flow detection needs work (33% recall,
+- **Flow detection on JS.** Entry-point detection is currently reliable mainly for
+  Python framework patterns; JavaScript flow detection needs work (33% recall,
   documented in the README limitations).
 
 ## Does it phone home?

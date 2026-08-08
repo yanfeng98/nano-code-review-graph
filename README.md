@@ -115,7 +115,7 @@ Build the code review graph for this project
   <img src="diagrams/diagram9_language_coverage.png" alt="语言覆盖按类别组织：Web、后端、系统、移动端、脚本、配置，以及 Jupyter 和 Databricks notebook 支持" width="90%" />
 </p>
 
-解析器支持跨语言解析函数、类、导入、调用点、继承和测试检测。当前支持包括 Python、JavaScript/TypeScript/TSX、Go、Rust、C/C++、shell 脚本、Zig、Nix、Verilog/SystemVerilog、Ansible playbooks/roles/tasks、Vue SFCs、通过 TypeScript 解析器解析的 Astro 文件、Jupyter/Databricks notebooks（`.ipynb`）。通用 YAML 不被视为源代码。
+解析器支持跨语言解析函数、类、导入、调用点、继承和测试检测。当前支持包括 Python、JavaScript/TypeScript/TSX、Rust、C/C++、shell 脚本、Zig、Nix、Verilog/SystemVerilog、Ansible playbooks/roles/tasks、Vue SFCs、通过 TypeScript 解析器解析的 Astro 文件、Jupyter/Databricks notebooks（`.ipynb`）。通用 YAML 不被视为源代码。
 
 
 ### 添加自定义语言（无需 fork）
@@ -235,7 +235,7 @@ jobs:
 - **影响"召回率 1.0"是图派生的且是循环的：** 历史 ground truth 来自预测器遍历的同一图边，因此在构造上是一个上限。诚实的协同变更模式（以同一提交中实际协同变更的文件为评分标准）与其并列测量；预期这些数字会显著更低。
 - **小的单文件变更：** 对于简单编辑，图上下文可能超过原始文件读取（参见上方 express 结果）。这个开销是支持多文件分析的结构化元数据。
 - **搜索质量（MRR 0.35）：** 关键词搜索在大多数查询中将正确结果排在前 4 位，但排名需要改进。Express 查询因模块模式的命名而返回 0 命中。
-- **流程检测（33% 召回率）：** 框架和常规入口模式对 Python 最强。JavaScript 和 Go 的流程检测有待改进。
+- **流程检测（33% 召回率）：** 框架和常规入口模式对 Python 最强。JavaScript 的流程检测有待改进。
 - **精度与召回率权衡：** 影响分析有意偏保守。它会标记*可能*受影响的文件，这意味着在大规模依赖图中存在一些误报。
 
 ---
@@ -245,7 +245,7 @@ jobs:
 | 功能 | 详情 |
 |---------|---------|
 | **增量更新** | 仅重新解析变更文件。后续更新在 2 秒内完成。 |
-| **广泛语言 + notebook 支持** | Python、JavaScript/TypeScript/TSX、Go、Rust、C/C++、shell 脚本、Zig、Nix、Verilog/SystemVerilog、Ansible playbooks/roles/tasks、Vue SFCs、通过 TypeScript 解析器解析的 Astro 文件、Jupyter/Databricks (.ipynb) |
+| **广泛语言 + notebook 支持** | Python、JavaScript/TypeScript/TSX、Rust、C/C++、shell 脚本、Zig、Nix、Verilog/SystemVerilog、Ansible playbooks/roles/tasks、Vue SFCs、通过 TypeScript 解析器解析的 Astro 文件、Jupyter/Databricks (.ipynb) |
 | **影响半径分析** | 展示哪些函数、类和文件可能受变更影响 |
 | **自动更新 hooks** | Hooks 和 watch 模式可在文件保存和支持的提交钩子时更新图 |
 | **语义搜索** | 可选的向量嵌入，通过 sentence-transformers、Google Gemini、MiniMax 或任何兼容 OpenAI 的端点（真实 OpenAI、Azure、new-api、LiteLLM、vLLM、LocalAI） |

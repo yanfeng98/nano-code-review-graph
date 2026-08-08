@@ -410,11 +410,8 @@ def d5():
     els.append(TC(990, 132, "on impact detection (13 commits)", 14, sc=GRN))
 
     # 3 repo cards \u2014 naive_corpus_tokens \u2192 avg graph_tokens across 5 questions
-    # Pinned SHAs: gin@5c00df8a, flask@a29f88ce, fastapi@0227991a
+    # Pinned SHAs: flask@a29f88ce, fastapi@0227991a
     cards = [
-        {"name":"gin",     "files":"Go web framework",   "red":"92\u00d7",
-         "tok":"166,868 \u2192 1,990 tokens",
-         "c":BLU, "bg":BLU_BG},
         {"name":"flask",   "files":"Python web framework",      "red":"71\u00d7",
          "tok":"125,022 \u2192 1,986 tokens",
          "c":ORG, "bg":ORG_BG},
@@ -654,7 +651,7 @@ def d9():
     # Group languages by ecosystem \u2014 verified against parser.py EXTENSION_TO_LANGUAGE
     groups = [
         ("Web",        ["TypeScript", "JavaScript", "TSX", "Vue"],                   BLU, BLU_BG),
-        ("Backend",    ["Python", "Go", "Rust"],                     GRN, GRN_BG),
+        ("Backend",    ["Python", "Rust"],                           GRN, GRN_BG),
         ("Systems",    ["C", "C++", "Zig"],                           ORG, ORG_BG),
         ("Shells",     ["Bash"],                                       RED, RED_BG),
         ("Domain",     ["Verilog", "Nix"],                    GRY, GRY_BG),

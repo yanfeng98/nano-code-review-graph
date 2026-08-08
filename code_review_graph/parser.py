@@ -329,7 +329,7 @@ def _python_unreachable_call_positions(
 # only covers Python.  The helpers below cover languages ``ast`` cannot parse,
 # walking the tree-sitter ancestor chain of a call node:
 #
-#   * Go / TypeScript / JavaScript:  ``if false { ... }`` / ``if (0) { ... }``
+#   * TypeScript / JavaScript:  ``if false { ... }`` / ``if (0) { ... }``
 #   * C / C++:                       ``#if 0`` / ``#elif 0`` preprocessor blocks
 #
 # Only the consequence (true branch) is dead; ``else`` / ``#else`` / ``#elif``
@@ -357,7 +357,7 @@ def _is_statically_false_condition(cond) -> bool:
     """Return True if *cond* is a statically-false literal (non-Python).
 
     * ``parenthesized_expression`` (TS/JS wrap ``if (expr)``) is unwrapped.
-    * ``false`` -- Go and TS/JS boolean literal.
+    * ``false`` -- TS/JS boolean literal.
     * ``number`` equal to ``0`` -- TS/JS ``if (0)``.
     """
     if cond.type == "parenthesized_expression":
@@ -379,7 +379,7 @@ def _is_in_static_dead_guard(node) -> bool:
 
     Two independent ancestor walks:
 
-    * A walk for Go / TS / JS ``if false`` / ``if (0)``.
+    * A walk for TS / JS ``if false`` / ``if (0)``.
     * A walk for C/C++ ``#if 0`` / ``#elif 0``.
 
     Neither walk stops at a function or class boundary. A declaration
@@ -389,7 +389,7 @@ def _is_in_static_dead_guard(node) -> bool:
     JS/TS class declarations are not hoisted, so there is no reachable
     symbol to preserve either.
     """
-    # Go / TS / JS: ``if`` with a statically-false condition.
+    # TS / JS: ``if`` with a statically-false condition.
     cursor = node.parent
     while cursor is not None:
         node_type = cursor.type
@@ -633,7 +633,6 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".jsx": "javascript",
     ".ts": "typescript",
     ".tsx": "tsx",
-    ".go": "go",
     ".rs": "rust",
     ".cpp": "cpp",
     ".cc": "cpp",
@@ -785,7 +784,6 @@ _CLASS_TYPES: dict[str, list[str]] = {
         "class_declaration", "class",
         "interface_declaration", "type_alias_declaration", "enum_declaration",
     ],
-    "go": ["type_declaration"],
     # impl_item is a scope for methods, not a second type definition. It is
     # dispatched separately so repeated impl blocks cannot overwrite structs.
     "rust": ["struct_item", "enum_item", "trait_item"],
@@ -826,7 +824,6 @@ _FUNCTION_TYPES: dict[str, list[str]] = {
     "javascript": ["function_declaration", "method_definition", "arrow_function"],
     "typescript": ["function_declaration", "method_definition", "arrow_function"],
     "tsx": ["function_declaration", "method_definition", "arrow_function"],
-    "go": ["function_declaration", "method_declaration"],
     "rust": ["function_item", "function_signature_item"],
     "c": ["function_definition"],
     "cpp": ["function_definition", "declaration", "field_declaration"],
@@ -847,7 +844,6 @@ _IMPORT_TYPES: dict[str, list[str]] = {
     "javascript": ["import_statement"],
     "typescript": ["import_statement"],
     "tsx": ["import_statement"],
-    "go": ["import_declaration"],
     "rust": ["use_declaration"],
     "c": ["preproc_include"],
     "cpp": ["preproc_include"],
@@ -869,7 +865,6 @@ _CALL_TYPES: dict[str, list[str]] = {
     "javascript": ["call_expression", "new_expression"],
     "typescript": ["call_expression", "new_expression"],
     "tsx": ["call_expression", "new_expression"],
-    "go": ["call_expression"],
     "rust": ["call_expression", "macro_invocation"],
     "c": ["call_expression"],
     "cpp": ["call_expression"],
@@ -923,7 +918,6 @@ _TEST_FILE_PATTERNS = [
     re.compile(r".*_test\.py$"),
     re.compile(r".*\.test\.[jt]sx?$"),
     re.compile(r".*\.spec\.[jt]sx?$"),
-    re.compile(r".*_test\.go$"),
     re.compile(r"tests?/"),
     re.compile(r"[\\/]__tests__[\\/]"),
 ]
@@ -4400,10 +4394,6 @@ class CodeParser:
     def _line_doc_payload(text: str, language: str) -> Optional[str]:
         """Return one documentation-line payload, or ``None`` if not docs."""
         stripped = text.strip()
-        if language == "go":
-            if not stripped.startswith("//"):
-                return None
-            return stripped[2:].lstrip()
         if language == "rust":
             # Rust ``//!`` is inner module/crate documentation; ``////`` is
             # an ordinary comment, not an outer item doc comment.
@@ -4458,8 +4448,6 @@ class CodeParser:
             payload = self._line_doc_payload(text, language)
             if payload is None:
                 break
-            if language == "go" and payload.startswith(("go:", "line ")):
-                continue
             payloads.append(payload)
         if not payloads:
             return None
@@ -4574,14 +4562,6 @@ class CodeParser:
         name = self._get_name(child, language, "function")
         if not name:
             return False
-
-        # Go methods: attach to their receiver type as the enclosing class,
-        # so `func (s *T) Foo()` becomes a member of T rather than a
-        # top-level function. See: #190
-        if language == "go" and child.type == "method_declaration":
-            receiver_type = self._get_go_receiver_type(child)
-            if receiver_type:
-                enclosing_class = receiver_type
 
         # Extract annotations/decorators for test detection
         decorators: tuple[str, ...] = ()
@@ -4763,7 +4743,7 @@ class CodeParser:
         ):
             return True
 
-        # Non-Python languages: tree-sitter dead-guard walk (Go/TS/JS
+        # Non-Python languages: tree-sitter dead-guard walk (TS/JS
         # ``if false``, C/C++ ``#if 0``).  ``ast`` above cannot reach them.
         if language != "python" and _is_in_static_dead_guard(child):
             return True
@@ -7108,13 +7088,6 @@ class CodeParser:
             for child in node.children:
                 if child.type == "word":
                     return child.text.decode("utf-8", errors="replace")
-        # Go methods: tree-sitter-go uses field_identifier for the name
-        # (e.g. func (s *T) MethodName(...) { }). Must run before the generic
-        # loop, which would match the result type's type_identifier (e.g. int64).
-        if language == "go" and node.type == "method_declaration":
-            for child in node.children:
-                if child.type == "field_identifier":
-                    return child.text.decode("utf-8", errors="replace")
         # Verilog/SystemVerilog: names are nested differently per construct type.
         if language == "verilog":
             if node.type == "package_declaration":
@@ -7178,41 +7151,6 @@ class CodeParser:
                 "simple_identifier", "constant", "field_identifier",
             ):
                 return child.text.decode("utf-8", errors="replace")
-        # For Go type declarations, look for type_spec
-        if language == "go" and node.type == "type_declaration":
-            for child in node.children:
-                if child.type == "type_spec":
-                    return self._get_name(child, language, kind)
-        return None
-
-    def _get_go_receiver_type(self, node) -> Optional[str]:
-        """Extract the receiver type from a Go method_declaration.
-
-        For ``func (s *T) Foo() {...}`` returns ``"T"``. For ``func (T) Foo()``
-        also returns ``"T"``. Returns None if no receiver is present.
-
-        The receiver is always the first ``parameter_list`` child of a
-        Go ``method_declaration`` and contains a single ``parameter_declaration``
-        whose type is either a ``type_identifier`` or a ``pointer_type``
-        wrapping one. See: #190
-        """
-        for child in node.children:
-            if child.type != "parameter_list":
-                continue
-            for param in child.children:
-                if param.type != "parameter_declaration":
-                    continue
-                for sub in param.children:
-                    if sub.type == "type_identifier":
-                        return sub.text.decode("utf-8", errors="replace")
-                    if sub.type == "pointer_type":
-                        for ptr_child in sub.children:
-                            if ptr_child.type == "type_identifier":
-                                return ptr_child.text.decode(
-                                    "utf-8", errors="replace"
-                                )
-            # First parameter_list is always the receiver; stop searching.
-            return None
         return None
 
     @staticmethod
@@ -7540,17 +7478,6 @@ class CodeParser:
                             if ident.type in ("type_identifier", "nested_type_identifier"):
                                 bases.append(ident.text.decode("utf-8", errors="replace"))
                                 break
-        elif language == "go":
-            # Embedded structs / interface composition
-            for child in node.children:
-                if child.type == "type_spec":
-                    for sub in child.children:
-                        if sub.type in ("struct_type", "interface_type"):
-                            for field_node in sub.children:
-                                if field_node.type == "field_declaration_list":
-                                    for f in field_node.children:
-                                        if f.type == "type_identifier":
-                                            bases.append(f.text.decode("utf-8", errors="replace"))
         return bases
 
     def _extract_import(self, node, language: str, source: bytes) -> list[str]:
@@ -7575,20 +7502,6 @@ class CodeParser:
                 if child.type == "string":
                     val = child.text.decode("utf-8", errors="replace").strip("'\"")
                     imports.append(val)
-        elif language == "go":
-            for child in node.children:
-                if child.type == "import_spec_list":
-                    for spec in child.children:
-                        if spec.type == "import_spec":
-                            for s in spec.children:
-                                if s.type == "interpreted_string_literal":
-                                    val = s.text.decode("utf-8", errors="replace")
-                                    imports.append(val.strip('"'))
-                elif child.type == "import_spec":
-                    for s in child.children:
-                        if s.type == "interpreted_string_literal":
-                            val = s.text.decode("utf-8", errors="replace")
-                            imports.append(val.strip('"'))
         elif language == "rust":
             imports.extend(
                 original_path

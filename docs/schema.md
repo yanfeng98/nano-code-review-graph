@@ -9,7 +9,7 @@ Represents a source code file.
 |----------|------|-------------|
 | name | string | Absolute file path |
 | file_path | string | Same as name for File nodes |
-| language | string | Detected language (python, typescript, go, etc.) |
+| language | string | Detected language (python, typescript, etc.) |
 | line_start | int | Always 1 |
 | line_end | int | Total line count |
 | file_hash | string | SHA-256 of file contents (for change detection) |
@@ -46,7 +46,7 @@ Represents a function, method, or constructor definition.
 Same schema as Function, but `kind = "Test"` and `is_test = true`. Identified by:
 - Name starts with `test_` or `Test`
 - Name ends with `_test` or `_spec`
-- File matches test file patterns (`test_*.py`, `*.test.ts`, `*_test.go`, etc.)
+- File matches test file patterns (`test_*.py`, `*.test.ts`, etc.)
 - Language-specific test markers where supported, such as common Rust test attributes
 
 ### Type
@@ -91,7 +91,7 @@ A class extends/inherits from another class.
 | file_path | string | File containing the child class |
 
 ### IMPLEMENTS
-A class implements an interface (TypeScript, Go).
+A class implements an interface (TypeScript).
 
 | Property | Type | Description |
 |----------|------|-------------|

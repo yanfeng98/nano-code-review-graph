@@ -31,7 +31,7 @@ def compute_naive_tokens(repo_root: Path) -> int:
     """Count tokens in all parseable source files."""
     total = 0
     exts = (
-        ".py", ".js", ".ts", ".go", ".rs",
+        ".py", ".js", ".ts", ".rs",
         ".c", ".cpp",
     )
     for ext in exts:

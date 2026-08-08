@@ -1,4 +1,4 @@
-"""Tests for Go, Rust, C, C++, and Vue parsing."""
+"""Tests for Rust, C, C++, and Vue parsing."""
 
 from pathlib import Path
 
@@ -7,80 +7,6 @@ import pytest
 from code_review_graph.parser import CodeParser
 
 FIXTURES = Path(__file__).parent / "fixtures"
-
-
-class TestGoParsing:
-    def setup_method(self):
-        self.parser = CodeParser()
-        self.nodes, self.edges = self.parser.parse_file(FIXTURES / "sample_go.go")
-
-    def test_detects_language(self):
-        assert self.parser.detect_language(Path("main.go")) == "go"
-
-    def test_finds_structs_and_interfaces(self):
-        classes = [n for n in self.nodes if n.kind == "Class"]
-        names = {c.name for c in classes}
-        assert "User" in names
-        assert "InMemoryRepo" in names
-        assert "UserRepository" in names
-
-    def test_finds_functions(self):
-        funcs = [n for n in self.nodes if n.kind == "Function"]
-        names = {f.name for f in funcs}
-        assert "NewInMemoryRepo" in names
-        assert "CreateUser" in names
-
-    def test_finds_imports(self):
-        imports = [e for e in self.edges if e.kind == "IMPORTS_FROM"]
-        targets = {e.target for e in imports}
-        assert "errors" in targets
-        assert "fmt" in targets
-
-    def test_finds_calls(self):
-        calls = [e for e in self.edges if e.kind == "CALLS"]
-        assert len(calls) >= 1
-
-    def test_finds_contains(self):
-        contains = [e for e in self.edges if e.kind == "CONTAINS"]
-        assert len(contains) >= 3
-
-    def test_methods_attached_to_receiver(self):
-        """Go methods should be attached to their receiver type (#190).
-
-        `func (r *InMemoryRepo) FindByID(...)` should produce a Function node
-        with parent_name='InMemoryRepo' and a CONTAINS edge from the type to
-        the method, so `inheritors_of`/`query_graph` can find methods via the
-        struct they belong to.
-        """
-        funcs = [n for n in self.nodes if n.kind == "Function"]
-        by_name = {f.name: f for f in funcs}
-        assert "FindByID" in by_name
-        assert "Save" in by_name
-        assert by_name["FindByID"].parent_name == "InMemoryRepo"
-        assert by_name["Save"].parent_name == "InMemoryRepo"
-        # Free functions should still have no parent.
-        assert by_name["NewInMemoryRepo"].parent_name is None
-        assert by_name["CreateUser"].parent_name is None
-
-        contains = [(e.source, e.target) for e in self.edges if e.kind == "CONTAINS"]
-        find_by_id_contains = [
-            (s, t) for (s, t) in contains
-            if t.endswith("::InMemoryRepo.FindByID")
-        ]
-        save_contains = [
-            (s, t) for (s, t) in contains
-            if t.endswith("::InMemoryRepo.Save")
-        ]
-        assert find_by_id_contains, (
-            f"no CONTAINS edge for InMemoryRepo.FindByID in {contains}"
-        )
-        assert save_contains, (
-            f"no CONTAINS edge for InMemoryRepo.Save in {contains}"
-        )
-        # Source of each CONTAINS should be the InMemoryRepo type,
-        # not the file path.
-        assert find_by_id_contains[0][0].endswith("::InMemoryRepo")
-        assert save_contains[0][0].endswith("::InMemoryRepo")
 
 
 class TestRustParsing:

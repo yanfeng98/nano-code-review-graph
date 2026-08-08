@@ -37,7 +37,7 @@ estimate is significantly off, you'll see it immediately:
 ### Calibration result (committed)
 
 A one-time calibration across 222 files / 2.2 MB of mixed source
-(Python, JS, TS, Go, Rust, RST, MD) pulled from the 6 test repos:
+(Python, JS, TS, Rust, RST, MD) pulled from the 6 test repos:
 
 | Repo | sample files | bytes | chars/4 estimate | tiktoken real | ratio est/real |
 |---|---:|---:|---:|---:|---:|
@@ -50,7 +50,7 @@ A one-time calibration across 222 files / 2.2 MB of mixed source
 | **OVERALL** | **222** | **2,188,391** | **547,176** | **544,406** | **1.005** |
 
 `chars / 4` is within **+0.5%** of real GPT-4 tokens in aggregate. Per-repo
-it swings between **-11%** (gin: lots of short Go identifiers) and **+12%**
+it swings between **-11%** (gin: lots of short identifiers) and **+12%**
 (fastapi: heavy docstrings and type hints), but the **ratio** stabilizes
 because both sides of the divide are equally biased.
 

@@ -628,10 +628,10 @@ class TestGitOperations:
     def test_get_all_tracked_files(self, mock_run, tmp_path):
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout="a.py\nb.py\nc.go\n",
+            stdout="a.py\nb.py\nc.rs\n",
         )
         result = get_all_tracked_files(tmp_path)
-        assert result == ["a.py", "b.py", "c.go"]
+        assert result == ["a.py", "b.py", "c.rs"]
 
     @patch("code_review_graph.incremental.subprocess.run")
     def test_get_all_tracked_files_recurse_submodules_param(

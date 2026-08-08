@@ -36,7 +36,7 @@
 - **Graph lookup correctness**: Review, impact, and file-summary tools resolve user-facing paths to stored graph paths; `callers_of` includes cross-file callers even when same-file callers exist.
 - **Install/runtime reliability**: Generated Codex/Claude hooks drain stdin, bundled docs are available from wheels, missing local embeddings report unavailable status, and `.svn` roots pass validation.
 - **CLI reliability**: `build --skip-postprocess` and `update --skip-flows` honor the requested post-processing level.
-- **Broad parser surface**: Python, JavaScript/TypeScript/TSX, Go, Rust, C/C++, shell scripts, Zig, Nix, Verilog/SystemVerilog, Ansible playbooks/roles/tasks, Vue SFCs, Astro files parsed through the TypeScript parser, and Jupyter/Databricks notebooks. Generic YAML is not treated as source code.
+- **Broad parser surface**: Python, JavaScript/TypeScript/TSX, Rust, C/C++, shell scripts, Zig, Nix, Verilog/SystemVerilog, Ansible playbooks/roles/tasks, Vue SFCs, Astro files parsed through the TypeScript parser, and Jupyter/Databricks notebooks. Generic YAML is not treated as source code.
 - **Local-first by design**: SQLite graph storage remains local, with no telemetry and no cloud-default behavior.
 
 ## v2.0.0
@@ -133,7 +133,7 @@
 ## v1.1.0
 - **Watch mode**: `code-review-graph watch` — auto-rebuilds graph on file changes
 - **Vector embeddings**: Optional `pip install .[embeddings]` for semantic code search
-- **Go, Rust verified**: 12+ languages with dedicated test coverage
+- **Rust verified**: 12+ languages with dedicated test coverage
 - **47 tests passing**, 8 MCP tools registered
 - README badges and cleaner install flow
 
