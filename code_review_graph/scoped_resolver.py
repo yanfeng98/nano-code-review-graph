@@ -9,7 +9,7 @@ callers for a method that is obviously being called (GitHub #567).
 
 This module runs after the graph is built and rewrites the resolvable
 ``Class::method`` targets to the canonical qualified name of the defined
-method node, in the same style as the ReScript resolver.
+method node.
 
 It is deliberately conservative so it never fabricates an edge:
 

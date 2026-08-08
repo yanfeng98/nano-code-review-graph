@@ -658,7 +658,7 @@ def d9():
         ("Systems",    ["C", "C++", "Zig"],                           ORG, ORG_BG),
         ("Shells",     ["Bash"],                                       RED, RED_BG),
         ("Domain",     ["Verilog", "Nix"],                    GRY, GRY_BG),
-        ("Other",      ["ReScript", "Jupyter/.ipynb"],                               PRP, PRP_BG),
+        ("Other",      ["Jupyter/.ipynb"],                                            PRP, PRP_BG),
     ]
 
     gw = 130  # group width \u2014 narrower to fit 7 groups
@@ -692,7 +692,7 @@ def d9():
         fx = x0 + i * feat_w + feat_w/2
         els.append(TC(fx, fy, "\u2713 " + feat, 13, sc=GRN))
 
-    els.append(TC(700, fy+28, "Tree-sitter grammars + ReScript regex pass + Jupyter / Databricks notebook handling", 13, sc=GRY))
+    els.append(TC(700, fy+28, "Tree-sitter grammars + Jupyter / Databricks notebook handling", 13, sc=GRY))
 
     return els
 

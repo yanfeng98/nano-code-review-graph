@@ -86,17 +86,6 @@ def _run_python_resolver(store: GraphStore) -> Optional[dict]:
         return None
 
 
-def _run_rescript_resolver(store: GraphStore) -> Optional[dict]:
-    """Run the ReScript cross-module resolver, swallowing any failure so
-    build never fails because of it. Returns stats or None on error.
-    """
-    try:
-        from .rescript_resolver import resolve_rescript_cross_module
-        return resolve_rescript_cross_module(store)
-    except Exception as exc:  # noqa: BLE001 - best-effort post-pass
-        logger.warning("ReScript cross-module resolver failed: %s", exc)
-        return None
-
 def _run_scoped_resolver(store: GraphStore) -> Optional[dict]:
     """Resolve static/scoped ``Class::method`` calls without failing a build."""
     try:
@@ -1079,7 +1068,6 @@ def full_build(
     store.commit()
 
     python_stats = _run_python_resolver(store)
-    rescript_stats = _run_rescript_resolver(store)
     scoped_stats = _run_scoped_resolver(store)
 
     return {
@@ -1089,7 +1077,6 @@ def full_build(
         "total_edges": total_edges,
         "errors": errors,
         "python_resolution": python_stats,
-        "rescript_resolution": rescript_stats,
         "scoped_resolution": scoped_stats,
     }
 
@@ -1122,7 +1109,6 @@ def incremental_update(
             "errors": rebuilt["errors"],
             "identity_rebuild": True,
             "python_resolution": rebuilt["python_resolution"],
-            "rescript_resolution": rebuilt["rescript_resolution"],
         }
 
     # Determine changed files
@@ -1244,13 +1230,6 @@ def incremental_update(
     )
     python_stats = _run_python_resolver(store) if python_changed else None
 
-    rescript_changed = any(
-        rp.endswith((".res", ".resi")) for rp in all_files
-    )
-    rescript_stats = (
-        _run_rescript_resolver(store) if rescript_changed else None
-    )
-
     scoped_changed = any(rp.endswith(".rs") for rp in all_files)
     scoped_stats = _run_scoped_resolver(store) if scoped_changed else None
 
@@ -1263,7 +1242,6 @@ def incremental_update(
         "stale_files_removed": len(stale_files),
         "errors": errors,
         "python_resolution": python_stats,
-        "rescript_resolution": rescript_stats,
         "scoped_resolution": scoped_stats,
     }
 
