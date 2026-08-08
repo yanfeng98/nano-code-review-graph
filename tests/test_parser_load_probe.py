@@ -121,10 +121,10 @@ def test_nonzero_probe_logs_the_subprocess_failure_reason(monkeypatch, caplog):
     monkeypatch.setattr(parser_module.subprocess, "run", fake_run)
 
     with caplog.at_level("WARNING"):
-        assert not parser_module._parser_load_probe_succeeds("zig")
+        assert not parser_module._parser_load_probe_succeeds("verilog")
 
     assert (
-        "Skipping unavailable tree-sitter parser for zig: "
+        "Skipping unavailable tree-sitter parser for verilog: "
         "ModuleNotFoundError: No module named 'tree_sitter_language_pack'"
         in caplog.text
     )
@@ -169,7 +169,7 @@ def test_probe_can_load_language_pack_from_user_site(tmp_path, monkeypatch):
 
 def test_expected_parent_load_failure_is_cached(monkeypatch):
     probe_calls: list[str] = []
-    language_pack = _FakeLanguagePack({"zig": LookupError("missing grammar")})
+    language_pack = _FakeLanguagePack({"verilog": LookupError("missing grammar")})
 
     def fake_run(command, **_kwargs):
         probe_calls.append(command[-1])
@@ -182,10 +182,10 @@ def test_expected_parent_load_failure_is_cached(monkeypatch):
         lambda _name: language_pack,
     )
 
-    assert CodeParser()._get_parser("zig") is None
-    assert CodeParser()._get_parser("zig") is None
-    assert probe_calls == ["zig"]
-    assert language_pack.calls == ["zig"]
+    assert CodeParser()._get_parser("verilog") is None
+    assert CodeParser()._get_parser("verilog") is None
+    assert probe_calls == ["verilog"]
+    assert language_pack.calls == ["verilog"]
 
 
 def test_unexpected_parent_load_failure_still_surfaces(monkeypatch):

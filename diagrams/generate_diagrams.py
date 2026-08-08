@@ -652,7 +652,7 @@ def d9():
     groups = [
         ("Web",        ["TypeScript", "JavaScript", "TSX", "Vue"],                   BLU, BLU_BG),
         ("Backend",    ["Python", "Rust"],                           GRN, GRN_BG),
-        ("Systems",    ["C", "C++", "Zig"],                           ORG, ORG_BG),
+        ("Systems",    ["C", "C++"],                                  ORG, ORG_BG),
         ("Shells",     ["Bash"],                                       RED, RED_BG),
         ("Domain",     ["Verilog"],                           GRY, GRY_BG),
         ("Other",      ["Jupyter/.ipynb"],                                            PRP, PRP_BG),

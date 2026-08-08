@@ -115,7 +115,7 @@ Build the code review graph for this project
   <img src="diagrams/diagram9_language_coverage.png" alt="语言覆盖按类别组织：Web、后端、系统、移动端、脚本、配置，以及 Jupyter 和 Databricks notebook 支持" width="90%" />
 </p>
 
-解析器支持跨语言解析函数、类、导入、调用点、继承和测试检测。当前支持包括 Python、JavaScript/TypeScript/TSX、Rust、C/C++、shell 脚本、Zig、Verilog/SystemVerilog、Ansible playbooks/roles/tasks、Vue SFCs、通过 TypeScript 解析器解析的 Astro 文件、Jupyter/Databricks notebooks（`.ipynb`）。通用 YAML 不被视为源代码。
+解析器支持跨语言解析函数、类、导入、调用点、继承和测试检测。当前支持包括 Python、JavaScript/TypeScript/TSX、Rust、C/C++、shell 脚本、Verilog/SystemVerilog、Ansible playbooks/roles/tasks、Vue SFCs、通过 TypeScript 解析器解析的 Astro 文件、Jupyter/Databricks notebooks（`.ipynb`）。通用 YAML 不被视为源代码。
 
 
 ### 添加自定义语言（无需 fork）
@@ -245,7 +245,7 @@ jobs:
 | 功能 | 详情 |
 |---------|---------|
 | **增量更新** | 仅重新解析变更文件。后续更新在 2 秒内完成。 |
-| **广泛语言 + notebook 支持** | Python、JavaScript/TypeScript/TSX、Rust、C/C++、shell 脚本、Zig、Verilog/SystemVerilog、Ansible playbooks/roles/tasks、Vue SFCs、通过 TypeScript 解析器解析的 Astro 文件、Jupyter/Databricks (.ipynb) |
+| **广泛语言 + notebook 支持** | Python、JavaScript/TypeScript/TSX、Rust、C/C++、shell 脚本、Verilog/SystemVerilog、Ansible playbooks/roles/tasks、Vue SFCs、通过 TypeScript 解析器解析的 Astro 文件、Jupyter/Databricks (.ipynb) |
 | **影响半径分析** | 展示哪些函数、类和文件可能受变更影响 |
 | **自动更新 hooks** | Hooks 和 watch 模式可在文件保存和支持的提交钩子时更新图 |
 | **语义搜索** | 可选的向量嵌入，通过 sentence-transformers、Google Gemini、MiniMax 或任何兼容 OpenAI 的端点（真实 OpenAI、Azure、new-api、LiteLLM、vLLM、LocalAI） |

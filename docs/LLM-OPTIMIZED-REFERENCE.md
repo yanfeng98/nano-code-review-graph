@@ -50,7 +50,7 @@ Configure via provider/model parameters, CRG_EMBEDDING_MODEL for local, CRG_OPEN
 </section>
 
 <section name="languages">
-Supported: Python, JavaScript/TypeScript/TSX, Rust, C/C++, shell scripts, Zig, Verilog/SystemVerilog, Ansible playbooks/roles/tasks, Vue SFCs, Astro files parsed through the TypeScript parser, and Jupyter/Databricks notebooks. Generic YAML is not treated as source code.
+Supported: Python, JavaScript/TypeScript/TSX, Rust, C/C++, shell scripts, Verilog/SystemVerilog, Ansible playbooks/roles/tasks, Vue SFCs, Astro files parsed through the TypeScript parser, and Jupyter/Databricks notebooks. Generic YAML is not treated as source code.
 Parser: Tree-sitter via tree-sitter-language-pack
 Custom languages: add .code-review-graph/languages.toml (extensions + node types per grammar) — no fork needed, see docs/CUSTOM_LANGUAGES.md. Built-ins cannot be overridden.
 </section>
