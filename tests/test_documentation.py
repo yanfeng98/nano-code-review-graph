@@ -14,7 +14,6 @@ OPTIONAL_GROUPS = (
     "google-embeddings",
     "communities",
     "enrichment",
-    "eval",
     "wiki",
     "all",
 )

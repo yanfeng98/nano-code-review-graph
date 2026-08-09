@@ -376,9 +376,6 @@ code-review-graph daemon logs [--repo ALIAS] [--follow]  # 查看 daemon 或单 
 code-review-graph daemon add <path> [--alias NAME]  # 向 daemon 配置添加 repo
 code-review-graph daemon remove <path_or_alias>     # 从 daemon 配置移除 repo
 
-# 评估
-code-review-graph eval                         # 运行 evaluation benchmarks
-
 # Server
 code-review-graph serve                        # 启动 MCP server（stdio）
 code-review-graph serve --http                 # localhost:5555 上的 Streamable HTTP

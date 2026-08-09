@@ -78,7 +78,7 @@ Self-hosted runners 必须是 2.327.1 或更新版本。该复合 action 使用�
 - **Risk-scored changes**——按 risk 排序的顶级变更 symbols 表格，带 file:line 位置和测试覆盖状态。
 - **受影响的 execution flows**——变更触及哪些入口点 flows，按 criticality 排序。
 - **测试缺口**——没有直接测试覆盖的变更 functions。
-- **Token savings**——graph 支撑的报告相比完整读取每个变更文件省下了多少 tokens。这与 CLI 的 Token Savings 面板显示的 `context_savings` 估算相同（`chars / 4` 近似值，标记为 `estimated: true`——校准方法参见 [REPRODUCING.md](REPRODUCING.md)）。
+- **Token savings**——graph 支撑的报告相比完整读取每个变更文件省下了多少 tokens。这与 CLI 的 Token Savings 面板显示的 `context_savings` 估算相同（`chars / 4` 近似值，标记为 `estimated: true`）。
 - 一个 `Powered by code-review-graph` 页脚。
 
 评论以一个隐藏的 HTML marker（`<!-- code-review-graph-report -->`）开头。Action 每次运行通过 `gh api` 查找该 marker，并 PATCH 现有评论而不是创建新评论（"置顶"评论）。

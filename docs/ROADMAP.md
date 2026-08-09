@@ -5,9 +5,6 @@
 ### v2.3.7
 - **无需 fork 的自定义语言**：`.code-review-graph/languages.toml` 把扩展名和 node types 映射到任意 tree-sitter-language-pack grammar（`docs/CUSTOM_LANGUAGES.md`）
 - **用于 risk-scored PR review 评论的 GitHub Action**：graph 在 CI runner 上构建/恢复，每次 push 更新置顶评论，可选的 `fail-on-risk` merge gate；通过 `.github/workflows/pr-review.yml` 进行了 dogfood（`docs/GITHUB_ACTION.md`）
-- **`agent_baseline` benchmark**：graph 查询对比现实的 grep-and-read-top-k agent baseline，接入全部五个固定的 eval configs
-- **`impact_accuracy` 的协同变更 ground truth**；旧的 graph-derived 指标被标记为循环上限
-- **每周 eval CI**：两个最小配置的仅报告 cron 运行（`.github/workflows/eval.yml`）
 - **`docs/FAQ.md`**：与 LSP、RAG、grep/agentic 搜索及相邻工具的对比，外加何时不应使用的指导
 - **贡献脚手架**：issue forms、PR 模板、dependabot 配置
 - **Windows 修复**：针对 `daemon status`（#511）和 `detect-changes` 路径映射（#528）
@@ -15,13 +12,10 @@
 
 ### v2.3.5
 - **`detect-changes --brief` 和新增的 `update --brief` 上的 Token Savings 面板**——带边框的 CLI 输出，含按类别细分，总和恰好等于 graph 响应大小
-- **`--verify` flag** 对照 OpenAI 的 `cl100k_base` tokenizer 交叉核对显示的节省量；`docs/REPRODUCING.md` 中提交的校准数据显示，该估算在整体上与真实 GPT-4 tokens 的偏差约在 4% 以内
+- **`--verify` flag** 对照 OpenAI 的 `cl100k_base` tokenizer 交叉核对显示的节省量；校准数据显示，该估算在整体上与真实 GPT-4 tokens 的偏差约在 4% 以内
 - **`code-review-graph embed`** CLI 子命令，用于显式 embedding 生成
-- **确定性 eval pipeline**：每个配置固定上游 SHAs、带 `returncode` 检查的完整克隆、固定种子的 Leiden community detection（`CRG_LEIDEN_SEED`）
-- **`multi_hop_retrieval` benchmark**：9 个整理的 2 步 tool-chain 任务；平均得分 0.889
-- **更丰富的 embedding 文本**和**标识符感知的搜索增强**把 multi-hop 准确度从 0.545 提升到 0.889
-- **eval pipeline 中的路径规范化修复** + brief 摘要中的 test-gap 去重
-- **`docs/REPRODUCING.md`**：带 canonical 数字和 tiktoken 校准表的端到端配方
+- **更丰富的 embedding 文本**和**标识符感知的搜索增强**提升了语义搜索准确度
+- **brief 摘要中的 test-gap 去重**
 - Demo GIF（`diagrams/context-savings-demo.gif`）展示两个 CLI 界面和 `--verify`
 
 ### v2.3.4
@@ -62,10 +56,9 @@
 - 带跨 repo 搜索的 multi-repo registry
 - 带 porter stemming 的 FTS5 全文搜索
 - 数据库迁移（v1-v5）
-- 带 matplotlib 可视化的 evaluation framework
 - TypeScript tsconfig 路径 alias 解析
 - MiniMax embedding provider（embo-01）
-- 可选依赖组：`[embeddings]`、`[google-embeddings]`、`[communities]`、`[eval]`、`[wiki]`、`[all]`
+- 可选依赖组：`[embeddings]`、`[google-embeddings]`、`[communities]`、`[wiki]`、`[all]`
 - 486 个 tests，分布在 22 个 test 文件
 
 ### v1.8.4

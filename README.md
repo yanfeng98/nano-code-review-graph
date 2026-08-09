@@ -10,7 +10,6 @@
   <a href="docs/FAQ.md">常见问题</a> ·
   <a href="docs/TROUBLESHOOTING.md">故障排除</a> ·
   <a href="docs/GITHUB_ACTION.md">GitHub Action</a> ·
-  <a href="docs/REPRODUCING.md">复现基准测试</a> ·
   <a href="docs/ROADMAP.md">路线图</a>
 </p>
 
@@ -19,7 +18,7 @@
 `code-review-graph` 使用 [Tree-sitter](https://tree-sitter.github.io/tree-sitter/) 构建代码的结构化映射，增量跟踪变更，并通过 [MCP](https://modelcontextprotocol.io/) 为 AI 助手提供精准的上下文，使其只读取真正需要的内容。
 
 <p align="center">
-  <img src="diagrams/diagram1_before_vs_after.png" alt="Token 问题：在 5 个真实仓库中实现 38 倍到 528 倍的 token 削减" width="85%" />
+  <img src="diagrams/diagram1_before_vs_after.png" alt="Token 问题：graph 查询替代整语料库阅读，显著节省上下文" width="85%" />
 </p>
 
 ---
@@ -157,82 +156,6 @@ jobs:
 
 ---
 
-## 基准测试
-
-<p align="center">
-  <img src="diagrams/diagram5_benchmark_board.png" alt="5 个真实仓库的基准测试：每个问题约 71 倍中位数 token 削减（最大 528 倍），基于图派生的 ground truth 平均 F1 0.745" width="85%" />
-</p>
-
-**核心数据：5 个仓库中每个问题的中位数 token 削减约为 71 倍**（全语料库基线 vs 图查询）。常被引用的 **528 倍是最大值** ——单个最佳仓库（fastapi）的结果，而不是典型情况。
-
-所有数据来自自动评估运行器，针对 5 个真实开源仓库（共 10 个提交）。每个配置都固定了上游 SHA，Leiden 社区检测使用固定种子运行，嵌入向量在 CPU 上是确定性的——因此两次在不同机器上运行会产生完全相同的结果。完整的复现配方及预期输出见 [`docs/REPRODUCING.md`](docs/REPRODUCING.md)。两个最小配置的每周仅报告运行在 [`.github/workflows/eval.yml`](.github/workflows/eval.yml) 中。
-
-<details>
-<summary><strong>Token 效率：每个问题约 71 倍中位数削减（范围 38x – 528x；全语料库 vs 图查询）</strong></summary>
-<br>
-
-对于一个典型的 agent 提问（如"认证如何工作"、"主入口点是什么"等），图返回约 2,000–3,500 token 的精准搜索结果 + 邻居边，而不是强制 agent 读取每个源文件。下表对 `code_review_graph/token_benchmark.py` 中定义的 5 个样本问题进行平均。
-
-| 仓库 | 快照 SHA | 原始语料库 token | 平均图 token | 削减 |
-|------|---|-----------------:|----------------:|----------:|
-| fastapi | `22381558` | 951,071 | 2,169 | **528.4x** |
-| code-review-graph | `84bde354` | 208,821 | 2,495 | **93.0x** |
-| flask | `a29f88ce` | 125,022 | 1,986 | **71.4x** |
-| express | `b4ab7d65` | 135,955 | 3,465 | **40.6x** |
-| httpx | `b55d4635` | 89,492 | 2,438 | **38.0x** |
-
-5 个仓库每个问题的中位数削减：**约 71 倍**。范围是 38x – 528x，其中 **528x 是最佳情况**（fastapi，最大的语料库），而非标题数字。
-
-全语料库基线是真实 agent 不会触及的上限：合格的 agent 会通过 grep 搜索标识符并仅读取最佳匹配的文件。`agent_baseline` 评估基准测量了这一现实基线——对语料库进行纯 Python grep，按匹配数量取前 3 个文件，进行 token 计数并与图查询成本进行比较（`evaluate/results/<仓库>_agent_baseline_*.csv`）。
-
-正式的 `eval/benchmarks/token_efficiency.py` 基准测试测量了不同的场景——完整的 `get_review_context()` JSON 与提交中仅变更文件的内容对比——对于小提交来说报告比值低于 1，因为审查上下文响应携带了影响半径边和源码片段，可能超过一个微小的单文件差异。这不是 bug，两个基准回答了不同的问题。完整方法论见 [`docs/REPRODUCING.md`](docs/REPRODUCING.md)。
-
-自 v2.3.4 起，审查和影响工具附带紧凑的 `context_savings` 估算值，以便 MCP 客户端可以看到每次调用大约节省的上下文量。在 v2.3.5 中，CLI 通过上方显示的方框 `Token Savings` 面板展示此信息（参见"使用指南"中的"Token Savings 面板"），并添加 `--verify` 以对照 OpenAI 的 `cl100k_base` 分词器进行交叉检查。[`docs/REPRODUCING.md`](docs/REPRODUCING.md) 中的校准数据显示，在 192 个样本文件上，该估算值与真实 GPT-4 token 的总体偏差在约 4% 以内。
-
-</details>
-
-<details>
-<summary><strong>影响准确性：基于图派生的 ground truth 平均 F1 为 0.745（召回率 1.0 是循环上限，并非"100% 召回率"）</strong></summary>
-<br>
-
-影响半径分析在所有 10 个评估提交上恢复了 ground truth 中的每个文件——**但请将其理解为上限，而非"100% 召回率"**：在此模式下，ground truth（变更文件 + 与其有调用/导入边连接的文件）来自预测器遍历的同一图结构，因此它在构造上是循环的。精度列中可见的过度预测是一种有意的取舍：宁可标记过多文件，也不愿遗漏一个损坏的依赖。
-
-| 仓库 | 提交数 | 平均 F1 | 平均精度 | 召回率（图派生的上限） |
-|------|--------:|-------:|--------------:|-------:|
-| httpx | 2 | 0.864 | 0.786 | 1.0 |
-| fastapi | 2 | 0.834 | 0.750 | 1.0 |
-| code-review-graph | 2 | 0.734 | 0.584 | 1.0 |
-| express | 2 | 0.667 | 0.500 | 1.0 |
-| flask | 2 | 0.628 | 0.481 | 1.0 |
-| **平均** | **10** | **0.745** | **0.620** | **1.000** |
-
-基准测试还运行了诚实的**协同变更模式**：预测器以单个变更文件为种子，以同一提交中作者实际修改的*其他*文件为评分标准——来自 git 历史的独立证据，而非来自图。两种模式并列出现在结果 CSV 中（`ground_truth_mode` 列）。协同变更数据将在评估运行器捕获后加入标准统计；在测量完成前我们不会引用它们。
-
-</details>
-
-<details>
-<summary><strong>构建性能</strong></summary>
-<br>
-
-| 仓库 | 文件数 | 节点数 | 边数 | 流程检测 | 搜索延迟 |
-|------|------:|------:|------:|---------------:|---------------:|
-| express | 141 | 1,910 | 17,553 | 106ms | 0.7ms |
-| fastapi | 1,122 | 6,285 | 27,117 | 128ms | 1.5ms |
-| flask | 83 | 1,446 | 7,974 | 95ms | 0.7ms |
-| httpx | 60 | 1,253 | 7,896 | 96ms | 0.4ms |
-
-</details>
-
-### 局限性和已知弱点
-
-- **影响"召回率 1.0"是图派生的且是循环的：** 历史 ground truth 来自预测器遍历的同一图边，因此在构造上是一个上限。诚实的协同变更模式（以同一提交中实际协同变更的文件为评分标准）与其并列测量；预期这些数字会显著更低。
-- **小的单文件变更：** 对于简单编辑，图上下文可能超过原始文件读取（参见上方 express 结果）。这个开销是支持多文件分析的结构化元数据。
-- **搜索质量（MRR 0.35）：** 关键词搜索在大多数查询中将正确结果排在前 4 位，但排名需要改进。Express 查询因模块模式的命名而返回 0 命中。
-- **流程检测（33% 召回率）：** 框架和常规入口模式对 Python 最强。JavaScript 的流程检测有待改进。
-- **精度与召回率权衡：** 影响分析有意偏保守。它会标记*可能*受影响的文件，这意味着在大规模依赖图中存在一些误报。
-
----
-
 ## 功能
 
 | 功能 | 详情 |
@@ -251,7 +174,6 @@ jobs:
 | **图遍历** | 从任意节点开始的自由形式 BFS/DFS 探索，可配置深度和 token 预算 |
 | **导出格式** | GraphML（Gephi/yEd）、Neo4j Cypher、Obsidian vault（含 wikilinks）、SVG 静态图 |
 | **图差异比较** | 比较图快照随时间的变化：新增/删除的节点、边、社区变化 |
-| **Token 基准测试** | 测量原始全语料库 token vs 图查询 token，含每个问题的比值 |
 | **估算上下文节省** | 在相关 MCP/CLI 审查输出上附加紧凑的 `context_savings` 元数据，标注为估算并限制在三个小字段内 |
 | **记忆循环** | 将问答结果持久化为 markdown 供重新摄取，使图从查询中增长 |
 | **社区自动拆分** | 过大的社区（>25% 图规模）通过 Leiden 递归拆分 |
@@ -318,7 +240,6 @@ code-review-graph repos            # 列出已注册的仓库
 code-review-graph daemon start     # 启动多仓库监视守护进程
 code-review-graph daemon stop      # 停止守护进程
 code-review-graph daemon status    # 显示守护进程状态和仓库
-code-review-graph eval             # 运行评估基准测试
 code-review-graph serve            # 启动 MCP 服务器
 ```
 
@@ -348,7 +269,7 @@ JSON 导出保留在本地图数据目录中，Git 默认忽略。它们可能�
 
 两者最终显示**相同的面板**，因为最后都调用同一个 `analyze_changes()` 步骤。区别仅在于该分析运行前图是否被刷新。
 
-对任一命令添加 `--verify` 可对照 OpenAI 的 `cl100k_base` 分词器（GPT-4 系列）交叉检查显示的数字。需要 `pip install tiktoken`。在典型变更集上估算值与真实 token 的偏差保持在约 4% 以内——校准数据见 [`docs/REPRODUCING.md`](docs/REPRODUCING.md)。
+对任一命令添加 `--verify` 可对照 OpenAI 的 `cl100k_base` 分词器（GPT-4 系列）交叉检查显示的数字。需要 `pip install tiktoken`。在典型变更集上估算值与真实 token 的偏差保持在约 4% 以内。
 
 相同的 `context_savings` 元数据也会自动附加到 `get_impact_radius`、`get_review_context`、`detect_changes` 和 `get_architecture_overview` MCP 工具的 JSON 响应中，使 AI agent 能够在对话中向人类展示节省效果，无需额外提示。
 
@@ -464,7 +385,6 @@ pip install "code-review-graph[embeddings]"          # 本地向量嵌入（sent
 pip install "code-review-graph[google-embeddings]"   # Google Gemini 嵌入
 pip install "code-review-graph[communities]"         # 社区检测（igraph）
 pip install "code-review-graph[enrichment]"          # Python 调用解析增强（Jedi）
-pip install "code-review-graph[eval]"                # 评估基准测试（matplotlib）
 pip install "code-review-graph[wiki]"                # 含 LLM 摘要的 Wiki 生成（ollama）
 pip install "code-review-graph[all]"                 # 所有可选依赖
 ```
@@ -682,7 +602,7 @@ uv build   # 产出 dist/code_review_graph-<版本>-py3-none-any.whl 和 .tar.gz
 
 ```bash
 pip install code_review_graph-<版本>-py3-none-any.whl
-# 或需要全部可选特性（embeddings / communities / eval / wiki）：
+# 或需要全部可选特性（embeddings / communities / enrichment / wiki）：
 pip install "code_review_graph-<版本>-py3-none-any.whl[all]"
 # uv 用户（作为全局 CLI 工具）：
 uv tool install code_review_graph-<版本>-py3-none-any.whl

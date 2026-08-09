@@ -10,6 +10,5 @@
 - [architecture.md](architecture.md) — 系统设计与数据流
 - [schema.md](schema.md) — graph node/edge schema、SQLite 表（含 flows、communities、FTS5）
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md) — 常见问题与修复（含 Windows/WSL）
-- [REPRODUCING.md](REPRODUCING.md) — 复现每个 benchmark 数据（pinned SHAs、seeded runs、tokenizer 校准）
 - [ROADMAP.md](ROADMAP.md) — 已发布与计划中的功能
 - [LEGAL.md](LEGAL.md) — 许可证与隐私

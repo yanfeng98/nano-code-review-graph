@@ -1097,8 +1097,7 @@ def _node_to_text(node: GraphNode) -> str:
     Designed so natural-language queries land on the right node, not just on
     the enclosing class. We include the dotted ``Parent.name`` form, the
     identifier split into words, an explicit ``"in <Parent>"`` phrase, the
-    enclosing module directory, and the language. Tested by the
-    ``multi_hop_retrieval`` benchmark — see ``docs/REPRODUCING.md``.
+    enclosing module directory, and the language.
     """
     parts: list[str] = []
 

@@ -185,6 +185,5 @@ Graph 使用带 WAL 模式的 SQLite。如果看到锁错误：
 - OpenAI 兼容和 MiniMax embeddings 使用 stdlib HTTP clients，只需要各自的环境变量
 - `pip install "code-review-graph[communities]"` 用于基于 igraph 的 community detection
 - `pip install "code-review-graph[enrichment]"` 用于通过 Jedi 的 Python call-resolution enrichment
-- `pip install "code-review-graph[eval]"` 用于 evaluation benchmarks（matplotlib）
 - `pip install "code-review-graph[wiki]"` 用于 wiki LLM 摘要（ollama）
 - `pip install "code-review-graph[all]"` 用于全部功能

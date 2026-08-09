@@ -34,9 +34,9 @@ Language servers 和 code-review-graph（CRG）都会为你的代码构建结构
 
 CRG 存储的是**从 AST 解析出的结构性 edges**：calls、imports、inheritance、测试覆盖。"谁调用 `login()`"是一次 graph 查找，而不是相似度猜测。Embeddings 在 CRG 中确实存在，但它们是可选的，扮演辅助角色——作为 hybrid search（FTS5 BM25 keyword + vector）的一种输入，用于找到*起始 node*，之后 traversal 沿真实 edges 进行。目前只对函数签名做 embedding（每个 node 约 10 tokens），不包括函数体。
 
-最能体现差异的 benchmark 是 multi-hop retrieval：自然语言查询 → anchor node → 一跳 traversal（`callers_of`、`tests_for`……）。CRG 在 5 个真实 repo 上的 9 个手工整理的 tasks 中得分 0.889（参见 [REPRODUCING.md](REPRODUCING.md)）。纯相似度检索没有对应的第二跳。
+最能体现差异的场景是多跳检索：自然语言查询 → anchor node → 一跳 traversal（`callers_of`、`tests_for`……）。纯相似度检索没有对应的第二跳。
 
-**RAG 式搜索更好的地方：** 针对散文、注释和文档的纯概念性问题（"哪里讨论了 rate limiting？"）。CRG 自身的关键词搜索排名是一个已记录的弱点（MRR 0.35——参见 [README](../README.md#基准测试) 中的局限性一节）。
+**RAG 式搜索更好的地方：** 针对散文、注释和文档的纯概念性问题（"哪里讨论了 rate limiting？"）。CRG 自身的关键词搜索排名是一个已记录的弱点。
 
 ## 为什么不用 grep？
 
@@ -51,7 +51,7 @@ CRG 存储的是**从 AST 解析出的结构性 edges**：calls、imports、inhe
 
 graph 还是持久化的：agentic 搜索每次 session 都从头重新推导同样的结构，而 CRG 把它放在 SQLite 中并增量更新。
 
-关于这些数字的一个诚实提醒：全语料库 token 削减数据（~71x 中位数，38x–528x 范围）是将 graph 响应与阅读**整个语料库**相比，而非与一次熟练的 agentic-grep 会话相比（每个 benchmark 测量什么参见 [REPRODUCING.md](REPRODUCING.md)）。对于小型 repo 中的单跳查找，grep 便宜又好用。multi-hop 的 review 工作流才是 graph 真正体现价值之处。
+对于小型 repo 中的单跳查找，grep 便宜又好用；多跳的 review 工作流才是 graph 真正体现价值之处。
 
 ## 与 Serena、codegraph、claude-context 和 repomix 相比如何？
 
@@ -69,12 +69,12 @@ graph 还是持久化的：agentic 搜索每次 session 都从头重新推导同
 
 ## 何时不应使用它？
 
-与 [README](../README.md#基准测试) 中的局限性一节一致：
+结合已记录的开销权衡：
 
 - **几百个文件以下的 repos。** Agent 通常可以直接读取所有相关内容；graph 的结构性元数据会带来小型 repo 不值得付出的开销。参见 [多大的 codebase 才值得使用它？](#多大的-codebase-才值得使用它)
-- **琐碎的单文件变更。** Graph 响应携带 impact-radius edges 和源码片段，可能超过一个单文件 diff 的原始内容。这一点已被测量并记录（正式的 `token_efficiency` benchmark 对小提交报告低于 1.0 的比值——这是有意设计，参见 [REPRODUCING.md](REPRODUCING.md)）。
+- **琐碎的单文件变更。** Graph 响应携带 impact-radius edges 和源码片段，可能超过一个单文件 diff 的原始内容。
 - **对不会再回访的 repo 的一次性问题。** 构建很快（500 个文件的项目约 10 秒），但回报来自跨查询和跨 sessions 的*复用*。对于单个问题，agentic 搜索就足够了。
-- **JS 上的 flow 检测。** 入口点检测目前主要对 Python 框架模式可靠；JavaScript 的 flow 检测有待改进（33% 召回率，见 README 局限性）。
+- **JS 上的 flow 检测。** 入口点检测目前主要对 Python 框架模式可靠；JavaScript 的 flow 检测有待改进。
 
 ## 它会回传数据吗？
 
@@ -114,7 +114,7 @@ graph 还是持久化的：agentic 搜索每次 session 都从头重新推导同
 这个问题经常出现（参见 #414）。诚实建议，与已记录的小型 repo 开销相关联：
 
 - **低于几百个文件：** 收益有限。Graph 几秒内构建完成且工作正常，但 agent 通常已经能在 context 中容纳大部分 repo，而且对于琐碎 diffs，结构性响应消耗的 token 可能比省下的还多（已记录的开销区间——参见 [何时不应使用它？](#何时不应使用它)）。
-- **几百到几千个文件：** 这正是 benchmarks 发挥作用的地方。五个 evaluation repos 的文件数从 60 到约 1,100 不等，在整语料库 agent 问题上实现了 38x–528x 的削减，并带上面提到的关于该 baseline 测量什么的前提说明。
+- **几百到几千个文件：** 结构化 graph 的构建和查询在这里回报显著——每个问题只需 graph 查询而非通读语料库。
 - **数千文件级 repos 和 monorepos：** 最强的论据。没有 agent 能每个问题都通读语料库（单是 FastAPI 就有约 95 万 token 的源码），每次 session 都靠搜索重新推导结构是主要成本，而增量更新能在 2 秒内保持 graph 新鲜。
 
 另一个轴与文件数同等重要：**你多久问一次多文件问题**。每天审查的 300 文件 repo，比一次性的 3,000 文件 repo 收益更大。

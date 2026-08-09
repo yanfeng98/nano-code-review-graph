@@ -395,54 +395,6 @@ def d4():
 
 
 # ════════════════════════════════════════════
-# DIAGRAM 5 — Benchmark Metric Board
-# ════════════════════════════════════════════
-def d5():
-    els = []
-    els.append(TC(800, 15, "Benchmarks Across Real Repos", 36))
-
-    # Header: range number left, quality badge right
-    els.append(TC(500, 75, "38\u00d7 \u2013 528\u00d7", 64, sc=BLU))
-    els.append(TC(500, 160, "fewer tokens across 5 tested repos", 20, sc=GRY))
-
-    els.append(R(820, 85, 340, 80, bg=GRN_BG, fs="solid", sc=GRN))
-    els.append(TC(990, 100, "100% recall, 0.745 F1", 22, sc=GRN))
-    els.append(TC(990, 132, "on impact detection (10 commits)", 14, sc=GRN))
-
-    # 2 repo cards \u2014 naive_corpus_tokens \u2192 avg graph_tokens across 5 questions
-    # Pinned SHAs: flask@a29f88ce, fastapi@0227991a
-    cards = [
-        {"name":"flask",   "files":"Python web framework",      "red":"71\u00d7",
-         "tok":"125,022 \u2192 1,986 tokens",
-         "c":ORG, "bg":ORG_BG},
-        {"name":"fastapi", "files":"Python web framework",   "red":"528\u00d7",
-         "tok":"951,071 \u2192 2,169 tokens",
-         "c":GRN, "bg":GRN_BG},
-    ]
-    cw, ch = 370, 200
-    gap = 50
-    total = 2*cw + 1*gap
-    x0 = (1600 - total) / 2
-    cy = 230
-
-    for i, cd in enumerate(cards):
-        cx = x0 + i*(cw+gap)
-        ccx = cx + cw/2
-        els.append(R(cx, cy, cw, ch, bg=cd["bg"], fs="solid", sc=cd["c"], op=80))
-        els.append(TC(ccx, cy+15,  cd["name"],  24, sc=cd["c"]))
-        els.append(TC(ccx, cy+48,  cd["files"], 14, sc=GRY))
-        els.append(TC(ccx, cy+75,  cd["red"],   52, sc=cd["c"]))
-        els.append(TC(ccx, cy+150, cd["tok"],   14, sc=DRK))
-
-    # Footnote — styled as a subtle callout
-    fn_y = cy + ch + 20
-    els.append(LN(x0+80, fn_y, [[0,0],[total-160,0]], sc=GRY, sw=1, op=30))
-    els.append(TC(800, fn_y+10, "Reproducible: see docs/REPRODUCING.md (pinned SHAs, Leiden seed=42)", 16, sc=GRY))
-
-    return els
-
-
-# ════════════════════════════════════════════
 # DIAGRAM 6 — Monorepo Funnel
 # ════════════════════════════════════════════
 def d6():
@@ -703,7 +655,6 @@ if __name__ == "__main__":
         ("diagram2_architecture_pipeline.excalidraw", d2),
         ("diagram3_blast_radius.excalidraw", d3),
         ("diagram4_incremental_update.excalidraw", d4),
-        ("diagram5_benchmark_board.excalidraw", d5),
         ("diagram6_monorepo_funnel.excalidraw", d6),
         ("diagram7_mcp_integration_flow.excalidraw", d7),
         ("diagram8_supported_platforms.excalidraw", d8),

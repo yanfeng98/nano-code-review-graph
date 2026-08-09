@@ -41,7 +41,7 @@ code-review-graph update     # 之后的增量更新
 ```
 /code-review-graph:review_changes
 ```
-仅审查自上次 commit 以来变更的文件，再加上 graph 衍生的 impact radius。相关的 review 和 impact 响应中包含紧凑的估算 `context_savings` 元数据。在 5 个 benchmark 仓库中，graph 查询每个问题使用的 token 比阅读整个语料库少约 71 倍（中位数；范围 38 倍–528 倍）——方法详见 [README 基准测试](../README.md#基准测试) 与 [REPRODUCING.md](REPRODUCING.md)。
+仅审查自上次 commit 以来变更的文件，再加上 graph 衍生的 impact radius。相关的 review 和 impact 响应中包含紧凑的估算 `context_savings` 元数据。
 
 ### 3. 审查一个 PR
 ```
@@ -106,11 +106,7 @@ code-review-graph register /path/to/other/repo --alias mylib
 
 ## Context Savings（上下文节省）
 
-CRG 通过发送 graph 衍生的结构性上下文而非大段的文件转储来减少 review context。具体减少量取决于 repository 和变更的形态。evaluation runner 会报告 README 中使用的当前 benchmark 数据：
-
-```bash
-code-review-graph eval --all
-```
+CRG 通过发送 graph 衍生的结构性上下文而非大段的文件转储来减少 review context。具体减少量取决于 repository 和变更的形态。
 
 自 v2.3.4 起，review 和 impact tools 包含紧凑的 `context_savings` 元数据。在 v2.3.5 中，CLI 在 `detect-changes --brief` 和 `update --brief` 上以带边框的 `Token Savings` 面板展示，含按类别细分（Functions / Tests / Risk / Other），其总和恰好等于 graph 响应大小。添加 `--verify` 可与 OpenAI 的 `cl100k_base` tokenizer 交叉核对显示的数字（需要 `pip install tiktoken`）。所有数字都标注为估算值，因为它们使用保守的近似而非针对具体模型的 tokenization；校准显示，该估算在整体上与实际 GPT-4 tokens 的误差保持在约 4% 以内。单文件的小变更偶尔会比原始文件消耗更多 context，因为 graph 元数据有开销。
 

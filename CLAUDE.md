@@ -23,7 +23,7 @@ When using code-review-graph MCP tools, follow these rules:
   - `incremental.py` — Git-based change detection, file watching
   - `embeddings.py` — Optional vector embeddings (local sentence-transformers, OpenAI-compatible endpoints, Google Gemini, MiniMax)
   - `visualization.py` — D3.js interactive HTML graph generator
-  - `cli.py` — CLI entry point (install/init, build, update, postprocess, embed, watch, status, visualize, serve/mcp, wiki, detect-changes, register, unregister, repos, eval, daemon)
+  - `cli.py` — CLI entry point (install/init, build, update, postprocess, embed, watch, status, visualize, serve/mcp, wiki, detect-changes, register, unregister, repos, daemon)
   - `flows.py` — Execution flow detection and criticality scoring
   - `communities.py` — Community detection (Leiden algorithm or file-based grouping) and architecture overview
   - `search.py` — FTS5 hybrid search (keyword + vector)
@@ -60,7 +60,6 @@ uv run code-review-graph wiki               # Generate markdown wiki
 uv run code-review-graph detect-changes     # Risk-scored change analysis
 uv run code-review-graph register <path>    # Register repo in multi-repo registry
 uv run code-review-graph repos              # List registered repos
-uv run code-review-graph eval               # Run evaluation benchmarks
 ```
 
 ## Code Conventions
@@ -105,7 +104,6 @@ uv run code-review-graph eval               # Run evaluation benchmarks
 - `tests/test_skills.py` — Install/config generation and shipped skill metadata
 - `tests/test_registry.py` — Multi-repo registry
 - `tests/test_migrations.py` — Database migrations
-- `tests/test_eval.py` — Evaluation framework
 - `tests/test_tsconfig_resolver.py` — TypeScript path resolution
 - `tests/test_integration_v2.py` — v2 pipeline integration test
 - `tests/test_action_render.py` — GitHub Action PR comment renderer (`scripts/render_pr_comment.py`)

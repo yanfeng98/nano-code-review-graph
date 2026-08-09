@@ -3,9 +3,6 @@
 ## v2.3.7（当前）
 - **无需 fork 的自定义语言**：在你的 repo 中放入 `.code-review-graph/languages.toml`，即可索引 tree-sitter-language-pack 提供的任何 grammar——扩展名映射加 node-type 列表，经过校验和上限控制，内置语言始终优先。参见 [CUSTOM_LANGUAGES.md](CUSTOM_LANGUAGES.md)。
 - **用于 risk-scored PR review 的 GitHub Action**：复合 `action.yml` 从 CI cache 构建/恢复 graph，针对 PR base 运行 `detect-changes`，并更新一条带 risk 表、受影响 flows、测试缺口和 Token Savings 行的置顶评论。可选的 `fail-on-risk` merge gate。本仓库通过 `.github/workflows/pr-review.yml` 进行了 dogfood。参见 [GITHUB_ACTION.md](GITHUB_ACTION.md)。
-- **`agent_baseline` eval benchmark**：将 graph 查询与现实的 grep-and-read-top-k agent baseline 对比，而非整语料库稻草人；接入全部五个固定的 eval configs。
-- **`impact_accuracy` 的协同变更 ground truth**：预测结果还以同一 commit 中实际协同变更的文件为评分标准；旧指标被明确标注为"graph-derived（circular——上限）"。
-- **每周 eval CI**：`.github/workflows/eval.yml` 对两个最小的固定配置运行一个仅报告 cron，带 CSV artifacts 和 job summary。
 - **docs/FAQ.md**：CRG 与 LSP、RAG、grep/agentic 搜索及相邻工具的对比；何时*不*该使用它；验证步骤；monorepo/worktree 与 registry 指引。
 - **贡献脚手架**：GitHub issue forms（bug/feature/platform）、镜像 CONTRIBUTING checklist 的 PR 模板，以及 pip + GitHub Actions 的 dependabot 配置。
 - **Windows 修复**：`daemon status` 不再以 WinError 87 崩溃（#511），CLI `detect-changes` 将 diff 路径映射为绝对原生路径，因此不再报告 0 个 functions（#528）。
@@ -19,13 +16,9 @@
 - **`--verify` flag**：与 OpenAI 的 `cl100k_base` tokenizer（GPT-4 家族）交叉核对显示的数字。新增第二行 `Verified (tiktoken)`，显示真实 token 计数。跨 192 个混合语言文件的校准显示，该估算在整体上与真实 tokens 的误差在约 4% 以内。
 - **`update --brief`**：增量更新 + 同一个 risk 面板，一个命令完成。与 `detect-changes --brief`（对现有 graph 只读）不同——当 graph 可能过期时（rebase 后、大变更集）使用 update。
 - **`code-review-graph embed` CLI 子命令**：显式的 shell 级 embedding 生成入口。此前只能通过 MCP 触达。
-- **确定性 eval pipeline**：全部 5 个 eval configs 固定上游 SHAs，`eval/runner.py` 使用带显式 `returncode` 检查的完整 clone，Leiden 社区检测使用固定种子（`CRG_LEIDEN_SEED=42`）。不同机器上的两次运行产生完全相同的结果。
-- **`multi_hop_retrieval` benchmark**：9 个手工整理的 2 步 tool-chain tasks（`hybrid_search` → `query_graph`）分布在 5 个测试 repos 上。平均得分 0.889。
-- **更丰富的语义搜索**：`embeddings._node_to_text` 现在包含点分形式（`Module.Class.method`）、分词标识符和所在模块目录。自然语言查询的搜索排名从 0.545 → 0.889，提升于 multi-hop benchmark。
+- **更丰富的语义搜索**：`embeddings._node_to_text` 现在包含点分形式（`Module.Class.method`）、分词标识符和所在模块目录，显著提升自然语言查询的搜索排名。
 - **标识符感知的搜索增强**：`extract_query_identifiers` 从 NL 查询中提取 dotted / snake_case / CamelCase tokens，并在 hybrid search 中把匹配的 qualified-names 权重提升 ×2.0。
-- **路径规范化修复**：`eval/runner.py` 现在在存储前将 repo 路径解析为绝对路径，因此 eval 构建的 graph 与 CLI/MCP 构建的 graph 一致，`update` 不会为同一源码位置创建重复 nodes。
 - **Test-gap 去重**：brief 摘要中的 `Untested:` 行按裸名去重（针对重复 qualified_names 混入时的防御性保护）。
-- **eval 中 FTS5 自动重建**：eval 框架现在在 `full_build` 之后调用 `run_post_processing`，因此 FTS5 自动填充，而不是留下空索引。
 
 ## v2.3.4
 - **估算的 context savings**：Review、impact、detect-changes 和紧凑 architecture 响应包含微小的 `context_savings` 元数据（`estimated`、`saved_tokens`、`saved_percent`），适用于可以估算 baseline 的场景。
@@ -52,8 +45,7 @@
 - **Multi-repo registry**：注册多个 repositories，用 `cross_repo_search` 跨所有 repositories 搜索。
 - **全文搜索**：带 porter stemming 的 FTS5 虚拟表，用于 hybrid keyword + vector 搜索。
 - **数据库迁移**：带版本号的 schema migrations（v1-v5），启动时自动升级。
-- **可选依赖组**：`[embeddings]`、`[google-embeddings]`、`[communities]`、`[eval]`、`[wiki]`、`[all]`。
-- **Evaluation framework**：带 matplotlib 可视化的 benchmark 套件。
+- **可选依赖组**：`[embeddings]`、`[google-embeddings]`、`[communities]`、`[wiki]`、`[all]`。
 - **TypeScript 路径解析**：tsconfig.json paths/baseUrl alias 解析用于 imports。
 - **486 个 tests**，分布在 22 个 test 文件。
 

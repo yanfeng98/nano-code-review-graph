@@ -28,7 +28,7 @@ AI 编码 agents：只读取你需要的那个精确 `<section>`。永远不要�
 核心 MCP tools：get_minimal_context_tool、detect_changes_tool、get_review_context_tool、get_impact_radius_tool、query_graph_tool、semantic_search_nodes_tool、get_architecture_overview_tool、get_affected_flows_tool、list_flows_tool、list_communities_tool、refactor_tool、build_or_update_graph_tool、run_postprocess_tool、embed_graph_tool、list_graph_stats_tool、get_docs_section_tool
 MCP prompts（5）：review_changes、architecture_map、debug_issue、onboard_developer、pre_merge_check
 Skills（4）：explore-codebase、review-changes、debug-issue、refactor-safely
-CLI：code-review-graph [install|init|uninstall|build|update|postprocess|embed|watch|status|forget|visualize|wiki|register|unregister|repos|eval|detect-changes|enrich|dead-code|query|impact|search|flows|flow|communities|community|architecture|large-functions|refactor|serve|mcp|daemon]
+CLI：code-review-graph [install|init|uninstall|build|update|postprocess|embed|watch|status|forget|visualize|wiki|register|unregister|repos|detect-changes|enrich|dead-code|query|impact|search|flows|flow|communities|community|architecture|large-functions|refactor|serve|mcp|daemon]
 Token 效率：在可用处优先使用 detail_level="minimal"。始终先调用 get_minimal_context_tool。某些 review/context tools 会返回紧凑的估算 context_savings 元数据。
 </section>
 
