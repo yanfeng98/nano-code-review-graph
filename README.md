@@ -619,7 +619,16 @@ uv run pytest tests/ --tb=short -q            # 测试
 uv run ruff check code_review_graph/          # lint
 ```
 
-**关键：让其他项目使用你的编辑版。** 默认的 MCP 配置（`uvx` / PyPI）拉取的是发布版，改代码不生效。必须把 MCP 配置里的启动命令指向本地可编辑环境的**绝对路径**：
+**关键：让其他项目使用你的编辑版。** 默认的 MCP 配置（`uvx` / PyPI）拉取的是发布版，改代码不生效。必须把 MCP 配置里的启动命令指向本地可编辑环境的**绝对路径**。
+
+> **具体示例（本机，路径替换成你自己的仓库）：**
+>
+> ```bash
+> claude mcp add --scope user code-review-graph -- \
+>   /home/luyanfeng/luyanfeng/nano-code-review-graph/.venv/bin/code-review-graph serve
+> ```
+>
+> 验证：在**任意非本仓库目录**运行 `claude mcp get code-review-graph`，应显示 `Scope: User config`、`Command` 指向上述绝对路径、`Status: ✓ Connected`；在 Claude Code 里输入 `/mcp` 也能看到连接状态。本仓库内因项目级 `.mcp.json`（`uvx`）优先，会显示 PyPI 版——这是预期行为，**其他项目**才用你配置的本地编辑版。
 
 ```jsonc
 // Claude Code（全局）：~/.claude.json 顶层 mcpServers
