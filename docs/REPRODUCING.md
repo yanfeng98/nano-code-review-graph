@@ -307,7 +307,7 @@ node export_pngs.mjs                               # 渲染默认 3 张过期的
 # 或：node export_pngs.mjs all                     # 渲染全部 9 张
 ```
 
-`export_pngs.mjs` 用 Playwright 打开内联了 `render-bundle.js` 的无头页面，通过 `@excalidraw/utils` 的 `exportToBlob` 按 4× 坐标缩放渲染，产出的 PNG 与 excalidraw.com 同一渲染引擎保持一致。手动导出（在 excalidraw.com 打开每个 `.excalidraw`）仍可用作后备。
+`export_pngs.mjs` 用 Playwright 打开内联了 `render-bundle.js` 的无头页面，通过 `@excalidraw/utils` 的 `exportToBlob` + `getDimensions` 回调做 uniform 4× 缩放（坐标与文字等比，等同 excalidraw.com 的导出倍率；Virgil 字体内嵌在 bundle 中，无需网络），产出的 PNG 与 excalidraw.com 同一渲染引擎保持一致。手动导出（在 excalidraw.com 打开每个 `.excalidraw`）仍可用作后备。
 
 ## 故障排查
 
