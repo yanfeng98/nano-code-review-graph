@@ -7,7 +7,7 @@
 - 所有 graph 数据本地存储在 `.code-review-graph/graph.db`
 - 核心 graph build、review、search 和 CLI/MCP 工作流在本地运行
 - 可选的本地 embeddings 首次使用时可能从 HuggingFace 下载 sentence-transformers 模型
-- 可选的 cloud embedding providers（`openai`、`google`、`minimax`、`voyage`）仅在显式选择时把被 embedding 的源码片段发送给配置的 provider
+- 可选的 cloud embedding providers（`openai`、`google`、`minimax`）仅在显式选择时把被 embedding 的源码片段发送给配置的 provider
 - 远程 embedding providers 除非设置 `CRG_ACCEPT_CLOUD_EMBEDDINGS=1`，否则会打印 egress 警告
 - Streamable HTTP MCP transport 默认绑定到 localhost
 

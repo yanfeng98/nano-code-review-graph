@@ -821,7 +821,7 @@ class TestEmbedGraphProviderErrors:
         assert result["status"] == "error"
         assert "Unknown embedding provider" in result["error"]
         assert "moonbase" in result["error"]
-        assert "Valid: local, openai, google, minimax, voyage" in result["error"]
+        assert "Valid: local, openai, google, minimax" in result["error"]
 
     def test_missing_env_vars_return_structured_error(self, tmp_path, monkeypatch):
         (tmp_path / ".code-review-graph").mkdir()

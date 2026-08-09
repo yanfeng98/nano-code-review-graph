@@ -381,13 +381,6 @@ pip install "code-review-graph[all]"                 # 所有可选依赖
 | `CRG_TOOLS` | 逗号分隔的 MCP 工具允许列表，在启动服务时使用 | - |
 | `GOOGLE_API_KEY` | Google Gemini 嵌入的 API key | - |
 | `MINIMAX_API_KEY` | MiniMax 嵌入的 API key | - |
-| `VOYAGE_API_KEY` | Voyage 嵌入的 API key | - |
-| `CRG_VOYAGE_MODEL` | Voyage 嵌入的模型名称 | `voyage-code-3` |
-| `CRG_VOYAGE_OUTPUT_DIMENSION` | Voyage 嵌入的输出维度 | `1024` |
-| `CRG_VOYAGE_OUTPUT_DTYPE` | Voyage 嵌入的输出 dtype | `float` |
-| `CRG_VOYAGE_BASE_URL` | Voyage 嵌入端点 | `https://api.voyageai.com/v1` |
-| `CRG_VOYAGE_BATCH_SIZE` | Voyage 嵌入请求的批量大小 | `100` |
-| `CRG_VOYAGE_MIN_INTERVAL_SEC` | Voyage 请求之间的最小延迟 | `0` |
 | `CRG_OPENAI_BASE_URL` | 兼容 OpenAI 的嵌入端点 | - |
 | `CRG_OPENAI_API_KEY` | 兼容 OpenAI 的嵌入 API key | - |
 | `CRG_OPENAI_MODEL` | 兼容 OpenAI 的嵌入模型名称 | - |
@@ -408,14 +401,6 @@ export CRG_OPENAI_BATCH_SIZE=100                        # 对于有严格批量�
 ```
 
 当 base URL 指向 localhost（`127.0.0.1`、`localhost`、`0.0.0.0`、`::1`）时，云端出站警告会自动跳过。
-
-Voyage 嵌入不需要额外安装。设置 `VOYAGE_API_KEY` 并传递 `provider="voyage"` 给 `embed_graph`；默认模型为 `voyage-code-3`：
-
-```bash
-export VOYAGE_API_KEY=pa-...
-export CRG_ACCEPT_CLOUD_EMBEDDINGS=1
-code-review-graph embed --provider voyage --model voyage-code-3
-```
 
 > **模型选择提示。** 避免使用以 `-preview` / `-beta` / `-exp` 结尾的 model ID（例如 `google/gemini-embedding-2-preview`）用于长期保留——preview 模型可能更改权重（不同维度 → 需要完全重新嵌入）或在未通知的情况下被弃用。推荐使用稳定 GA 版本，如 `text-embedding-3-small` / `text-embedding-3-large`（OpenAI）、`Qwen/Qwen3-Embedding-8B`（通过自托管 vLLM / LocalAI）或 `gemini-embedding-001`（通过原生 Gemini provider，需要 `GOOGLE_API_KEY` 而非 OpenAI 兼容路径）。
 >
