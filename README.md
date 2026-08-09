@@ -280,9 +280,13 @@ jobs:
 
 | 命令 | 说明 |
 |---------|-------------|
-| `/code-review-graph:build-graph` | 构建或重建代码图 |
-| `/code-review-graph:review-delta` | 审查自上次提交以来的变更 |
-| `/code-review-graph:review-pr` | 含影响半径分析的完整 PR 审查 |
+| `/code-review-graph:review_changes` | 审查自上次提交以来的变更 |
+| `/code-review-graph:pre_merge_check` | 含风险评分的完整 PR 审查 |
+| `/code-review-graph:debug_issue` | 引导式调试问题 |
+| `/code-review-graph:architecture_map` | 生成架构文档 |
+| `/code-review-graph:onboard_developer` | 生成新开发者入门指南 |
+
+> 构建图不是斜杠命令，而是 MCP tool `build_or_update_graph_tool` 或 CLI `code-review-graph build` / `update`。
 
 </details>
 

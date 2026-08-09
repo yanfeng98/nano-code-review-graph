@@ -2,24 +2,26 @@
 
 ## Skills 与斜杠命令
 
-以下命令为支持项目 skills 或斜杠命令风格工作流的 clients 安装。
+以下 4 个 skills 为支持项目 skills 或斜杠命令风格工作流的 clients 安装（写入 `.claude/skills/`）。
 
-### `/code-review-graph:build-graph`
-构建或更新知识图谱。
-- 首次：执行完整 build
-- 之后：增量更新（仅变更的文件）
+### `/explore-codebase`
+用知识图谱导航和理解 codebase 结构。
 
-### `/code-review-graph:review-delta`
-仅审查自上次 commit 以来的变更。
+### `/review-changes`
+用变更检测和 impact 分析做结构化 code review。
 - 通过 git diff 自动检测变更的文件
 - 计算 blast radius（默认 2 跳）
 - 生成带指导的结构化 review
 
-### `/code-review-graph:review-pr`
-审查一个 PR 或 branch diff。
-- 以 main/master 作为 base
-- 跨所有 PR commits 做完整 impact 分析
-- 带风险评定的结构化输出
+### `/debug-issue`
+用 graph 驱动的代码导航系统化调试问题。
+
+### `/refactor-safely`
+用依赖分析安全地规划与执行重构。
+
+> 命名约定：skills 是 `.claude/skills/` 里的本地文件，在 Claude Code 中显示为 `/skill-name`（无前缀）；MCP prompts 显示为 `/code-review-graph:prompt_name`（下划线命名，带 server 前缀）。两者都需先运行 `code-review-graph install` 才会出现。
+> 构建 graph 不是 skill 也不是 prompt，而是 MCP tool `build_or_update_graph_tool`（见下）或 CLI `code-review-graph build` / `update`。
+> 现成的 review 工作流通过 MCP prompts 提供：`review_changes`（审查变更）、`pre_merge_check`（审查 PR，见下）。
 
 ## MCP Tools
 

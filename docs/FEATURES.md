@@ -143,7 +143,7 @@
 - **增量更新**，通过 `git diff` + 自动依赖级联
 - **Impact-radius / blast-radius 分析**——通过 call/import/inheritance graph 的 BFS
 - **6 个 MCP tools**，用于完整的 graph 交互
-- **3 个 review-first skills**：build-graph、review-delta、review-pr
+- **4 个 skills**：explore-codebase、review-changes、debug-issue、refactor-safely
 - **PostToolUse hooks**（Write|Edit|Bash），用于自动后台更新
 - **FastMCP 3.0 兼容**的 stdio MCP server
 

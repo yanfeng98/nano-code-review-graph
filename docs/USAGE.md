@@ -31,20 +31,21 @@ code-review-graph install --platform opencode
 ## 核心工作流
 
 ### 1. 构建 graph（仅首次）
+```bash
+code-review-graph build      # 完整构建
+code-review-graph update     # 之后的增量更新
 ```
-/code-review-graph:build-graph
-```
-解析你的整个 codebase。500 个文件约需 10 秒。
+解析你的整个 codebase。500 个文件约需 10 秒。MCP client 中也可直接调用 `build_or_update_graph_tool`。
 
 ### 2. 审查变更（日常使用）
 ```
-/code-review-graph:review-delta
+/code-review-graph:review_changes
 ```
 仅审查自上次 commit 以来变更的文件，再加上 graph 衍生的 impact radius。相关的 review 和 impact 响应中包含紧凑的估算 `context_savings` 元数据。在 5 个 benchmark 仓库中，graph 查询每个问题使用的 token 比阅读整个语料库少约 71 倍（中位数；范围 38 倍–528 倍）——方法详见 [README 基准测试](../README.md#基准测试) 与 [REPRODUCING.md](REPRODUCING.md)。
 
 ### 3. 审查一个 PR
 ```
-/code-review-graph:review-pr
+/code-review-graph:pre_merge_check
 ```
 对 branch diff 进行全面的结构性 review，并带 blast-radius 分析。
 

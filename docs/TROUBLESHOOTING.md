@@ -143,7 +143,7 @@ Graph 使用带 WAL 模式的 SQLite。如果看到锁错误：
 
 ## Graph 似乎过期
 - Hooks 会在编辑/提交时自动更新
-- 如果过期，手动运行 `/code-review-graph:build-graph`
+- 如果过期，手动运行 `code-review-graph update`（或让 MCP client 调用 `build_or_update_graph_tool`）
 - 检查 hooks 是否在 `.claude/settings.json` 中配置（重新运行 `code-review-graph install` 以重新生成）
 
 ## Embeddings 不工作
