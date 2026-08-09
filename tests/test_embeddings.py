@@ -12,7 +12,6 @@ import pytest
 from code_review_graph.embeddings import (
     LOCAL_DEFAULT_MODEL,
     EmbeddingStore,
-    GoogleEmbeddingProvider,
     LocalEmbeddingProvider,
     OpenAIEmbeddingProvider,
     _cosine_similarity,
@@ -272,48 +271,6 @@ class TestLocalEmbeddingProviderModelName:
             assert provider.name == "local:BAAI/bge-small-en-v1.5"
 
 
-class TestGoogleEmbeddingProviderRetryLogging:
-    def test_retryable_error_logs_attempt_fraction_then_succeeds(self, caplog):
-        fn = MagicMock(side_effect=[RuntimeError("429 rate limited"), [1.0]])
-
-        with patch("code_review_graph.embeddings.time.sleep") as sleep:
-            result = GoogleEmbeddingProvider._call_with_retry(fn)
-
-        assert result == [1.0]
-        assert fn.call_count == 2
-        sleep.assert_called_once_with(1)
-        assert "Gemini API retry 1/3 in 1s (RuntimeError)" in caplog.text
-
-    def test_non_retryable_error_logs_once_without_sleeping(self, caplog):
-        caplog.set_level("DEBUG")
-        fn = MagicMock(side_effect=ValueError("400 invalid request"))
-
-        with (
-            patch("code_review_graph.embeddings.time.sleep") as sleep,
-            pytest.raises(ValueError, match="400 invalid request"),
-        ):
-            GoogleEmbeddingProvider._call_with_retry(fn)
-
-        fn.assert_called_once_with()
-        sleep.assert_not_called()
-        assert "Non-retryable Gemini API error: ValueError" in caplog.text
-
-    def test_exhausted_retries_log_each_attempt_and_final_error(self, caplog):
-        fn = MagicMock(side_effect=RuntimeError("503 unavailable"))
-
-        with (
-            patch("code_review_graph.embeddings.time.sleep") as sleep,
-            pytest.raises(RuntimeError, match="503 unavailable"),
-        ):
-            GoogleEmbeddingProvider._call_with_retry(fn)
-
-        assert fn.call_count == 3
-        assert [call.args for call in sleep.call_args_list] == [(1,), (2,)]
-        assert "Gemini API retry 1/3 in 1s (RuntimeError)" in caplog.text
-        assert "Gemini API retry 2/3 in 2s (RuntimeError)" in caplog.text
-        assert "Gemini API request failed after 3 requests" in caplog.text
-
-
 class TestGetProviderValidation:
     """Unknown provider names must raise instead of silently using local."""
 
@@ -327,7 +284,7 @@ class TestGetProviderValidation:
             get_provider("moonbase")
         msg = str(exc_info.value)
         assert "moonbase" in msg
-        assert "Valid: local, openai, google" in msg
+        assert "Valid: local, openai" in msg
 
     def test_case_and_whitespace_normalized_for_openai(self):
         """'  OPENAI ' must route to the openai branch (and fail on its
@@ -427,29 +384,19 @@ class TestGetProviderModel:
 class TestCloudProviderWarning:
     """Tests for the stderr warning before cloud provider use (#174)."""
 
-    def test_google_triggers_stderr_warning(self, capsys):
-        with patch.dict(os.environ, {"GOOGLE_API_KEY": "fake"}, clear=False):
-            os.environ.pop("CRG_ACCEPT_CLOUD_EMBEDDINGS", None)
-            with patch(
-                "code_review_graph.embeddings.GoogleEmbeddingProvider",
-            ) as mock_cls:
-                mock_cls.return_value = MagicMock()
-                get_provider(provider="google")
-        captured = capsys.readouterr()
-        assert "google" in captured.err.lower()
-        assert captured.out == ""
-
     def test_accept_env_var_suppresses_warning(self, capsys):
         """Setting CRG_ACCEPT_CLOUD_EMBEDDINGS=1 silences the warning."""
         with patch.dict(os.environ, {
-            "GOOGLE_API_KEY": "fake",
+            "CRG_OPENAI_API_KEY": "fake",
+            "CRG_OPENAI_BASE_URL": "https://api.openai.com/v1",
+            "CRG_OPENAI_MODEL": "text-embedding-3-small",
             "CRG_ACCEPT_CLOUD_EMBEDDINGS": "1",
         }, clear=False):
             with patch(
-                "code_review_graph.embeddings.GoogleEmbeddingProvider",
+                "code_review_graph.embeddings.OpenAIEmbeddingProvider",
             ) as mock_cls:
                 mock_cls.return_value = MagicMock()
-                get_provider(provider="google")
+                get_provider(provider="openai")
         captured = capsys.readouterr()
         assert captured.err == ""
         assert captured.out == ""

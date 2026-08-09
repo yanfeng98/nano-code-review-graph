@@ -11,7 +11,6 @@ README_FILES = (
 )
 OPTIONAL_GROUPS = (
     "embeddings",
-    "google-embeddings",
     "communities",
     "enrichment",
     "wiki",

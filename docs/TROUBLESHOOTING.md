@@ -181,7 +181,6 @@ Graph 使用带 WAL 模式的 SQLite。如果看到锁错误：
 
 如果某个 tool 返回 ImportError，安装相应的可选组：
 - `pip install "code-review-graph[embeddings]"` 用于语义搜索
-- `pip install "code-review-graph[google-embeddings]"` 用于 Google Gemini embeddings
 - OpenAI 兼容 embeddings 使用 stdlib HTTP clients，只需要各自的环境变量
 - `pip install "code-review-graph[communities]"` 用于基于 igraph 的 community detection
 - `pip install "code-review-graph[enrichment]"` 用于通过 Jedi 的 Python call-resolution enrichment

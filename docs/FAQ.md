@@ -83,7 +83,7 @@ graph 还是持久化的：agentic 搜索每次 session 都从头重新推导同
 唯一的网络活动是 opt-in：
 
 - **本地 embeddings**（`pip install "code-review-graph[embeddings]"`）首次使用时从 HuggingFace 下载 sentence-transformers 模型。你的代码不会离开本机。
-- **Cloud embeddings**（OpenAI 兼容、Google Gemini）会把正在 embedding 的文本——目前是函数签名——发送给你通过环境变量显式配置的 provider。除非你用 `CRG_ACCEPT_CLOUD_EMBEDDINGS=1` 确认，CRG 会打印出 egress 警告；当端点是 localhost 时，该警告会自动跳过。
+- **Cloud embeddings**（OpenAI 兼容）会把正在 embedding 的文本——目前是函数签名——发送给你通过环境变量显式配置的 provider。除非你用 `CRG_ACCEPT_CLOUD_EMBEDDINGS=1` 确认，CRG 会打印出 egress 警告；当端点是 localhost 时，该警告会自动跳过。
 
 完整隐私说明参见 [LEGAL.md](LEGAL.md)。
 

@@ -21,7 +21,7 @@ When using code-review-graph MCP tools, follow these rules:
   - `tools/` — 30 MCP tool implementations split by domain
   - `main.py` — FastMCP server entry point, registers 30 tools + 5 prompts
   - `incremental.py` — Git-based change detection, file watching
-  - `embeddings.py` — Optional vector embeddings (local sentence-transformers, OpenAI-compatible endpoints, Google Gemini)
+  - `embeddings.py` — Optional vector embeddings (local sentence-transformers, OpenAI-compatible endpoints)
   - `visualization.py` — D3.js interactive HTML graph generator
   - `cli.py` — CLI entry point (install/init, build, update, postprocess, embed, watch, status, visualize, serve/mcp, wiki, detect-changes, register, unregister, repos, daemon)
   - `flows.py` — Execution flow detection and criticality scoring

@@ -100,7 +100,7 @@ kind: str | None     # File、Class、Function、Type、Test
 limit: int = 20
 repo_root: str | None
 model: str | None    # Embedding 模型（回退到 provider 相关的环境变量）
-provider: str | None # local、openai、google
+provider: str | None # local、openai
 detail_level: str = "standard"
 ```
 
@@ -108,7 +108,7 @@ detail_level: str = "standard"
 ```
 repo_root: str | None
 model: str | None    # Embedding 模型名称
-provider: str | None # local、openai、google
+provider: str | None # local、openai
 ```
 本地 embeddings 需要：`pip install "code-review-graph[embeddings]"`。Cloud providers 使用 stdlib HTTP clients，需要它们各自的 provider 环境变量。
 

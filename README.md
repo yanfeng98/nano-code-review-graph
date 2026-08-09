@@ -138,7 +138,7 @@ call_node_types = ["call"]
 | **广泛语言 + notebook 支持** | Python、JavaScript/TypeScript/TSX、Rust、C/C++、shell 脚本、Verilog/SystemVerilog、Ansible playbooks/roles/tasks、通过 TypeScript 解析器解析的 Astro 文件、Jupyter (.ipynb) |
 | **影响半径分析** | 展示哪些函数、类和文件可能受变更影响 |
 | **自动更新 hooks** | Hooks 和 watch 模式可在文件保存和支持的提交钩子时更新图 |
-| **语义搜索** | 可选的向量嵌入，通过 sentence-transformers、Google Gemini 或任何兼容 OpenAI 的端点（真实 OpenAI、Azure、new-api、LiteLLM、vLLM、LocalAI） |
+| **语义搜索** | 可选的向量嵌入，通过 sentence-transformers 或任何兼容 OpenAI 的端点（真实 OpenAI、Azure、new-api、LiteLLM、vLLM、LocalAI） |
 | **交互式可视化** | 基于 D3.js 的力导向图，支持搜索、社区图例切换和按度缩放的节点 |
 | **Hub 和 Bridge 检测** | 查找连接最多的节点和通过介数中心性识别的架构瓶颈 |
 | **意外耦合评分** | 检测意外耦合：跨社区、跨语言、外围到 Hub 的边 |
@@ -355,7 +355,6 @@ node_modules/**
 
 ```bash
 pip install "code-review-graph[embeddings]"          # 本地向量嵌入（sentence-transformers）
-pip install "code-review-graph[google-embeddings]"   # Google Gemini 嵌入
 pip install "code-review-graph[communities]"         # 社区检测（igraph）
 pip install "code-review-graph[enrichment]"          # Python 调用解析增强（Jedi）
 pip install "code-review-graph[wiki]"                # 含 LLM 摘要的 Wiki 生成（ollama）
@@ -379,7 +378,6 @@ pip install "code-review-graph[all]"                 # 所有可选依赖
 | `CRG_TOOL_TIMEOUT` | 受限 MCP 工具的可选超时秒数（`0` 禁用超时） | `0` |
 | `CRG_RECURSE_SUBMODULES` | 当设置为 `1`、`true` 或 `yes` 时，在文件收集中包含 git 子模块 | - |
 | `CRG_TOOLS` | 逗号分隔的 MCP 工具允许列表，在启动服务时使用 | - |
-| `GOOGLE_API_KEY` | Google Gemini 嵌入的 API key | - |
 | `CRG_OPENAI_BASE_URL` | 兼容 OpenAI 的嵌入端点 | - |
 | `CRG_OPENAI_API_KEY` | 兼容 OpenAI 的嵌入 API key | - |
 | `CRG_OPENAI_MODEL` | 兼容 OpenAI 的嵌入模型名称 | - |
@@ -401,7 +399,7 @@ export CRG_OPENAI_BATCH_SIZE=100                        # 对于有严格批量�
 
 当 base URL 指向 localhost（`127.0.0.1`、`localhost`、`0.0.0.0`、`::1`）时，云端出站警告会自动跳过。
 
-> **模型选择提示。** 避免使用以 `-preview` / `-beta` / `-exp` 结尾的 model ID（例如 `google/gemini-embedding-2-preview`）用于长期保留——preview 模型可能更改权重（不同维度 → 需要完全重新嵌入）或在未通知的情况下被弃用。推荐使用稳定 GA 版本，如 `text-embedding-3-small` / `text-embedding-3-large`（OpenAI）、`Qwen/Qwen3-Embedding-8B`（通过自托管 vLLM / LocalAI）或 `gemini-embedding-001`（通过原生 Gemini provider，需要 `GOOGLE_API_KEY` 而非 OpenAI 兼容路径）。
+> **模型选择提示。** 避免使用以 `-preview` / `-beta` / `-exp` 结尾的 model ID 用于长期保留——preview 模型可能更改权重（不同维度 → 需要完全重新嵌入）或在未通知的情况下被弃用。推荐使用稳定 GA 版本，如 `text-embedding-3-small` / `text-embedding-3-large`（OpenAI）、`Qwen/Qwen3-Embedding-8B`（通过自托管 vLLM / LocalAI）。
 >
 > `code-review-graph` 嵌入标识符、签名、结构上下文和有界的第一段 docstring/doc-comment 摘要。它不会传输函数体。在添加文档提取之前构建的图需要一次完整的 `code-review-graph build` 后再重新嵌入，以便每个文件都被重新解析。常规构建默认从不刷新嵌入。如需在构建后显式刷新现有索引，需同时传递 `--embedding-provider` 和 `--embedding-model`；云端选择可能会传输这些源自源代码的文本并产生 API 费用。
 

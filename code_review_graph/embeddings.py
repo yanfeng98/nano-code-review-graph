@@ -2,8 +2,7 @@
 
 Supports multiple providers:
 1. Local (sentence-transformers) - Private, fast, offline.
-2. Google Gemini - High-quality, cloud-based. Requires explicit opt-in.
-3. OpenAI-compatible - Any endpoint speaking OpenAI /v1/embeddings (real OpenAI,
+2. OpenAI-compatible - Any endpoint speaking OpenAI /v1/embeddings (real OpenAI,
    Azure OpenAI, self-hosted gateways like new-api / LiteLLM / vLLM / LocalAI / Ollama).
 """
 
@@ -175,98 +174,6 @@ class LocalEmbeddingProvider(EmbeddingProvider):
     @property
     def name(self) -> str:
         return f"local:{self._model_name}"
-
-
-class GoogleEmbeddingProvider(EmbeddingProvider):
-    def __init__(self, api_key: str, model: str = "gemini-embedding-001") -> None:
-        try:
-            from google import genai
-            self._client = genai.Client(api_key=api_key)
-            self.model = model
-            self._dimension: int | None = None
-        except ImportError:
-            raise ImportError(
-                "google-generativeai not installed. "
-                "Run: pip install code-review-graph[google-embeddings]"
-            )
-
-    def embed(self, texts: list[str]) -> list[list[float]]:
-        batch_size = 100
-        results = []
-        for i in range(0, len(texts), batch_size):
-            batch = texts[i:i + batch_size]
-            response = self._call_with_retry(
-                lambda b=batch: self._client.models.embed_content(
-                    model=self.model,
-                    contents=b,
-                    config={"task_type": "RETRIEVAL_DOCUMENT"},
-                )
-            )
-            results.extend([e.values for e in response.embeddings])
-        if self._dimension is None and results:
-            self._dimension = len(results[0])
-        return results
-
-    @staticmethod
-    def _call_with_retry(fn, max_retries: int = 3):
-        """Call fn with exponential backoff on transient API errors."""
-        retryable_statuses = ("429", "500", "503")
-        for attempt in range(max_retries):
-            try:
-                return fn()
-            except Exception as e:
-                # Retry on rate-limit (429) or server errors (5xx)
-                err_str = str(e)
-                is_retryable = any(status in err_str for status in retryable_statuses)
-                if not is_retryable:
-                    logger.debug(
-                        "Non-retryable Gemini API error: %s",
-                        type(e).__name__,
-                    )
-                    raise
-                if attempt == max_retries - 1:
-                    logger.error(
-                        "Gemini API request failed after %d requests.",
-                        max_retries,
-                    )
-                    raise
-
-                wait = 2 ** attempt
-
-                logger.warning(
-                    "Gemini API retry %d/%d in %ds (%s): %s",
-                    attempt + 1,
-                    max_retries,
-                    wait,
-                    type(e).__name__,
-                    e,
-                )
-
-                time.sleep(wait)
-
-    def embed_query(self, text: str) -> list[float]:
-        response = self._call_with_retry(
-            lambda: self._client.models.embed_content(
-                model=self.model,
-                contents=[text],
-                config={"task_type": "RETRIEVAL_QUERY"},
-            )
-        )
-        vec = response.embeddings[0].values
-        if self._dimension is None:
-            self._dimension = len(vec)
-        return vec
-
-    @property
-    def dimension(self) -> int:
-        if self._dimension is not None:
-            return self._dimension
-        # Default for gemini-embedding-001; updated dynamically after first call
-        return 768
-
-    @property
-    def name(self) -> str:
-        return f"google:{self.model}"
 
 
 class OpenAIEmbeddingProvider(EmbeddingProvider):
@@ -540,7 +447,7 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
         return f"openai:{self._model}@{self._host_key}"
 
 
-CLOUD_PROVIDERS = {"google", "openai"}
+CLOUD_PROVIDERS = {"openai"}
 
 
 def _is_localhost_url(url: str) -> bool:
@@ -583,7 +490,7 @@ def _warn_cloud_egress(provider_name: str) -> None:
     )
 
 
-_VALID_PROVIDERS = {"local", "openai", "google"}
+_VALID_PROVIDERS = {"local", "openai"}
 
 
 def get_provider(
@@ -593,14 +500,13 @@ def get_provider(
     """Get an embedding provider by name.
 
     Args:
-        provider: Provider name. One of "local", "google",
+        provider: Provider name. One of "local",
                   "openai", or None. When omitted, configured
                   OpenAI-compatible credentials select OpenAI; otherwise the
                   local provider is used. Names are case-insensitive and
                   surrounding whitespace is ignored; unknown names raise
                   ValueError instead of silently falling back to the local
-                  provider. Google requires GOOGLE_API_KEY env var and explicit
-                  opt-in. OpenAI requires
+                  provider. OpenAI requires
                   CRG_OPENAI_API_KEY + CRG_OPENAI_BASE_URL + CRG_OPENAI_MODEL
                   env vars (or the ``model`` arg). The egress warning is
                   skipped when the base URL points to localhost.
@@ -609,7 +515,6 @@ def get_provider(
         model: Model name/path to use. For local provider this is any
                sentence-transformers compatible model. Falls back to
                CRG_EMBEDDING_MODEL env var, then to all-MiniLM-L6-v2.
-               For Google provider this is a Gemini model ID.
                For OpenAI provider this overrides CRG_OPENAI_MODEL.
 
     Raises:
@@ -620,7 +525,7 @@ def get_provider(
     if name and name not in _VALID_PROVIDERS:
         raise ValueError(
             f"Unknown embedding provider '{name}'. "
-            "Valid: local, openai, google"
+            "Valid: local, openai"
         )
 
     # When no explicit provider is given but OpenAI-compatible env vars are
@@ -663,22 +568,6 @@ def get_provider(
             dimension=dimension,
             batch_size=batch_size,
         )
-
-    if name == "google":
-        api_key = os.environ.get("GOOGLE_API_KEY")
-        if not api_key:
-            raise ValueError(
-                "GOOGLE_API_KEY environment variable is required for "
-                "the Google embedding provider."
-            )
-        _warn_cloud_egress("google")
-        try:
-            return GoogleEmbeddingProvider(
-                api_key=api_key,
-                **({"model": model} if model else {}),
-            )
-        except ImportError:
-            return None
 
     # Default: local
     if not _check_available():

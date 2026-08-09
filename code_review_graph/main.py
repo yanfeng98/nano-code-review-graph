@@ -331,7 +331,7 @@ def semantic_search_nodes_tool(
 
     Uses vector embeddings for semantic search when available (run embed_graph_tool
     first, with a provider of your choice: "local" needs sentence-transformers,
-    "openai" / "google" need their respective env vars).
+    "openai" needs its env vars).
     Falls back to FTS5 / keyword matching when no matching embeddings exist for
     the given provider.
 
@@ -343,7 +343,7 @@ def semantic_search_nodes_tool(
         model: Embedding model for query vectors. Must match the model used
                during embed_graph. Falls back to CRG_EMBEDDING_MODEL env var
                (local) or CRG_OPENAI_MODEL (openai).
-        provider: Embedding provider: "local" (default), "openai", or "google".
+        provider: Embedding provider: "local" (default) or "openai".
                   Must match the provider used during embed_graph.
         detail_level: "standard" for full output, "minimal" for compact summary. Default: standard.
     """
@@ -372,7 +372,7 @@ async def embed_graph_tool(
     After running this, semantic_search_nodes_tool will use vector similarity
     instead of keyword matching for much better results.
 
-    Runs the blocking sentence-transformers / Gemini / HTTP inference in a
+    Runs the blocking sentence-transformers / HTTP inference in a
     thread via ``asyncio.to_thread`` so the stdio event loop stays
     responsive — without this wrapper, embedding a large graph would
     silently hang the MCP server on Windows. See: #46, #136.
@@ -380,10 +380,9 @@ async def embed_graph_tool(
     Args:
         repo_root: Repository root path. Auto-detected if omitted.
         model: Embedding model. For local: HuggingFace ID/path; for openai:
-               model ID (e.g. "text-embedding-3-small"); for google: Gemini
-               model ID. Falls back to CRG_EMBEDDING_MODEL / CRG_OPENAI_MODEL
-               env vars as appropriate.
-        provider: "local" (default), "openai", or "google".
+               model ID (e.g. "text-embedding-3-small"). Falls back to
+               CRG_EMBEDDING_MODEL / CRG_OPENAI_MODEL env vars as appropriate.
+        provider: "local" (default) or "openai".
                   "openai" requires CRG_OPENAI_BASE_URL + CRG_OPENAI_API_KEY +
                   CRG_OPENAI_MODEL env vars and accepts any OpenAI-compatible
                   endpoint (real OpenAI, Azure, new-api, LiteLLM, vLLM, etc.).

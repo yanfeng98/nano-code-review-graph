@@ -25,8 +25,7 @@ def embed_graph(
     """Compute vector embeddings for all graph nodes to enable semantic search.
 
     Requires: ``pip install code-review-graph[embeddings]`` (local provider only;
-    cloud providers like ``openai`` / ``google`` use
-    stdlib ``urllib``).
+    the ``openai`` cloud provider uses stdlib ``urllib``).
     Default model: all-MiniLM-L6-v2. Override via ``model`` param or
     provider-specific env vars such as CRG_EMBEDDING_MODEL or CRG_OPENAI_MODEL.
     Changing the model or provider re-embeds all nodes automatically.
@@ -36,10 +35,10 @@ def embed_graph(
     Args:
         repo_root: Repository root path. Auto-detected if omitted.
         model: Embedding model name. For local: HuggingFace ID or path;
-               for openai: model ID (e.g. ``text-embedding-3-small``);
-               for google: Gemini model ID. Falls back to CRG_EMBEDDING_MODEL /
-               CRG_OPENAI_MODEL env vars as appropriate.
-        provider: Provider name: ``local`` (default), ``openai``, or ``google``.
+               for openai: model ID (e.g. ``text-embedding-3-small``).
+               Falls back to CRG_EMBEDDING_MODEL / CRG_OPENAI_MODEL env vars
+               as appropriate.
+        provider: Provider name: ``local`` (default) or ``openai``.
                   ``openai`` requires CRG_OPENAI_BASE_URL +
                   CRG_OPENAI_API_KEY + CRG_OPENAI_MODEL env vars and accepts
                   any OpenAI-compatible endpoint (real OpenAI, Azure, new-api,
@@ -60,9 +59,9 @@ def embed_graph(
             return {"status": "error", "error": str(exc)}
         try:
             if not emb_store.available:
-                if provider in ("openai", "google"):
+                if provider == "openai":
                     err = (
-                        f"The '{provider}' embedding provider is not available. "
+                        "The 'openai' embedding provider is not available. "
                         "Check the required environment variables "
                         "(see README and `get_provider()` docstring) and that "
                         "the endpoint is reachable."
@@ -71,7 +70,7 @@ def embed_graph(
                     err = (
                         "The local embedding provider needs sentence-transformers. "
                         "Install with: pip install code-review-graph[embeddings] — "
-                        "or switch provider to 'openai' / 'google'."
+                        "or switch provider to 'openai'."
                     )
                 return {"status": "error", "error": err}
 

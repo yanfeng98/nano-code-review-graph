@@ -45,7 +45,7 @@ MIT 许可证。核心 graph/review 工作流在本地运行，无遥测。数�
 可选：pip install "code-review-graph[embeddings]"
 然后调用 embed_graph_tool 计算 vectors。
 semantic_search_nodes_tool 在可用时自动使用 vectors，否则回退到 keyword + FTS5。
-Providers：本地 sentence-transformers、OpenAI 兼容端点、Google Gemini。
+Providers：本地 sentence-transformers、OpenAI 兼容端点。
 通过 provider/model 参数配置：本地用 CRG_EMBEDDING_MODEL，OpenAI 兼容端点用 CRG_OPENAI_*。
 </section>
 

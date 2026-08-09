@@ -27,9 +27,12 @@
   `--brief` Token Savings panel are unaffected — analysis remains fully local.
 - Removed the MiniMax embedding provider (`MiniMaxEmbeddingProvider`, its
   `get_provider`/`refresh_embeddings` branches, CLI choices, MCP docstrings,
-  tests, and docs). Embedding providers are now `local`, `openai`, and
-  `google`; shared helpers (`_make_host_key`, `_warn_cloud_egress`,
+  tests, and docs). Shared helpers (`_make_host_key`, `_warn_cloud_egress`,
   `_is_localhost_url`) are unaffected.
+- Removed the Google Gemini embedding provider (`GoogleEmbeddingProvider`, its
+  `get_provider` branch, the `google-embeddings` pip extra, CLI choices, MCP
+  docstrings, tests, and docs). Embedding providers are now `local` and
+  `openai`; the `google-generativeai` dependency is dropped from the lockfile.
 
 ### Fixed
 
