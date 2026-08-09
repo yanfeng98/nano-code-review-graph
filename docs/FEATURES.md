@@ -2,7 +2,6 @@
 
 ## v2.3.7（当前）
 - **无需 fork 的自定义语言**：在你的 repo 中放入 `.code-review-graph/languages.toml`，即可索引 tree-sitter-language-pack 提供的任何 grammar——扩展名映射加 node-type 列表，经过校验和上限控制，内置语言始终优先。参见 [CUSTOM_LANGUAGES.md](CUSTOM_LANGUAGES.md)。
-- **用于 risk-scored PR review 的 GitHub Action**：复合 `action.yml` 从 CI cache 构建/恢复 graph，针对 PR base 运行 `detect-changes`，并更新一条带 risk 表、受影响 flows、测试缺口和 Token Savings 行的置顶评论。可选的 `fail-on-risk` merge gate。本仓库通过 `.github/workflows/pr-review.yml` 进行了 dogfood。参见 [GITHUB_ACTION.md](GITHUB_ACTION.md)。
 - **docs/FAQ.md**：CRG 与 LSP、RAG、grep/agentic 搜索及相邻工具的对比；何时*不*该使用它；验证步骤；monorepo/worktree 与 registry 指引。
 - **贡献脚手架**：GitHub issue forms（bug/feature/platform）、镜像 CONTRIBUTING checklist 的 PR 模板，以及 pip + GitHub Actions 的 dependabot 配置。
 - **Windows 修复**：`daemon status` 不再以 WinError 87 崩溃（#511），CLI `detect-changes` 将 diff 路径映射为绝对原生路径，因此不再报告 0 个 functions（#528）。

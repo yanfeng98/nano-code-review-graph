@@ -41,15 +41,10 @@ def test_current_user_docs_have_no_unquoted_pip_extras():
         assert pattern.search(content) is None, f"unquoted pip extras in {doc_name}"
 
 
-def test_github_action_references_use_current_supported_majors():
-    """Keep active workflows and copy-paste examples on supported majors."""
-    files = [
-        ROOT / "action.yml",
-        ROOT / "README.md",
-        ROOT / "docs/GITHUB_ACTION.md",
-        *(ROOT / ".github/workflows").glob("*.yml"),
-    ]
-    expected_majors = {"checkout": "7", "cache": "6"}
+def test_ci_workflow_action_majors_are_supported():
+    """Keep the repo's own CI workflows on supported action majors."""
+    files = [*(ROOT / ".github/workflows").glob("*.yml")]
+    expected_majors = {"checkout": "7"}
     for path in files:
         content = path.read_text(encoding="utf-8")
         for action, expected in expected_majors.items():

@@ -106,7 +106,6 @@ uv run code-review-graph repos              # List registered repos
 - `tests/test_migrations.py` — Database migrations
 - `tests/test_tsconfig_resolver.py` — TypeScript path resolution
 - `tests/test_integration_v2.py` — v2 pipeline integration test
-- `tests/test_action_render.py` — GitHub Action PR comment renderer (`scripts/render_pr_comment.py`)
 - `tests/fixtures/` — Sample files for each supported language
 
 ## CI Pipeline

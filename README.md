@@ -9,7 +9,6 @@
   <a href="docs/COMMANDS.md">命令参考</a> ·
   <a href="docs/FAQ.md">常见问题</a> ·
   <a href="docs/TROUBLESHOOTING.md">故障排除</a> ·
-  <a href="docs/GITHUB_ACTION.md">GitHub Action</a> ·
   <a href="docs/ROADMAP.md">路线图</a>
 </p>
 
@@ -129,31 +128,6 @@ call_node_types = ["call"]
 
 通用的 tree-sitter walker 会自动处理后续提取——无需修改代码，内置语言也永远不会被覆盖。详见 [docs/CUSTOM_LANGUAGES.md](docs/CUSTOM_LANGUAGES.md) 了解模式参考、验证规则和端到端示例。
 
-### CI 中的风险评分 PR 审查（GitHub Action）
-
-同样的分析以复合 GitHub Action 的形式运行——并且保持完全本地化：知识图的构建和查询完全在你的 CI runner 上进行，不会将任何源代码发送到外部服务。每次 pull request 都会发布一条粘性评论，包含风险评分的函数、受影响的执行流程和测试覆盖缺口，并在每次推送时原地更新。可选的 `fail-on-risk` 输入可将审查变为合并门禁。
-
-```yaml
-# .github/workflows/code-review-graph.yml
-on:
-  pull_request:
-
-permissions:
-  contents: read
-  pull-requests: write
-
-jobs:
-  review:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: yanfeng98/nano-code-review-graph@v2.3.7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-```
-
-详见 [docs/GITHUB_ACTION.md](docs/GITHUB_ACTION.md) 了解输入参数、风险等级和缓存细节，或查看此仓库自用的 dogfood workflow [`.github/workflows/pr-review.yml`](.github/workflows/pr-review.yml)。
-
 ---
 
 ## 功能
@@ -182,7 +156,6 @@ jobs:
 | **架构概览** | 自动生成的架构地图，含耦合警告 |
 | **风险评分审查** | `detect_changes` 将差异映射到受影响的函数、流程和测试覆盖缺口 |
 | **自定义语言** | 通过 `.code-review-graph/languages.toml` 添加新语言——无需 fork 或修改代码 |
-| **GitHub Action** | CI 中的粘性风险评分 PR 审查评论，可选 `fail-on-risk` 合并门禁 |
 | **重构工具** | 重命名预览、框架感知的死代码检测、社区驱动的建议 |
 | **Wiki 生成** | 从社区结构自动生成 markdown wiki |
 | **多仓库注册表** | 注册多个仓库，跨仓库搜索 |

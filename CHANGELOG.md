@@ -21,6 +21,13 @@
   configured integration. Without `--platform` the command still performs the
   full uninstall (#678).
 
+### Removed
+
+- Removed the GitHub Action feature (`action.yml`, `scripts/render_pr_comment.py`,
+  the `.github/workflows/pr-review*.yml` dogfood workflows, and `docs/GITHUB_ACTION.md`).
+  The core CLI (`build`/`update`/`detect-changes`), MCP server, local hooks, and
+  `--brief` Token Savings panel are unaffected — analysis remains fully local.
+
 ### Fixed
 
 - C# receiver calls (`Service.StaticCall()`, `obj.Method()`, `obj?.Method()`)

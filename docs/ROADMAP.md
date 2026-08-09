@@ -4,7 +4,6 @@
 
 ### v2.3.7
 - **无需 fork 的自定义语言**：`.code-review-graph/languages.toml` 把扩展名和 node types 映射到任意 tree-sitter-language-pack grammar（`docs/CUSTOM_LANGUAGES.md`）
-- **用于 risk-scored PR review 评论的 GitHub Action**：graph 在 CI runner 上构建/恢复，每次 push 更新置顶评论，可选的 `fail-on-risk` merge gate；通过 `.github/workflows/pr-review.yml` 进行了 dogfood（`docs/GITHUB_ACTION.md`）
 - **`docs/FAQ.md`**：与 LSP、RAG、grep/agentic 搜索及相邻工具的对比，外加何时不应使用的指导
 - **贡献脚手架**：issue forms、PR 模板、dependabot 配置
 - **Windows 修复**：针对 `daemon status`（#511）和 `detect-changes` 路径映射（#528）
@@ -97,7 +96,6 @@
 
 ## 计划中
 
-- 超越已发布 GitHub Action 的 GitHub App / bot 模式（org 级安装、check runs）
 - Team sync（通过 git 跟踪的 DB 共享 graph）
 - 面向 monorepos（>50k 文件）的性能优化
 
