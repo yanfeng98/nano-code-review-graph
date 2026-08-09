@@ -331,7 +331,7 @@ def semantic_search_nodes_tool(
 
     Uses vector embeddings for semantic search when available (run embed_graph_tool
     first, with a provider of your choice: "local" needs sentence-transformers,
-    "openai" / "google" / "minimax" need their respective env vars).
+    "openai" / "google" need their respective env vars).
     Falls back to FTS5 / keyword matching when no matching embeddings exist for
     the given provider.
 
@@ -343,8 +343,8 @@ def semantic_search_nodes_tool(
         model: Embedding model for query vectors. Must match the model used
                during embed_graph. Falls back to CRG_EMBEDDING_MODEL env var
                (local) or CRG_OPENAI_MODEL (openai).
-        provider: Embedding provider: "local" (default), "openai", "google", or
-                  "minimax". Must match the provider used during embed_graph.
+        provider: Embedding provider: "local" (default), "openai", or "google".
+                  Must match the provider used during embed_graph.
         detail_level: "standard" for full output, "minimal" for compact summary. Default: standard.
     """
     root = _resolve_repo_root(repo_root)
@@ -383,7 +383,7 @@ async def embed_graph_tool(
                model ID (e.g. "text-embedding-3-small"); for google: Gemini
                model ID. Falls back to CRG_EMBEDDING_MODEL / CRG_OPENAI_MODEL
                env vars as appropriate.
-        provider: "local" (default), "openai", "google", or "minimax".
+        provider: "local" (default), "openai", or "google".
                   "openai" requires CRG_OPENAI_BASE_URL + CRG_OPENAI_API_KEY +
                   CRG_OPENAI_MODEL env vars and accepts any OpenAI-compatible
                   endpoint (real OpenAI, Azure, new-api, LiteLLM, vLLM, etc.).

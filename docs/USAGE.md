@@ -68,7 +68,7 @@ pip install "code-review-graph[embeddings]"
 ```
 然后使用 `embed_graph_tool` 计算 vectors。`semantic_search_nodes_tool` 在存在匹配的 embeddings 时自动使用 vector 相似度，否则回退到 keyword/FTS 搜索。
 
-Embedding providers 包括本地 sentence-transformers、OpenAI 兼容端点、Google Gemini、MiniMax。本地 embeddings 使用 `CRG_EMBEDDING_MODEL`；OpenAI 兼容 providers 使用 `CRG_OPENAI_BASE_URL`、`CRG_OPENAI_API_KEY` 和 `CRG_OPENAI_MODEL`。Cloud providers 为 opt-in，除非设置 `CRG_ACCEPT_CLOUD_EMBEDDINGS=1`，否则会打印出 egress 警告。
+Embedding providers 包括本地 sentence-transformers、OpenAI 兼容端点、Google Gemini。本地 embeddings 使用 `CRG_EMBEDDING_MODEL`；OpenAI 兼容 providers 使用 `CRG_OPENAI_BASE_URL`、`CRG_OPENAI_API_KEY` 和 `CRG_OPENAI_MODEL`。Cloud providers 为 opt-in，除非设置 `CRG_ACCEPT_CLOUD_EMBEDDINGS=1`，否则会打印出 egress 警告。
 
 Function/class 的文档摘要会包含在 embedding 文本中。对于由旧版本创建的 graph，在重新 embedding 前先运行一次完整 build，以便所有文件都获得该元数据。build/update/watch 之后的 embedding 刷新始终默认关闭；使用精确的 provider 和 model 选择启用，例如：
 

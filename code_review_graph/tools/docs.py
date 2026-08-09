@@ -25,7 +25,7 @@ def embed_graph(
     """Compute vector embeddings for all graph nodes to enable semantic search.
 
     Requires: ``pip install code-review-graph[embeddings]`` (local provider only;
-    cloud providers like ``openai`` / ``google`` / ``minimax`` use
+    cloud providers like ``openai`` / ``google`` use
     stdlib ``urllib``).
     Default model: all-MiniLM-L6-v2. Override via ``model`` param or
     provider-specific env vars such as CRG_EMBEDDING_MODEL or CRG_OPENAI_MODEL.
@@ -39,8 +39,8 @@ def embed_graph(
                for openai: model ID (e.g. ``text-embedding-3-small``);
                for google: Gemini model ID. Falls back to CRG_EMBEDDING_MODEL /
                CRG_OPENAI_MODEL env vars as appropriate.
-        provider: Provider name: ``local`` (default), ``openai``, ``google``, or
-                  ``minimax``. ``openai`` requires CRG_OPENAI_BASE_URL +
+        provider: Provider name: ``local`` (default), ``openai``, or ``google``.
+                  ``openai`` requires CRG_OPENAI_BASE_URL +
                   CRG_OPENAI_API_KEY + CRG_OPENAI_MODEL env vars and accepts
                   any OpenAI-compatible endpoint (real OpenAI, Azure, new-api,
                   LiteLLM, vLLM, LocalAI, Ollama openai-mode, etc.).
@@ -60,7 +60,7 @@ def embed_graph(
             return {"status": "error", "error": str(exc)}
         try:
             if not emb_store.available:
-                if provider in ("openai", "google", "minimax"):
+                if provider in ("openai", "google"):
                     err = (
                         f"The '{provider}' embedding provider is not available. "
                         "Check the required environment variables "
@@ -71,7 +71,7 @@ def embed_graph(
                     err = (
                         "The local embedding provider needs sentence-transformers. "
                         "Install with: pip install code-review-graph[embeddings] — "
-                        "or switch provider to 'openai' / 'google' / 'minimax'."
+                        "or switch provider to 'openai' / 'google'."
                     )
                 return {"status": "error", "error": err}
 

@@ -138,7 +138,7 @@ call_node_types = ["call"]
 | **广泛语言 + notebook 支持** | Python、JavaScript/TypeScript/TSX、Rust、C/C++、shell 脚本、Verilog/SystemVerilog、Ansible playbooks/roles/tasks、通过 TypeScript 解析器解析的 Astro 文件、Jupyter (.ipynb) |
 | **影响半径分析** | 展示哪些函数、类和文件可能受变更影响 |
 | **自动更新 hooks** | Hooks 和 watch 模式可在文件保存和支持的提交钩子时更新图 |
-| **语义搜索** | 可选的向量嵌入，通过 sentence-transformers、Google Gemini、MiniMax 或任何兼容 OpenAI 的端点（真实 OpenAI、Azure、new-api、LiteLLM、vLLM、LocalAI） |
+| **语义搜索** | 可选的向量嵌入，通过 sentence-transformers、Google Gemini 或任何兼容 OpenAI 的端点（真实 OpenAI、Azure、new-api、LiteLLM、vLLM、LocalAI） |
 | **交互式可视化** | 基于 D3.js 的力导向图，支持搜索、社区图例切换和按度缩放的节点 |
 | **Hub 和 Bridge 检测** | 查找连接最多的节点和通过介数中心性识别的架构瓶颈 |
 | **意外耦合评分** | 检测意外耦合：跨社区、跨语言、外围到 Hub 的边 |
@@ -380,7 +380,6 @@ pip install "code-review-graph[all]"                 # 所有可选依赖
 | `CRG_RECURSE_SUBMODULES` | 当设置为 `1`、`true` 或 `yes` 时，在文件收集中包含 git 子模块 | - |
 | `CRG_TOOLS` | 逗号分隔的 MCP 工具允许列表，在启动服务时使用 | - |
 | `GOOGLE_API_KEY` | Google Gemini 嵌入的 API key | - |
-| `MINIMAX_API_KEY` | MiniMax 嵌入的 API key | - |
 | `CRG_OPENAI_BASE_URL` | 兼容 OpenAI 的嵌入端点 | - |
 | `CRG_OPENAI_API_KEY` | 兼容 OpenAI 的嵌入 API key | - |
 | `CRG_OPENAI_MODEL` | 兼容 OpenAI 的嵌入模型名称 | - |

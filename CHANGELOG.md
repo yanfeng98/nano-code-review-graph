@@ -25,6 +25,11 @@
   the `.github/workflows/pr-review*.yml` dogfood workflows, and `docs/GITHUB_ACTION.md`).
   The core CLI (`build`/`update`/`detect-changes`), MCP server, local hooks, and
   `--brief` Token Savings panel are unaffected — analysis remains fully local.
+- Removed the MiniMax embedding provider (`MiniMaxEmbeddingProvider`, its
+  `get_provider`/`refresh_embeddings` branches, CLI choices, MCP docstrings,
+  tests, and docs). Embedding providers are now `local`, `openai`, and
+  `google`; shared helpers (`_make_host_key`, `_warn_cloud_egress`,
+  `_is_localhost_url`) are unaffected.
 
 ### Fixed
 
