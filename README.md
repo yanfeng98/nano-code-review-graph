@@ -598,6 +598,100 @@ CLI 标志优先级高于环境变量。当两者都未设置时，所有工具�
 }
 ```
 
+## 开发与分发
+
+> 本节面向**开发本仓库 / 分发本仓库**的用户：既想在本机编辑代码并让 AI 工具（Claude Code / Codex / OpenCode）在其他项目里立即使用你改过的版本（开发模式），也想把仓库打包后交给他人安装（本地分发，**不发布到 PyPI**）。
+
+### 开发模式：编辑源码，即时生效（editable 安装）
+
+把 `code-review-graph` 以**可编辑（editable）**方式装入环境，改代码无需重新安装。
+
+```bash
+git clone https://github.com/tirth8205/code-review-graph.git
+cd code-review-graph
+
+# uv 默认以可编辑方式安装项目本身，并同步依赖与开发工具
+uv sync --extra dev        # 安装 pytest / ruff / mypy
+
+# 开发循环
+uv run code-review-graph build                 # 构建图
+uv run pytest tests/ --tb=short -q            # 测试
+uv run ruff check code_review_graph/          # lint
+```
+
+**关键：让其他项目使用你的编辑版。** 默认的 MCP 配置（`uvx` / PyPI）拉取的是发布版，改代码不生效。必须把 MCP 配置里的启动命令指向本地可编辑环境的**绝对路径**：
+
+```jsonc
+// Claude Code（全局）：~/.claude.json 顶层 mcpServers
+// 或运行：claude mcp add --scope user code-review-graph -- /absolute/path/to/code-review-graph/.venv/bin/code-review-graph serve
+{
+  "mcpServers": {
+    "code-review-graph": {
+      "type": "stdio",
+      "command": "/absolute/path/to/code-review-graph/.venv/bin/code-review-graph",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+```toml
+# Codex：~/.codex/config.toml
+[mcp_servers.code-review-graph]
+command = "/absolute/path/to/code-review-graph/.venv/bin/code-review-graph"
+args = ["serve"]
+```
+
+```jsonc
+// OpenCode：~/.config/opencode/opencode.json 顶层 "mcp"
+"mcp": {
+  "code-review-graph": {
+    "type": "local",
+    "command": ["/absolute/path/to/code-review-graph/.venv/bin/code-review-graph", "serve"]
+  }
+}
+```
+
+这些是**全局（用户级）**配置，所有项目共用。每个目标项目以该项目为工作目录启动 server，自动读取各项目自己的 `.code-review-graph/graph.db`。改动源码后**即时生效**，重启编辑器加载新配置即可。
+
+> **不要**用 `uv run code-review-graph serve` 作为 MCP 命令：`uv run` 会在**目标项目**（cwd）解析项目环境，非 uv 项目会启动失败。绝对路径指向本仓库 `.venv` 是最稳妥的。
+
+### 打包分发：构建 wheel，本地交给他人（不发布 PyPI）
+
+用 `uv build` 在本地构建分发文件，把产物直接交给他人用 `pip` 安装：
+
+```bash
+cd code-review-graph
+uv build   # 产出 dist/code_review_graph-<版本>-py3-none-any.whl 和 .tar.gz
+```
+
+产物是**纯 Python 跨平台** wheel（Python 3.10+，任意 OS）。**接收方每台机器安装一次：**
+
+```bash
+pip install code_review_graph-<版本>-py3-none-any.whl
+# 或需要全部可选特性（embeddings / communities / eval / wiki）：
+pip install "code_review_graph-<版本>-py3-none-any.whl[all]"
+# uv 用户（作为全局 CLI 工具）：
+uv tool install code_review_graph-<版本>-py3-none-any.whl
+```
+
+运行依赖（fastmcp、tree-sitter、networkx 等）会自动从 PyPI 安装——只有 code-review-graph 本体是本地分发的。
+
+**注意：装一次，每个项目建一次图。** 图数据库 `.code-review-graph/graph.db` 是**每个项目各自的数据**（被 gitignore，不会随代码分发）。接收方在每个项目里只需建图，**无需重装包**：
+
+```bash
+cd 某个项目
+code-review-graph build       # 生成该项目的图
+# 或直接对 AI 助手说："Build the code review graph for this project"
+```
+
+其他分发方式：
+
+- **给源码**：把整个仓库拷给对方，对方在仓库内 `pip install .`（现场构建，非可编辑）。
+- **本地 wheel 源**（团队内部）：`pip install --find-links=/path/to/dist code-review-graph`（不要加 `--no-index`，否则依赖无法从 PyPI 解析）。
+
+> wheel 是**构建时刻的快照**：之后改了代码需重新 `uv build` 才会更新产物。若新版本与他人已装的版本号相同，请先在 `pyproject.toml` 中 bump `version`（如 `2.3.7.post1`）。
+
 ## 贡献
 
 ```bash
