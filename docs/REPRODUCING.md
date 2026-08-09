@@ -75,7 +75,7 @@ code-review-graph detect-changes --brief --verify
 ## 步骤 1——安装正确的 extras
 
 ```bash
-git clone https://github.com/tirth8205/code-review-graph
+git clone https://github.com/yanfeng98/nano-code-review-graph
 cd code-review-graph
 
 # eval extras：pyyaml + matplotlib（matplotlib 仅 `--report` 需要）

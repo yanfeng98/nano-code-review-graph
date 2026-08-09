@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 # us through and gives upstream a way to identify CRG-driven traffic.
 _USER_AGENT = (
     f"code-review-graph/{_crg_version} "
-    "(+https://github.com/tirth8205/code-review-graph)"
+    "(+https://github.com/yanfeng98/nano-code-review-graph)"
 )
 
 # ---------------------------------------------------------------------------

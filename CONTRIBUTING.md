@@ -6,7 +6,7 @@ Thank you for your interest in contributing! This guide will help you get starte
 
 ```bash
 # Clone the repository
-git clone https://github.com/tirth8205/code-review-graph.git
+git clone https://github.com/yanfeng98/nano-code-review-graph.git
 cd code-review-graph
 
 # Install with dev dependencies (requires uv)
@@ -82,8 +82,8 @@ If you just need a language for your own repo, you may not need to contribute at
 
 ## Reporting Issues
 
-- Open an issue via the issue forms: https://github.com/tirth8205/code-review-graph/issues/new/choose (bug report, feature request, or platform request — blank issues are disabled)
-- For questions and ideas, use GitHub Discussions instead: https://github.com/tirth8205/code-review-graph/discussions
+- Open an issue via the issue forms: https://github.com/yanfeng98/nano-code-review-graph/issues/new/choose (bug report, feature request, or platform request — blank issues are disabled)
+- For questions and ideas, use GitHub Discussions instead: https://github.com/yanfeng98/nano-code-review-graph/discussions
 - Include: Python version, OS, steps to reproduce, error output
 
 ## License

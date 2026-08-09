@@ -86,8 +86,8 @@ The graph database is stored locally at `.code-review-graph/graph.db` and update
 
 ## Links
 
-- [Main Repository](https://github.com/tirth8205/code-review-graph)
-- [Report an Issue](https://github.com/tirth8205/code-review-graph/issues)
+- [Main Repository](https://github.com/yanfeng98/nano-code-review-graph)
+- [Report an Issue](https://github.com/yanfeng98/nano-code-review-graph/issues)
 
 ## License
 

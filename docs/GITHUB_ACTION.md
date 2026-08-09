@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: tirth8205/code-review-graph@v2.3.7
+      - uses: yanfeng98/nano-code-review-graph@v2.3.7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -40,7 +40,7 @@ Self-hosted runners 必须是 2.327.1 或更新版本。该复合 action 使用�
 要把 review 变成 merge gate：
 
 ```yaml
-      - uses: tirth8205/code-review-graph@v2.3.7
+      - uses: yanfeng98/nano-code-review-graph@v2.3.7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-risk: high

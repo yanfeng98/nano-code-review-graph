@@ -12,7 +12,7 @@
 If you discover a security vulnerability, please report it responsibly:
 
 1. **Do NOT open a public GitHub issue**
-2. Use [GitHub private vulnerability reporting](https://github.com/tirth8205/code-review-graph/security/advisories/new)
+2. Use [GitHub private vulnerability reporting](https://github.com/yanfeng98/nano-code-review-graph/security/advisories/new)
    — the "Report a vulnerability" button under the repository's **Security** tab. This is the
    canonical reporting channel.
 3. Include:

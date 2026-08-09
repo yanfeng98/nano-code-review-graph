@@ -1,5 +1,5 @@
 name: code-review-graph
-url: https://github.com/tirth8205/code-review-graph
+url: https://github.com/yanfeng98/nano-code-review-graph
 # Pinned to the latest test_commit SHA so the snapshot is deterministic and
 # every test_commit below is reachable as an ancestor. (This config replaces
 # the historical "nextjs" entry, which used the same URL but mis-labelled the

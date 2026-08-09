@@ -610,7 +610,7 @@ class TestMiniMaxEmbeddingProvider:
         req = mock_urlopen.call_args[0][0]
         ua = req.headers.get("User-agent", "")
         assert ua.startswith("code-review-graph/")
-        assert "github.com/tirth8205/code-review-graph" in ua
+        assert "github.com/yanfeng98/nano-code-review-graph" in ua
 
 
 class TestGetProviderMiniMax:
@@ -979,7 +979,7 @@ class TestOpenAIEmbeddingProvider:
         # embeddings.py.
         ua = req.headers.get("User-agent", "")
         assert ua.startswith("code-review-graph/")
-        assert "github.com/tirth8205/code-review-graph" in ua
+        assert "github.com/yanfeng98/nano-code-review-graph" in ua
         assert req.full_url == "http://127.0.0.1:3000/v1/embeddings"
 
     def test_explicit_dimension_forwarded_in_payload(self):

@@ -148,7 +148,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: tirth8205/code-review-graph@v2.3.7
+      - uses: yanfeng98/nano-code-review-graph@v2.3.7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -607,7 +607,7 @@ CLI 标志优先级高于环境变量。当两者都未设置时，所有工具�
 把 `code-review-graph` 以**可编辑（editable）**方式装入环境，改代码无需重新安装。
 
 ```bash
-git clone https://github.com/tirth8205/code-review-graph.git
+git clone https://github.com/yanfeng98/nano-code-review-graph.git
 cd code-review-graph
 
 # uv 默认以可编辑方式安装项目本身，并同步依赖与开发工具
@@ -695,7 +695,7 @@ code-review-graph build       # 生成该项目的图
 ## 贡献
 
 ```bash
-git clone https://github.com/tirth8205/code-review-graph.git
+git clone https://github.com/yanfeng98/nano-code-review-graph.git
 cd code-review-graph
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
