@@ -77,5 +77,5 @@ def test_docs_recommend_the_split_workflow_instead_of_pull_request_target():
     assert "pr-review-comment.yml" in docs
     assert "workflow_run" in docs
     assert "`actions: read`" in docs
-    assert "default branch" in docs
-    assert "Avoid `pull_request_target`" in docs
+    assert "默认分支" in docs
+    assert "避免" in docs and "`pull_request_target`" in docs

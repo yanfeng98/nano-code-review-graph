@@ -4,12 +4,10 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
+# The fork ships a single Chinese README; the hi-IN/ja-JP/ko-KR/zh-CN
+# translations were deliberately removed.
 README_FILES = (
     "README.md",
-    "README.hi-IN.md",
-    "README.ja-JP.md",
-    "README.ko-KR.md",
-    "README.zh-CN.md",
 )
 OPTIONAL_GROUPS = (
     "embeddings",
