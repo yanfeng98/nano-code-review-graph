@@ -290,12 +290,24 @@ repo 里有四个不同的"token" benchmarks。它们都有效，但测量不同
 
 ## 生成 diagrams
 
-`diagrams/` 中的 9 个 diagrams 由 `diagrams/generate_diagrams.py` 生成。Excalidraw 源文件（`.excalidraw`）被 gitignored（`.gitignore` 中的 `*.excalidraw` 行）；只有渲染后的 PNGs 被跟踪。在 benchmark 刷新后重新生成：
+`diagrams/` 中的 9 个 diagrams 由 `diagrams/generate_diagrams.py` 生成。Excalidraw 源文件（`.excalidraw`）与渲染工具链（`export_pngs.mjs`、`render-entry.js`、`render-bundle.js`）都被 gitignored（`.gitignore` 中的 `*.excalidraw` 及 `diagrams/export_pngs.mjs` 等行）；只有渲染后的 PNGs 被跟踪。在 benchmark 刷新后重新生成：
 
 ```bash
+# 1. 重新生成 .excalidraw 源（数字/语言/平台与 parser/README 对齐）
 uv run python diagrams/generate_diagrams.py
-# 在 https://excalidraw.com 打开每个 .excalidraw 渲染/导出
+
+# 2. 无头渲染 PNG（需要 Node ≥ 22 + Playwright Chromium，且已安装
+#    @excalidraw/utils + esbuild；浏览器可复用 ~/.cache/ms-playwright 中的缓存）
+cd diagrams
+npm install @excalidraw/utils esbuild playwright   # 一次性
+npx esbuild render-entry.js --bundle --format=iife \
+  --platform=browser --define:process.env.NODE_ENV='"production"' \
+  --outfile=render-bundle.js
+node export_pngs.mjs                               # 渲染默认 3 张过期的（5/8/9）
+# 或：node export_pngs.mjs all                     # 渲染全部 9 张
 ```
+
+`export_pngs.mjs` 用 Playwright 打开内联了 `render-bundle.js` 的无头页面，通过 `@excalidraw/utils` 的 `exportToBlob` 按 4× 坐标缩放渲染，产出的 PNG 与 excalidraw.com 同一渲染引擎保持一致。手动导出（在 excalidraw.com 打开每个 `.excalidraw`）仍可用作后备。
 
 ## 故障排查
 

@@ -61,6 +61,8 @@ htmlcov/
 # Excalidraw source files (PNGs are tracked, sources are not)
 *.excalidraw
 diagrams/export_pngs.mjs
+diagrams/render-entry.js
+diagrams/render-bundle.js
 
 # Evaluation (generated output — test repos and reports are local; canonical
 # CSVs under evaluate/results/ are tracked as evidence for the numbers in
@@ -99,3 +101,7 @@ SCALING_AND_TOKEN_EFFICIENCY_PLAN.md
 OC3_TECHNICAL_CONTRIBUTION.md
 OC3_TECHNICAL_CONTRIBUTION.pdf
 PRESENTATION_BRIEF.md
+
+# local diagram render toolchain (gitignored source of export_pngs.mjs)
+diagrams/package.json
+diagrams/package-lock.json

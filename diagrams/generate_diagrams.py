@@ -403,13 +403,13 @@ def d5():
 
     # Header: range number left, quality badge right
     els.append(TC(500, 75, "38\u00d7 \u2013 528\u00d7", 64, sc=BLU))
-    els.append(TC(500, 160, "fewer tokens across 6 tested repos", 20, sc=GRY))
+    els.append(TC(500, 160, "fewer tokens across 5 tested repos", 20, sc=GRY))
 
     els.append(R(820, 85, 340, 80, bg=GRN_BG, fs="solid", sc=GRN))
-    els.append(TC(990, 100, "100% recall, 0.71 F1", 22, sc=GRN))
-    els.append(TC(990, 132, "on impact detection (13 commits)", 14, sc=GRN))
+    els.append(TC(990, 100, "100% recall, 0.745 F1", 22, sc=GRN))
+    els.append(TC(990, 132, "on impact detection (10 commits)", 14, sc=GRN))
 
-    # 3 repo cards \u2014 naive_corpus_tokens \u2192 avg graph_tokens across 5 questions
+    # 2 repo cards \u2014 naive_corpus_tokens \u2192 avg graph_tokens across 5 questions
     # Pinned SHAs: flask@a29f88ce, fastapi@0227991a
     cards = [
         {"name":"flask",   "files":"Python web framework",      "red":"71\u00d7",
@@ -421,7 +421,7 @@ def d5():
     ]
     cw, ch = 370, 200
     gap = 50
-    total = 3*cw + 2*gap
+    total = 2*cw + 1*gap
     x0 = (1600 - total) / 2
     cy = 230
 
@@ -585,13 +585,11 @@ def d8():
     els.append(TC(600, 20, "One Install, Every Platform", 36))
     els.append(TC(600, 70, "code-review-graph install", 20, sc=PRP, ff=3))
 
-    # 14 platforms \u2014 matches code_review_graph/skills.py PLATFORMS dict
+    # Supported platforms \u2014 matches code_review_graph/skills.py PLATFORMS dict
     platforms = [
-        # Row 1 (7)
         ("Claude Code",     ".mcp.json",                                BLU, BLU_BG),
         ("Codex",           "~/.codex/config.toml",                     PRP, PRP_BG),
-        ("OpenCode",        ".opencode.json",                           BLU, PRP_BG),
-        # Row 2 (7)
+        ("OpenCode",        "opencode.json",                            BLU, PRP_BG),
     ]
 
     # Central "install" node
@@ -599,11 +597,11 @@ def d8():
     els.append(E(center_x-75, center_y-30, 150, 60, bg=PRP_BG, fs="solid", sc=PRP))
     els.append(TC(center_x, center_y-10, "auto-detect", 16, sc=PRP))
 
-    # Two rows of 7 cards each
-    cols, rows = 7, 2
+    # Single centered row of platform cards
+    cols = len(platforms)
     card_w, card_h = 135, 85
     gap_x, gap_y = 18, 35
-    total_w = cols * card_w + (cols - 1) * gap_x  # 7*135 + 6*18 = 1053
+    total_w = cols * card_w + (cols - 1) * gap_x
     x0 = center_x - total_w/2
     row_y = [330, 330 + card_h + gap_y]
 
@@ -635,7 +633,7 @@ def d8():
         els.append(TC(cx, cy+45, short_cfg, 9, sc=GRY, ff=3))
 
     # Footer
-    footer_y = row_y[1] + card_h + 30
+    footer_y = row_y[0] + card_h + 30
     els.append(TC(600, footer_y, "Auto-detects installed platforms \u00b7 Poetry / uv / uvx aware \u00b7 Writes correct config", 14, sc=GRY))
 
     return els
@@ -646,16 +644,17 @@ def d8():
 # ════════════════════════════════════════════
 def d9():
     els = []
-    els.append(TC(700, 15, "30+ Languages + Notebook Support", 34))
+    els.append(TC(700, 15, "10+ Languages + Notebook Support", 34))
 
     # Group languages by ecosystem \u2014 verified against parser.py EXTENSION_TO_LANGUAGE
     groups = [
-        ("Web",        ["TypeScript", "JavaScript", "TSX"],                         BLU, BLU_BG),
-        ("Backend",    ["Python", "Rust"],                           GRN, GRN_BG),
-        ("Systems",    ["C", "C++"],                                  ORG, ORG_BG),
-        ("Shells",     ["Bash"],                                       RED, RED_BG),
-        ("Domain",     ["Verilog"],                           GRY, GRY_BG),
-        ("Other",      ["Jupyter/.ipynb"],                                            PRP, PRP_BG),
+        ("Web",        ["TypeScript", "JavaScript", "TSX", "Astro"],          BLU, BLU_BG),
+        ("Backend",    ["Python", "Rust"],                                     GRN, GRN_BG),
+        ("Systems",    ["C", "C++"],                                           ORG, ORG_BG),
+        ("Shells",     ["Bash"],                                               RED, RED_BG),
+        ("Domain",     ["Verilog/SystemVerilog"],                              GRY, GRY_BG),
+        ("Automation", ["Ansible"],                                            YLW, YLW_BG),
+        ("Notebooks",  ["Jupyter/.ipynb"],                                     PRP, PRP_BG),
     ]
 
     gw = 130  # group width \u2014 narrower to fit 7 groups
