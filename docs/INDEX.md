@@ -7,6 +7,7 @@
 - [CUSTOM_LANGUAGES.md](CUSTOM_LANGUAGES.md) — 通过 `.code-review-graph/languages.toml` 引入自有语言
 - [LLM-OPTIMIZED-REFERENCE.md](LLM-OPTIMIZED-REFERENCE.md) — 面向支持 MCP 的 AI 编码 agent 的 token 优化参考
 - [architecture.md](architecture.md) — 系统设计与数据流
+- [SOURCE_READING_GUIDE.md](SOURCE_READING_GUIDE.md) — 源码学习路径与魔改指引
 - [schema.md](schema.md) — graph node/edge schema、SQLite 表（含 flows、communities、FTS5）
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md) — 常见问题与修复（含 Windows/WSL）
 - [ROADMAP.md](ROADMAP.md) — 已发布与计划中的功能
