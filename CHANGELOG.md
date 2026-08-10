@@ -33,6 +33,10 @@
   `get_provider` branch, the `google-embeddings` pip extra, CLI choices, MCP
   docstrings, tests, and docs). Embedding providers are now `local` and
   `openai`; the `google-generativeai` dependency is dropped from the lockfile.
+- Removed the VS Code extension (`code-review-graph-vscode/`, its `schema-sync`
+  CI job, and the `.gitignore` entries). The CLI (`build`/`update`/
+  `detect-changes`), MCP server, and all 30 tools are unaffected — analysis
+  stays fully local.
 
 ### Fixed
 

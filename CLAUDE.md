@@ -37,10 +37,6 @@ When using code-review-graph MCP tools, follow these rules:
   - `migrations.py` — Database schema migrations (v1-v9)
   - `tsconfig_resolver.py` — TypeScript path alias resolution
 
-- **VS Code Extension**: `code-review-graph-vscode/` (TypeScript)
-  - Separate subproject with its own `package.json`, `tsconfig.json`
-  - Reads from `.code-review-graph/graph.db` via SQLite
-
 - **Database**: `.code-review-graph/graph.db` (SQLite, WAL mode)
 
 ## Key Commands
