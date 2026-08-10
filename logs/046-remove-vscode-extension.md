@@ -84,3 +84,45 @@ CLI core are completely unaffected** — all 30 MCP tools and the CLI
 - CLI: `code-review-graph build` / `status` / `detect-changes` → OK (graph
   unaffected)
 - `grep schema-sync .github/workflows/ci.yml` → no match (job gone)
+
+## Deep audit (second pass)
+
+A second audit re-verified every layer and probed two residual-flag concerns.
+Result: **the removal is correct; no active documentation needed updating.**
+
+### Re-verified clean
+- Whole-repo grep (`vscode`/`code-review-graph-vscode`/`vsce`/`.vsix`/
+  `VS Code`, case-insensitive, excluding `.venv`/`.git`/`logs`/
+  `.code-review-graph`) matches only historical records.
+- **`README.md`** — zero extension references. Its three "扩展" matches are
+  language-extension names / parameter expansion, not the VS Code extension.
+- **`publish.yml`** — publishes only to PyPI; no extension-publishing job.
+- **`tests/test_skills.py`** — no copilot/vscode/extension content (the
+  `.pytest_cache` nodeids mentioning `test_copilot_*` were stale cache from the
+  pre-logs/007 copilot-platform era).
+- **Active docs** (`docs/architecture.md`, `docs/INDEX.md`, `docs/COMMANDS.md`,
+  `docs/USAGE.md`, `docs/FAQ.md`, `docs/TROUBLESHOOTING.md`, `docs/LEGAL.md`,
+  `docs/schema.md`, `docs/CUSTOM_LANGUAGES.md`,
+  `docs/LLM-OPTIMIZED-REFERENCE.md`, `CONTRIBUTING.md`, `AGENTS.md`,
+  `SECURITY.md`, `skills/`, `hooks/`, `.mcp.json`) — zero VS Code extension
+  references. `CLAUDE.md` / `CHANGELOG.md` / `ci.yml` were the only files
+  carrying live references and are all updated in this commit.
+
+### Residual-flag probes (both benign)
+- **`grep -c vscode .code-review-graph/graph.db` → 3866** — a raw-file grep
+  that looks alarming, but the graph tables are clean at query level:
+  `SELECT COUNT(*) FROM nodes WHERE name/qualified_name/file_path LIKE
+  '%vscode%'` → **0**, same for `edges` (0), and `nodes_fts MATCH 'vscode'` →
+  **0**; `semantic_search_nodes_tool("vscode")` → **0 results**. The 3866
+  raw-file hits are leftover disk pages inside SQLite free space (the rebuild
+  overwrote the tables, not the whole file). They are invisible to every query
+  path, so agent searches cannot surface stale extension nodes.
+- **`.code-review-graph/graph.html` (Aug 9) still contains extension nodes** —
+  `build` does not regenerate HTML; that is the `visualize` command's job, and
+  the file is gitignored. Rerun `code-review-graph visualize` to refresh.
+
+### Kept as history (per user decision — not rewritten)
+- `docs/FEATURES.md:57`, `docs/ROADMAP.md:34` — versioned release notes.
+- `docs/MAINTAINER_RECONCILIATION_2026-07-17.md:153` — one-off audit doc.
+- `diagrams/generate_diagrams.py:568` — third-party (Excalidraw) comment.
+- `CHANGELOG.md` historical bullets, `logs/` prior records.
