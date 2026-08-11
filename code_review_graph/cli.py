@@ -30,7 +30,6 @@ from __future__ import annotations
 
 import sys
 
-# Python version check — must come before any other imports
 if sys.version_info < (3, 10):
     print("code-review-graph requires Python 3.10 or higher.")
     print(f"  You are running Python {sys.version}")
@@ -51,7 +50,6 @@ from typing import Iterable, TypedDict
 
 logger = logging.getLogger(__name__)
 
-# Shared platform choices for install and init commands
 _PLATFORM_CHOICES = [
     "codex", "claude", "claude-code",
     "opencode", "all",
@@ -64,21 +62,12 @@ class _EmbeddingRefreshKwargs(TypedDict, total=False):
 
 
 def _get_version() -> str:
-    """Get the installed package version.
-
-    Tries ``importlib.metadata`` first (canonical source from the installed
-    dist-info), falling back to the package's ``__version__`` attribute if
-    metadata is unavailable or corrupt. This matters for editable installs
-    on filesystems where iCloud / OneDrive can leave orphan dist-info dirs
-    behind that confuse importlib.metadata's lookup.
-    """
     try:
         v = pkg_version("code-review-graph")
         if v:
             return v
     except PackageNotFoundError as exc:
         logger.debug("Package metadata unavailable: %s", exc)
-    # Fallback: read __version__ directly from the package.
     try:
         from . import __version__ as fallback_version
         if fallback_version:
