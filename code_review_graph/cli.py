@@ -78,7 +78,6 @@ def _get_version() -> str:
 
 
 def _supports_color() -> bool:
-    """Check if the terminal likely supports ANSI colors."""
     if os.environ.get("NO_COLOR"):
         return False
     if not hasattr(sys.stdout, "isatty"):
@@ -87,17 +86,15 @@ def _supports_color() -> bool:
 
 
 def _print_banner() -> None:
-    """Print the startup banner with graph art and available commands."""
     color = _supports_color()
     version = _get_version()
 
-    # ANSI escape codes
-    c = "\033[36m" if color else ""  # cyan — graph art
-    y = "\033[33m" if color else ""  # yellow — center node
-    b = "\033[1m" if color else ""  # bold
-    d = "\033[2m" if color else ""  # dim
-    g = "\033[32m" if color else ""  # green — commands
-    r = "\033[0m" if color else ""  # reset
+    c = "\033[36m" if color else ""
+    y = "\033[33m" if color else ""
+    b = "\033[1m" if color else ""
+    d = "\033[2m" if color else ""
+    g = "\033[32m" if color else ""
+    r = "\033[0m" if color else ""
 
     print(f"""
 {c}  ●──●──●{r}
@@ -131,10 +128,6 @@ def _instruction_files_to_modify(
     repo_root: Path,
     target: str,
 ) -> list[str]:
-    """Return the list of instruction files that ``install`` would write
-    or modify, given the current state of the repo and the selected
-    platform target. Used for the dry-run / confirm preview (#173).
-    """
     from .skills import _CLAUDE_MD_SECTION_MARKER, _PLATFORM_INSTRUCTION_FILES
 
     targets: list[str] = []
@@ -163,13 +156,6 @@ def _instruction_files_to_modify(
 
 
 def _confirm_yes_no(prompt: str, default_yes: bool = True) -> bool:
-    """Prompt the user [Y/n] and return True for yes.
-
-    Non-interactive environments (no TTY on stdin, e.g. an MCP wrapper
-    piping the CLI) return ``default_yes`` without blocking — the
-    stdio transport cannot safely read from stdin without corrupting
-    the JSON-RPC stream. See: #173, #174
-    """
     if not sys.stdin.isatty():
         return default_yes
     suffix = "[Y/n]" if default_yes else "[y/N]"
@@ -188,14 +174,6 @@ def _match_files_to_forget(
     patterns: Iterable[str],
     repo_root: Path,
 ) -> list[str]:
-    """Resolve user-supplied paths/globs to stored graph file paths.
-
-    The graph keys every parsed file by its absolute path. A user may name a
-    file with an absolute path, a path relative to the repository root, a
-    directory whose contents should all be dropped, or a glob pattern. Each
-    stored file is compared against every pattern in all of those forms and the
-    sorted set of matching stored paths is returned.
-    """
     root = repo_root.resolve()
     stored = list(stored_files)
     matched: set[str] = set()
@@ -216,7 +194,6 @@ def _match_files_to_forget(
             except ValueError:
                 relative = None
 
-            # Exact match against the absolute or the repo-relative form.
             if normalised == absolute_str:
                 matched.add(stored_path)
                 continue
@@ -225,11 +202,9 @@ def _match_files_to_forget(
             ):
                 matched.add(stored_path)
                 continue
-            # Every file underneath a named directory.
             if normalised.startswith(dir_prefix):
                 matched.add(stored_path)
                 continue
-            # Glob patterns, matched against both the absolute and relative form.
             if fnmatch.fnmatch(normalised, absolute_str) or (
                 relative is not None and fnmatch.fnmatch(relative, pattern)
             ):
@@ -239,7 +214,6 @@ def _match_files_to_forget(
 
 
 def _handle_init(args: argparse.Namespace) -> None:
-    """Set up MCP config for detected AI coding platforms."""
     from .incremental import ensure_repo_gitignore_excludes_crg, find_repo_root
     from .skills import install_platform_configs
 

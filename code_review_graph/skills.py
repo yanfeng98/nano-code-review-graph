@@ -20,11 +20,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
-# --- Multi-platform MCP install ---
-
-
 def _opencode_config_path(repo_root: Path) -> Path:
-    """Return OpenCode's existing project config, preferring JSONC."""
     for name in ("opencode.jsonc", "opencode.json"):
         path = repo_root / name
         if path.exists():
@@ -102,21 +98,7 @@ def _in_uv_project() -> bool:
 
 
 def _detect_serve_command() -> tuple[str, list[str]]:
-    """Return ``(command, args)`` that correctly launches ``code-review-graph serve``.
-
-    Detection priority
-    ------------------
-    1. **Poetry** – ``POETRY_ACTIVE=1`` OR ``VIRTUAL_ENV`` contains ``"pypoetry"``
-       (covers both ``poetry shell`` and ``poetry run``) and ``poetry`` is on PATH
-       → ``poetry run code-review-graph serve``
-    2. **uv project** – ``UV_PROJECT_ENVIRONMENT`` is set, or a ``uv.lock``
-       ancestor is found alongside ``sys.executable``, and ``uv`` is on PATH
-       → ``uv run code-review-graph serve``
-    3. **uvx** – ``uvx`` is available on PATH (existing behaviour, unchanged)
-       → ``uvx code-review-graph serve``
-    4. **Fallback** – use the absolute path of the running Python interpreter
-       → ``sys.executable -m code_review_graph serve``
-
+    """
     The fallback is always safe: ``sys.executable`` is the exact interpreter
     that is currently running, so it resolves correctly inside any virtual
     environment, conda env, or system installation.
@@ -144,7 +126,6 @@ def _detect_serve_command() -> tuple[str, list[str]]:
 def _build_server_entry(
     plat: dict[str, Any], key: str = "", repo_root: "Path | None" = None,
 ) -> dict[str, Any]:
-    """Build the MCP server entry for a platform."""
     command, args = _detect_serve_command()
     if key == "opencode":
         opencode_command = [command, *args]
@@ -163,7 +144,6 @@ def _build_server_entry(
 
 
 def _warn_legacy_opencode_config(repo_root: Path) -> None:
-    """Warn without modifying the obsolete Cursor-shaped OpenCode config."""
     legacy = repo_root / ".opencode.json"
     if not legacy.exists():
         return
@@ -310,16 +290,6 @@ def install_platform_configs(
     target: str = "all",
     dry_run: bool = False,
 ) -> list[str]:
-    """Install MCP config for one or all detected platforms.
-
-    Args:
-        repo_root: Project root directory.
-        target: Platform key or "all".
-        dry_run: If True, print what would be done without writing.
-
-    Returns:
-        List of platform names that were configured.
-    """
     if target == "all":
         platforms_to_install = {k: v for k, v in PLATFORMS.items() if v["detect"]()}
     else:
@@ -969,10 +939,6 @@ def inject_claude_md(repo_root: Path) -> None:
         _CLAUDE_MD_SECTION,
     )
 
-
-# Cross-platform instruction files and which platforms own each one.
-# Used to filter writes when the user passes --platform <X>: only files
-# whose owner set includes the target (or "all") are written.
 _PLATFORM_INSTRUCTION_FILES: dict[str, tuple[str, ...]] = {
     "AGENTS.md": ("opencode", "codex"),
 }

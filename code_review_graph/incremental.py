@@ -141,12 +141,6 @@ DEFAULT_IGNORE_PATTERNS = [
 
 
 def find_svn_root(start: Path | None = None) -> Optional[Path]:
-    """Walk up from start to find the SVN working copy root.
-
-    For SVN 1.7+, there is a single ``.svn`` at the WC root.
-    For older SVN, every directory has ``.svn`` — we return the topmost one
-    found so that the WC root is correctly identified.
-    """
     current = start or Path.cwd()
     candidate: Optional[Path] = None
     while current != current.parent:
@@ -162,24 +156,6 @@ def find_repo_root(
     start: Path | None = None,
     stop_at: Path | None = None,
 ) -> Optional[Path]:
-    """Walk up from ``start`` to find the nearest ``.git`` directory or SVN working copy root.
-
-    Args:
-        start: Starting directory.  Defaults to ``Path.cwd()``.
-        stop_at: Optional boundary — if provided, the walk examines
-            ``stop_at`` for a ``.git`` directory and then stops without
-            crossing above it.  Useful for tests that create a synthetic
-            repo under ``tmp_path`` (so the walk does not accidentally
-            climb into a developer's home-directory dotfiles repo) and
-            for any production caller that wants to bound the ancestor
-            walk — e.g. multi-repo orchestrators, CI containers with
-            bind-mounted volumes, embedded sandboxes.  See #241.
-
-    Returns:
-        The first ancestor containing ``.git`` or an SVN working copy,
-        or ``None`` if no ancestor up to and including ``stop_at`` (when
-        set) or the filesystem root (when ``stop_at is None``) contains one.
-    """
     current = start or Path.cwd()
     while current != current.parent:
         if (current / ".git").exists():
@@ -189,7 +165,6 @@ def find_repo_root(
         current = current.parent
     if (current / ".git").exists():
         return current
-    # No Git root found — try SVN
     return find_svn_root(start)
 
 
@@ -338,13 +313,6 @@ def get_db_path(repo_root: Path, *, read_only: bool = False) -> Path:
 
 
 def ensure_repo_gitignore_excludes_crg(repo_root: Path) -> str:
-    """Ensure repo-level .gitignore excludes ``.code-review-graph/``.
-
-    Returns one of:
-    - ``created``: .gitignore was created with the entry
-    - ``updated``: entry was appended to existing .gitignore
-    - ``already-present``: no changes were needed
-    """
     gitignore_path = repo_root / ".gitignore"
     existing = gitignore_path.read_text(encoding="utf-8") if gitignore_path.exists() else ""
 
