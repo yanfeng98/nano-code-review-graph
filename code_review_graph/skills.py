@@ -57,22 +57,6 @@ PLATFORMS: dict[str, dict[str, Any]] = {
 
 
 def _in_poetry_project() -> bool:
-    """Return True when the running interpreter is a Poetry-managed virtualenv.
-
-    Two signals are checked so that **both** ``poetry shell`` and ``poetry run``
-    are detected:
-
-    * ``POETRY_ACTIVE=1`` — set by ``poetry shell`` when the user activates the
-      virtual environment interactively.
-    * ``VIRTUAL_ENV`` containing ``"pypoetry"`` — set by **both** ``poetry shell``
-      and ``poetry run`` because Poetry stores its virtualenvs under a path that
-      includes the string ``pypoetry`` (e.g.
-      ``~/.cache/pypoetry/virtualenvs/<name>`` on Linux/macOS or
-      ``%LOCALAPPDATA%\\pypoetry\\Cache\\virtualenvs\\<name>`` on Windows).
-
-    Checking only ``POETRY_ACTIVE`` would miss the ``poetry run`` case, which is
-    the primary scenario described in issue #256.
-    """
     if os.environ.get("POETRY_ACTIVE") == "1":
         return True
     virtual_env = os.environ.get("VIRTUAL_ENV", "")
@@ -80,46 +64,30 @@ def _in_poetry_project() -> bool:
 
 
 def _in_uv_project() -> bool:
-    """Return True if ``sys.executable`` lives inside a uv-managed project.
-
-    A project is considered uv-managed when a ``uv.lock`` file exists in any
-    ancestor directory of the running Python interpreter (stopping at the home
-    directory to avoid false positives on system-wide installations).
-    """
     exe = Path(sys.executable).resolve()
     home = Path.home()
     for parent in exe.parents:
         if (parent / "uv.lock").exists():
             return True
-        # Stop searching once we reach the home directory or filesystem root
         if parent == home or parent == parent.parent:
             break
     return False
 
 
 def _detect_serve_command() -> tuple[str, list[str]]:
-    """
-    The fallback is always safe: ``sys.executable`` is the exact interpreter
-    that is currently running, so it resolves correctly inside any virtual
-    environment, conda env, or system installation.
-    """
-    # 1. Poetry (poetry shell or poetry run)
     if _in_poetry_project():
         poetry = shutil.which("poetry")
         if poetry:
             return ("poetry", ["run", "code-review-graph", "serve"])
 
-    # 2. uv managed project environment
     if os.environ.get("UV_PROJECT_ENVIRONMENT") or _in_uv_project():
         uv = shutil.which("uv")
         if uv:
             return ("uv", ["run", "code-review-graph", "serve"])
 
-    # 3. uvx global tool runner (existing behaviour, unchanged)
     if shutil.which("uvx"):
         return ("uvx", ["code-review-graph", "serve"])
 
-    # 4. Absolute-path fallback using the running interpreter
     return (sys.executable, ["-m", "code_review_graph", "serve"])
 
 
@@ -134,7 +102,6 @@ def _build_server_entry(
         return {"type": "local", "command": opencode_command}
 
     entry: dict[str, Any] = {"command": command, "args": args}
-    # Include cwd so the MCP server can find the graph database
     if repo_root is not None:
         entry["cwd"] = str(repo_root)
     if plat["needs_type"]:
