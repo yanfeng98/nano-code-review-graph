@@ -416,7 +416,6 @@ def _remove_mcp_entry(
     path: Path,
     *,
     key: str,
-    format_name: str,
     boundary: Path,
     report: UninstallReport,
     dry_run: bool,
@@ -432,36 +431,18 @@ def _remove_mcp_entry(
     if data is None or key not in data:
         return
 
-    expected_type = list if format_name == "array" else dict
     container = data[key]
-    if not isinstance(container, expected_type):
-        expected = "array" if expected_type is list else "object"
+    if not isinstance(container, dict):
         report.skipped_paths.append(
-            f"{path} ({key!r} is {type(container).__name__}, not {expected}; left unchanged)"
+            f"{path} ({key!r} is {type(container).__name__}, not object; left unchanged)"
         )
         return
 
-    if format_name == "array":
-        indices = [
-            index
-            for index, entry in enumerate(container)
-            if isinstance(entry, dict) and entry.get("name") == _ENTRY_NAME
-        ]
-        paths: list[tuple[str | int, ...]] = [(key, index) for index in indices]
-        expected_data = copy.deepcopy(data)
-        expected_data[key] = [
-            entry
-            for entry in container
-            if not (isinstance(entry, dict) and entry.get("name") == _ENTRY_NAME)
-        ]
-    else:
-        if _ENTRY_NAME not in container:
-            return
-        paths = [(key, _ENTRY_NAME)]
-        expected_data = copy.deepcopy(data)
-        del expected_data[key][_ENTRY_NAME]
-    if not paths:
+    if _ENTRY_NAME not in container:
         return
+    paths = [(key, _ENTRY_NAME)]
+    expected_data = copy.deepcopy(data)
+    del expected_data[key][_ENTRY_NAME]
 
     try:
         rewritten = _remove_jsonc_paths(raw, paths)
@@ -949,11 +930,10 @@ def _process_platform_configs(
                 _remove_toml_entry(
                     path, entry_key, boundary, report, dry_run=dry_run
                 )
-            elif format_name in {"object", "array"}:
+            elif format_name == "object":
                 _remove_mcp_entry(
                     path,
                     key=entry_key,
-                    format_name=format_name,
                     boundary=boundary,
                     report=report,
                     dry_run=dry_run,
@@ -986,7 +966,6 @@ def _remove_legacy_mcp_configs(
     _remove_mcp_entry(
         path,
         key="mcpServers",
-        format_name="object",
         boundary=boundary,
         report=report,
         dry_run=dry_run,

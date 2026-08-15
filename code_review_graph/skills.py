@@ -292,17 +292,11 @@ def install_platform_configs(
             _record_configured(plat)
             continue
 
-        # Read existing config
         existing: dict[str, Any] = {}
         if config_path.exists():
             raw = config_path.read_text(encoding="utf-8", errors="replace")
-            # Strip comments and trailing commas (JSONC compat for editors like
-            # Zed that allow non-standard JSON) without corrupting string values.
             stripped = _strip_jsonc(raw)
             if not stripped.strip():
-                # An empty (or comment-only) file is a valid empty config,
-                # not a parse failure — proceed and write a fresh one rather
-                # than mis-flagging it "unparseable" and skipping. See #344.
                 existing = {}
             else:
                 try:
@@ -313,10 +307,6 @@ def install_platform_configs(
                           f"Please add the MCP config manually.")
                     continue
                 if not isinstance(parsed, dict):
-                    # Valid JSON, but the top level is a list/scalar rather
-                    # than an object. Writing our server object would clobber
-                    # the user's data, and the ``.get()`` calls below would
-                    # raise AttributeError. Refuse and skip. See #344.
                     print(f"  {plat['name']}: {config_path} is valid JSON but "
                           f"not a top-level object "
                           f"({type(parsed).__name__}) — skipping to avoid "
@@ -324,51 +314,36 @@ def install_platform_configs(
                     continue
                 existing = parsed
 
-        expected_container = list if plat["format"] == "array" else dict
-        if server_key in existing and not isinstance(
-            existing[server_key], expected_container
-        ):
-            expected_name = "array" if expected_container is list else "object"
+        if server_key in existing and not isinstance(existing[server_key], dict):
             actual_name = type(existing[server_key]).__name__
             print(
                 f"  {plat['name']}: {config_path} setting {server_key!r} "
-                f"is {actual_name}; expected a JSON {expected_name} — "
+                f"is {actual_name}; expected a JSON object — "
                 f"skipping to avoid data loss. Please repair that setting "
                 f"or add the MCP config manually."
             )
             continue
 
-        if plat["format"] == "array":
-            arr = existing.get(server_key, [])
-            # Check if already present
-            if any(isinstance(s, dict) and s.get("name") == "code-review-graph" for s in arr):
-                print(f"  {plat['name']}: already configured in {config_path}")
-                _record_configured(plat)
-                continue
-            arr_entry = {"name": "code-review-graph", **server_entry}
-            arr.append(arr_entry)
-            existing[server_key] = arr
-        else:
-            # Remove entries written under keys the client never read, then
-            # install the validated entry under the current key.
-            migrated = False
-            for legacy_key in plat.get("legacy_keys", ()):
-                legacy = existing.get(legacy_key)
-                if (
-                    isinstance(legacy, dict)
-                    and "code-review-graph" in legacy
-                ):
-                    del legacy["code-review-graph"]
-                    if not legacy:
-                        del existing[legacy_key]
-                    migrated = True
-            servers = existing.get(server_key, {})
-            if "code-review-graph" in servers and not migrated:
-                print(f"  {plat['name']}: already configured in {config_path}")
-                _record_configured(plat)
-                continue
-            servers["code-review-graph"] = server_entry
-            existing[server_key] = servers
+        # Remove entries written under keys the client never read, then
+        # install the validated entry under the current key.
+        migrated = False
+        for legacy_key in plat.get("legacy_keys", ()):
+            legacy = existing.get(legacy_key)
+            if (
+                isinstance(legacy, dict)
+                and "code-review-graph" in legacy
+            ):
+                del legacy["code-review-graph"]
+                if not legacy:
+                    del existing[legacy_key]
+                migrated = True
+        servers = existing.get(server_key, {})
+        if "code-review-graph" in servers and not migrated:
+            print(f"  {plat['name']}: already configured in {config_path}")
+            _record_configured(plat)
+            continue
+        servers["code-review-graph"] = server_entry
+        existing[server_key] = servers
 
         if dry_run:
             print(f"  [dry-run] {plat['name']}: would write {config_path}")

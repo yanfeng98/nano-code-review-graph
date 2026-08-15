@@ -65,16 +65,10 @@ def test_uninstall_removes_mcp_entry_for_every_current_platform_spec(
             "[mcp_servers.other]\ncommand = \"other\"\n",
         )
     else:
-        if spec["format"] == "array":
-            container: object = [
-                {"name": "code-review-graph", "command": "code-review-graph"},
-                {"name": "other", "url": "https://example.test/mcp"},
-            ]
-        else:
-            container = {
-                "code-review-graph": {"command": "code-review-graph"},
-                "other": {"url": "https://example.test/mcp"},
-            }
+        container = {
+            "code-review-graph": {"command": "code-review-graph"},
+            "other": {"url": "https://example.test/mcp"},
+        }
         _write_json(config_path, {spec["key"]: container, "theme": "dark"})
 
     report = uninstall.run(repo=fake_repo, keep_data=True)
@@ -88,10 +82,7 @@ def test_uninstall_removes_mcp_entry_for_every_current_platform_spec(
     else:
         data = _read_jsonc(config_path)
         container = data[spec["key"]]
-        if spec["format"] == "array":
-            assert [entry["name"] for entry in container] == ["other"]
-        else:
-            assert set(container) == {"other"}
+        assert set(container) == {"other"}
         assert data["theme"] == "dark"
 
 
