@@ -131,7 +131,6 @@ def _warn_legacy_opencode_config(repo_root: Path) -> None:
 
 
 def _format_toml_value(value: Any) -> str:
-    """Format a primitive Python value as TOML."""
     if isinstance(value, str):
         escaped = value.replace("\\", "\\\\").replace('"', '\\"')
         return f'"{escaped}"'
@@ -148,7 +147,6 @@ def _merge_toml_mcp_server(
     server_entry: dict[str, Any],
     dry_run: bool = False,
 ) -> bool:
-    """Append a Codex MCP server section without clobbering the rest of the file."""
     section_header = f"[mcp_servers.{server_name}]"
     existing = ""
     if config_path.exists():
@@ -266,7 +264,7 @@ def install_platform_configs(
 
     configured: list[str] = []
 
-    def _record_configured(key: str, plat: dict[str, Any]) -> None:
+    def _record_configured(plat: dict[str, Any]) -> None:
         configured.append(plat["name"])
 
     for key, plat in platforms_to_install.items():
@@ -285,13 +283,13 @@ def install_platform_configs(
             )
             if not changed:
                 print(f"  {plat['name']}: already configured in {config_path}")
-                _record_configured(key, plat)
+                _record_configured(plat)
                 continue
             if dry_run:
                 print(f"  [dry-run] {plat['name']}: would write {config_path}")
             else:
                 print(f"  {plat['name']}: configured {config_path}")
-            _record_configured(key, plat)
+            _record_configured(plat)
             continue
 
         # Read existing config
@@ -345,7 +343,7 @@ def install_platform_configs(
             # Check if already present
             if any(isinstance(s, dict) and s.get("name") == "code-review-graph" for s in arr):
                 print(f"  {plat['name']}: already configured in {config_path}")
-                _record_configured(key, plat)
+                _record_configured(plat)
                 continue
             arr_entry = {"name": "code-review-graph", **server_entry}
             arr.append(arr_entry)
@@ -367,7 +365,7 @@ def install_platform_configs(
             servers = existing.get(server_key, {})
             if "code-review-graph" in servers and not migrated:
                 print(f"  {plat['name']}: already configured in {config_path}")
-                _record_configured(key, plat)
+                _record_configured(plat)
                 continue
             servers["code-review-graph"] = server_entry
             existing[server_key] = servers
@@ -381,7 +379,7 @@ def install_platform_configs(
             )
             print(f"  {plat['name']}: configured {config_path}")
 
-        _record_configured(key, plat)
+        _record_configured(plat)
 
     return configured
 
