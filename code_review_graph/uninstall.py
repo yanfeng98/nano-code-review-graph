@@ -920,29 +920,27 @@ def _process_platform_configs(
         config_scope, boundary = destination
         if config_scope != scope:
             continue
-        legacy_keys = tuple(str(item) for item in spec.get("legacy_keys", ()))
-        for entry_key in (key, *legacy_keys):
-            identity = (path, entry_key, format_name)
-            if identity in seen:
-                continue
-            seen.add(identity)
-            if format_name == "toml":
-                _remove_toml_entry(
-                    path, entry_key, boundary, report, dry_run=dry_run
-                )
-            elif format_name == "object":
-                _remove_mcp_entry(
-                    path,
-                    key=entry_key,
-                    boundary=boundary,
-                    report=report,
-                    dry_run=dry_run,
-                )
-            else:
-                report.skipped_paths.append(
-                    f"{path} ({platform_name} has unsupported config format "
-                    f"{format_name!r})"
-                )
+        identity = (path, key, format_name)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        if format_name == "toml":
+            _remove_toml_entry(
+                path, key, boundary, report, dry_run=dry_run
+            )
+        elif format_name == "object":
+            _remove_mcp_entry(
+                path,
+                key=key,
+                boundary=boundary,
+                report=report,
+                dry_run=dry_run,
+            )
+        else:
+            report.skipped_paths.append(
+                f"{path} ({platform_name} has unsupported config format "
+                f"{format_name!r})"
+            )
 
 
 def _generated_skill_slugs() -> list[str]:

@@ -324,21 +324,8 @@ def install_platform_configs(
             )
             continue
 
-        # Remove entries written under keys the client never read, then
-        # install the validated entry under the current key.
-        migrated = False
-        for legacy_key in plat.get("legacy_keys", ()):
-            legacy = existing.get(legacy_key)
-            if (
-                isinstance(legacy, dict)
-                and "code-review-graph" in legacy
-            ):
-                del legacy["code-review-graph"]
-                if not legacy:
-                    del existing[legacy_key]
-                migrated = True
         servers = existing.get(server_key, {})
-        if "code-review-graph" in servers and not migrated:
+        if "code-review-graph" in servers:
             print(f"  {plat['name']}: already configured in {config_path}")
             _record_configured(plat)
             continue
