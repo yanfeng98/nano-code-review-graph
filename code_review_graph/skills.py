@@ -105,8 +105,7 @@ def _build_server_entry(
     if repo_root is not None:
         entry["cwd"] = str(repo_root)
     if plat["needs_type"]:
-        entry["type"] = plat.get("server_type", "stdio")
-    entry.update(plat.get("entry_fields", {}))
+        entry["type"] = "stdio"
     return entry
 
 
