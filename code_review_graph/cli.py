@@ -236,7 +236,6 @@ def _handle_init(args: argparse.Namespace) -> None:
     else:
         print(f"\nConfigured {len(configured)} platform(s): {', '.join(configured)}")
 
-    # Preview the instruction files that would be touched (#173).
     instr_targets = _instruction_files_to_modify(repo_root, target)
     if instr_targets:
         print()
@@ -257,12 +256,8 @@ def _handle_init(args: argparse.Namespace) -> None:
     else:
         print(".gitignore already contains .code-review-graph/.")
 
-    # Platform-native skills and hooks are installed by default where supported
-    # so the graph tools are used proactively. Use --no-skills / --no-hooks /
-    # --no-instructions to opt out.
     skip_skills = getattr(args, "no_skills", False)
     skip_hooks = getattr(args, "no_hooks", False)
-    # Legacy: --skills/--hooks/--all still accepted (no-op, everything is default)
 
     from .skills import (
         PLATFORMS,
@@ -276,7 +271,6 @@ def _handle_init(args: argparse.Namespace) -> None:
     )
 
     if not skip_skills:
-        # Claude Code skills are only relevant for Claude (or full install).
         if target in ("claude", "all"):
             skills_dir = generate_skills(repo_root)
             print(f"Generated Claude Code skills in {skills_dir}")

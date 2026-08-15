@@ -345,9 +345,6 @@ def install_platform_configs(
 
     return configured
 
-
-# --- Skill file contents ---
-
 _SKILLS: dict[str, dict[str, str]] = {
     "explore-codebase.md": {
         "name": "explore-codebase",
@@ -463,24 +460,11 @@ _SKILLS: dict[str, dict[str, str]] = {
 
 
 def generate_skills(repo_root: Path, skills_dir: Path | None = None) -> Path:
-    """Generate Claude Code skill files.
-
-    Creates `.claude/skills/` directory with 4 skill markdown files,
-    each containing frontmatter and instructions.
-
-    Args:
-        repo_root: Repository root directory.
-        skills_dir: Custom skills directory. Defaults to repo_root/.claude/skills.
-
-    Returns:
-        Path to the skills directory.
-    """
     if skills_dir is None:
         skills_dir = repo_root / ".claude" / "skills"
     skills_dir.mkdir(parents=True, exist_ok=True)
 
     for filename, skill in _SKILLS.items():
-        # Claude Code expects skills at .claude/skills/<name>/SKILL.md
         skill_name = filename.removesuffix(".md")
         skill_subdir = skills_dir / skill_name
         skill_subdir.mkdir(parents=True, exist_ok=True)
