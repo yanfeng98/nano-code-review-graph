@@ -283,9 +283,6 @@ def _handle_init(args: argparse.Namespace) -> None:
             if target in ("claude", "all"):
                 inject_claude_md(repo_root)
             inject_platform_instructions(repo_root, target=target)
-            # Use the precomputed instr_targets list for the confirmation
-            # message; we don't need the fresh return value from
-            # inject_platform_instructions here.
             names = [t.split(" ")[0] for t in instr_targets]
             print(f"Injected graph instructions into: {', '.join(names)}")
         else:
@@ -309,7 +306,6 @@ def _handle_init(args: argparse.Namespace) -> None:
         if git_hook:
             print(f"Installed git pre-commit hook in {git_hook}")
 
-    # OpenCode plugin (user-level, gated by same detect() as MCP config)
     if not skip_hooks and target in ("all", "opencode") and PLATFORMS["opencode"]["detect"]():
         try:
             plugin_path = install_opencode_plugin()

@@ -483,19 +483,6 @@ def generate_skills(repo_root: Path, skills_dir: Path | None = None) -> Path:
 
 
 def generate_hooks_config(repo_root: Path) -> dict[str, Any]:
-    """Generate Claude Code hooks configuration.
-
-    Hooks use the v1.x+ schema: each entry needs a ``matcher`` and a nested
-    ``hooks`` array. Timeouts are in seconds. ``PreCommit`` is not a valid
-    Claude Code event — pre-commit checks are handled by ``install_git_hook``.
-
-    The ``repo_root`` parameter is retained for backward compatibility but is
-    not embedded in hook commands. Instead, the repo root is resolved at
-    runtime via ``git rev-parse --show-toplevel`` so that ``settings.json``
-    is shareable across collaborators with different checkout paths.
-    A PATH guard ensures the hook exits silently when the binary is not on
-    ``$PATH`` (e.g. installed in a project venv).
-    """
     return {
         "hooks": {
             "PostToolUse": [
@@ -541,7 +528,6 @@ def generate_hooks_config(repo_root: Path) -> dict[str, Any]:
 
 
 def generate_codex_hooks_config(repo_root: Path) -> dict[str, Any]:
-    """Generate native Codex hooks configuration for ~/.codex/hooks.json."""
     return {
         "hooks": {
             "PostToolUse": [
@@ -585,22 +571,6 @@ def generate_codex_hooks_config(repo_root: Path) -> dict[str, Any]:
 
 
 def install_git_hook(repo_root: Path) -> Path | None:
-    """Install a git pre-commit hook that prints a risk summary before each commit.
-
-    Called automatically by ``code-review-graph install``.
-    The hooks directory is resolved via ``git rev-parse --git-path hooks`` so
-    the hook lands where git actually runs it — including linked worktrees
-    and submodules (where ``.git`` is a file, not a directory) and repos with
-    ``core.hooksPath`` set (issue #313). ``core.hooksPath`` users with their
-    own hook manager (husky, pre-commit) may prefer integrating the
-    ``code-review-graph`` commands into that manager manually instead.
-
-    Creates ``pre-commit`` if it doesn't exist, or appends to an existing
-    one — the hook is appended, not overwritten, preserving any hooks
-    already there. Falls back to the legacy ``.git/hooks`` resolution when
-    git itself is unavailable. Returns None when no hooks directory can be
-    determined.
-    """
     script = """\
 #!/bin/sh
 # Installed by code-review-graph. Remove this file to disable pre-commit graph checks.
@@ -623,8 +593,6 @@ fi
             stdin=subprocess.DEVNULL,
         )
         if result.returncode == 0 and result.stdout.strip():
-            # Output is relative to repo_root (".git/hooks", a core.hooksPath
-            # value such as ".husky") or absolute (linked worktrees).
             hooks_dir = repo_root / result.stdout.strip()
     except (subprocess.TimeoutExpired, OSError) as exc:
         logger.warning("git unavailable (%s); falling back to .git/hooks resolution.", exc)
@@ -658,7 +626,6 @@ def _merge_hooks_into_settings(
     settings_dir: Path,
     hooks_config: dict[str, Any],
 ) -> Path:
-    """Merge hook entries into a project settings file without clobbering users."""
     settings_dir.mkdir(parents=True, exist_ok=True)
     settings_path = settings_dir / "settings.json"
 
@@ -698,27 +665,11 @@ def _merge_hooks_into_settings(
 
 
 def install_hooks(repo_root: Path, platform: str = "claude") -> None:
-    """Write hooks config to platform-specific settings.json.
-
-    Merges new hook entries into existing settings, preserving both
-    non-hook configuration and user-defined hooks.  A backup of the
-    original file is created before any modifications.
-
-    Args:
-        repo_root: Repository root directory.
-        platform: Target platform ("claude").
-    """
     settings_dir = repo_root / ".claude"
     _merge_hooks_into_settings(settings_dir, generate_hooks_config(repo_root))
 
 
 def install_codex_hooks(repo_root: Path) -> Path:
-    """Write native Codex hooks config to ~/.codex/hooks.json.
-
-    Merges code-review-graph hook entries into any existing hooks.json,
-    preserving user-defined hook entries and other top-level settings.
-    A backup of the original file is created before modifications.
-    """
     codex_dir = Path.home() / ".codex"
     codex_dir.mkdir(parents=True, exist_ok=True)
     hooks_path = codex_dir / "hooks.json"
@@ -857,20 +808,6 @@ def inject_platform_instructions(repo_root: Path, target: str = "all") -> list[s
 
 
 def _opencode_plugin_content() -> str:
-    """Return TypeScript source for the OpenCode user-level plugin.
-
-    The plugin hooks into three OpenCode events to mirror the Claude Code
-    hook behaviors:
-
-    1. ``file.edited`` — runs ``code-review-graph update --skip-flows``
-    2. ``session.created`` — runs ``code-review-graph status``
-    3. ``tool.execute.before`` — when the tool is a shell command starting
-       with ``git commit``, runs ``code-review-graph detect-changes --brief``
-
-    All handlers use try/catch so errors never break the editor session.
-    The plugin uses Bun's ``$`` shell API (provided by OpenCode's plugin
-    context) for subprocess execution.
-    """
     return """\
 import type { Plugin } from "@opencode-ai/plugin"
 
@@ -939,15 +876,6 @@ export default (app: any) => {
 
 
 def install_opencode_plugin() -> Path:
-    """Install the OpenCode user-level plugin for code-review-graph.
-
-    Writes ``~/.config/opencode/plugins/crg-plugin.ts``.  Creates the
-    directories if they don't exist.  If the file already exists it is
-    overwritten (the plugin is self-contained and idempotent).
-
-    Returns:
-        Path to the plugin file that was written.
-    """
     plugins_dir = Path.home() / ".config" / "opencode" / "plugins"
     plugin_path = plugins_dir / "crg-plugin.ts"
 
