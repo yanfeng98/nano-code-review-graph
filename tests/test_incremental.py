@@ -166,24 +166,7 @@ class TestGetDbPath:
         assert gi.exists()
         assert "*\n" in gi.read_text()
 
-    def test_migrates_legacy_db(self, tmp_path):
-        legacy = tmp_path / ".code-review-graph.db"
-        legacy.write_text("legacy data")
-        db_path = get_db_path(tmp_path)
-        assert db_path.exists()
-        assert not legacy.exists()
-        assert db_path.read_text() == "legacy data"
-
-    def test_cleans_legacy_side_files(self, tmp_path):
-        legacy = tmp_path / ".code-review-graph.db"
-        legacy.write_text("data")
-        for suffix in ("-wal", "-shm", "-journal"):
-            (tmp_path / f".code-review-graph.db{suffix}").write_text("side")
-        get_db_path(tmp_path)
-        for suffix in ("-wal", "-shm", "-journal"):
-            assert not (tmp_path / f".code-review-graph.db{suffix}").exists()
-
-    def test_read_only_resolution_does_not_create_migrate_or_clean(self, tmp_path):
+    def test_read_only_resolution_does_not_create_dir_or_touch_files(self, tmp_path):
         legacy = tmp_path / ".code-review-graph.db"
         legacy.write_text("legacy data")
         side_files = [

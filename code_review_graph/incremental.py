@@ -181,21 +181,6 @@ def find_project_root(
     start: Path | None = None,
     stop_at: Path | None = None,
 ) -> Path:
-    """Find the project root.
-
-    Resolution order (highest precedence first):
-
-    1. ``CRG_REPO_ROOT`` environment variable — explicit override for
-       anyone scripting the CLI from outside the repo (CI jobs, daemons,
-       multi-repo orchestrators). See: #155
-    2. Git repository root via :func:`find_repo_root` from ``start``,
-       honoring ``stop_at`` if provided.
-    3. ``start`` itself (or cwd if no start given).
-
-    ``stop_at`` is forwarded to :func:`find_repo_root` so callers that
-    want to bound the ancestor walk (typically tests; see #241) can do so
-    without having to call ``find_repo_root`` directly.
-    """
     env_override = os.environ.get("CRG_REPO_ROOT", "").strip()
     if env_override:
         p = Path(env_override).expanduser().resolve()
@@ -284,32 +269,12 @@ def get_data_dir(repo_root: Path, *, create: bool = True) -> Path:
 def get_db_path(repo_root: Path, *, read_only: bool = False) -> Path:
     """Determine the database path for a repository.
 
-    Respects ``CRG_DATA_DIR`` (see :func:`get_data_dir`). Migrates a
-    legacy top-level ``.code-review-graph.db`` file into the new
-    directory when it exists (WAL/SHM side-files are discarded). Pass
+    Respects ``CRG_DATA_DIR`` (see :func:`get_data_dir`). Pass
     ``read_only=True`` to resolve the current path without creating a data
-    directory, migrating a legacy database, or deleting side-files.
+    directory.
     """
     crg_dir = get_data_dir(repo_root, create=not read_only)
-    new_db = crg_dir / "graph.db"
-
-    if read_only:
-        return new_db
-
-    # Migrate legacy database if present (only meaningful when the
-    # legacy file sits at the repo root — if CRG_DATA_DIR is set we
-    # skip the migration because there's no relationship between the
-    # legacy location and the new one).
-    legacy_db = repo_root / ".code-review-graph.db"
-    if legacy_db.exists() and not new_db.exists():
-        legacy_db.rename(new_db)
-    # Discard stale WAL/SHM side-files from the old location
-    for suffix in ("-wal", "-shm", "-journal"):
-        side = repo_root / f".code-review-graph.db{suffix}"
-        if side.exists():
-            side.unlink()
-
-    return new_db
+    return crg_dir / "graph.db"
 
 
 def ensure_repo_gitignore_excludes_crg(repo_root: Path) -> str:

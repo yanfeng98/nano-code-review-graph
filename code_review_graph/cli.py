@@ -320,7 +320,6 @@ def _handle_init(args: argparse.Namespace) -> None:
 
 
 def _handle_data_dir_option(args, repo_root: Path) -> None:
-    """Handle --data-dir option by updating registry if specified."""
     if hasattr(args, "data_dir") and args.data_dir:
         try:
             from .registry import Registry
@@ -334,7 +333,6 @@ def _handle_data_dir_option(args, repo_root: Path) -> None:
 
 
 def _add_embedding_refresh_args(command) -> None:
-    """Add explicit, provider-scoped refresh options to a CLI command."""
     command.add_argument(
         "--embedding-provider",
         choices=["local", "openai"],
@@ -355,7 +353,6 @@ def _add_embedding_refresh_args(command) -> None:
 
 
 def _embedding_refresh_kwargs(args, parser) -> _EmbeddingRefreshKwargs:
-    """Validate the all-or-nothing provider/model opt-in."""
     provider = getattr(args, "embedding_provider", None)
     model = getattr(args, "embedding_model", None)
     if bool(provider) != bool(model):
@@ -373,7 +370,6 @@ def _embedding_refresh_kwargs(args, parser) -> _EmbeddingRefreshKwargs:
 
 
 def _non_negative_int(value: str) -> int:
-    """Parse a non-negative integer for bounded CLI output."""
     try:
         parsed = int(value)
     except ValueError as exc:
@@ -384,7 +380,6 @@ def _non_negative_int(value: str) -> int:
 
 
 def _positive_int(value: str) -> int:
-    """Parse a positive integer for CLI limits."""
     parsed = _non_negative_int(value)
     if parsed == 0:
         raise argparse.ArgumentTypeError("must be greater than zero")
@@ -406,15 +401,6 @@ _GRAPH_TOOL_COMMANDS = {
 
 
 def _find_explicit_repo_root(start: Path) -> "Path | None":
-    """Resolve an explicit --repo for graph-tool commands.
-
-    Walks upward from ``start``, stopping at the nearest directory that
-    contains a ``.code-review-graph``, ``.git``, or ``.svn`` marker. Unlike
-    ``find_repo_root``, a registered subproject (``.code-review-graph``)
-    counts as a boundary, so a monorepo subdirectory built with
-    ``build --repo mono/module`` resolves to the module — not to the
-    monorepo's top-level ``.git`` (#697).
-    """
     current = start.resolve()
     if not current.is_dir():
         return None
@@ -430,7 +416,6 @@ def _find_explicit_repo_root(start: Path) -> "Path | None":
 
 
 def _run_graph_tool_command(args, repo_root: Path) -> None:
-    """Run one graph-tool CLI wrapper and emit exactly one JSON value."""
     from . import tools
 
     root = str(repo_root)
@@ -508,7 +493,6 @@ def _run_graph_tool_command(args, repo_root: Path) -> None:
 
 
 def main() -> None:
-    """Main CLI entry point."""
     ap = argparse.ArgumentParser(
         prog="code-review-graph",
         description="Persistent incremental knowledge graph for code reviews",
@@ -516,7 +500,6 @@ def main() -> None:
     ap.add_argument("-v", "--version", action="store_true", help="Show version and exit")
     sub = ap.add_subparsers(dest="command")
 
-    # install (primary) + init (alias)
     install_cmd = sub.add_parser("install", help="Register MCP server with AI coding platforms")
     install_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
     install_cmd.add_argument(
@@ -545,7 +528,6 @@ def main() -> None:
         action="store_true",
         help="Auto-confirm instruction injection without an interactive prompt",
     )
-    # Legacy flags (kept for backwards compat, now no-ops since all is default)
     install_cmd.add_argument("--skills", action="store_true", help=argparse.SUPPRESS)
     install_cmd.add_argument("--hooks", action="store_true", help=argparse.SUPPRESS)
     install_cmd.add_argument(
@@ -639,7 +621,6 @@ def main() -> None:
         help="Apply without an interactive confirmation",
     )
 
-    # build
     build_cmd = sub.add_parser("build", help="Full graph build (re-parse all files)")
     build_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
     build_cmd.add_argument("-q", "--quiet", action="store_true", help="Suppress output")
@@ -660,7 +641,6 @@ def main() -> None:
     )
     _add_embedding_refresh_args(build_cmd)
 
-    # update
     update_cmd = sub.add_parser("update", help="Incremental update (only changed files)")
     update_cmd.add_argument(
         "--base",
@@ -704,7 +684,6 @@ def main() -> None:
     )
     _add_embedding_refresh_args(update_cmd)
 
-    # postprocess
     pp_cmd = sub.add_parser(
         "postprocess",
         help="Run post-processing on existing graph (flows, communities, FTS)",
@@ -720,7 +699,6 @@ def main() -> None:
     )
     _add_embedding_refresh_args(pp_cmd)
 
-    # embed
     embed_cmd = sub.add_parser(
         "embed",
         help="Compute vector embeddings for semantic search",
@@ -744,7 +722,6 @@ def main() -> None:
         help="External directory to store graph database (useful for network shares)"
     )
 
-    # watch
     watch_cmd = sub.add_parser("watch", help="Watch for changes and auto-update")
     watch_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
     watch_cmd.add_argument(
@@ -754,7 +731,6 @@ def main() -> None:
     )
     _add_embedding_refresh_args(watch_cmd)
 
-    # status
     status_cmd = sub.add_parser("status", help="Show graph statistics")
     status_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
     status_cmd.add_argument("-q", "--quiet", action="store_true", help="Suppress output")
@@ -770,7 +746,6 @@ def main() -> None:
         help="External directory to store graph database (useful for network shares)"
     )
 
-    # forget
     forget_cmd = sub.add_parser(
         "forget",
         help="Remove already-parsed files from the graph without a full rebuild",
@@ -794,7 +769,6 @@ def main() -> None:
         help="External directory to store graph database (useful for network shares)"
     )
 
-    # visualize
     vis_cmd = sub.add_parser("visualize", help="Generate interactive HTML graph visualization")
     vis_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
     vis_cmd.add_argument(
@@ -820,7 +794,6 @@ def main() -> None:
         help="External directory to store graph database (useful for network shares)"
     )
 
-    # wiki
     wiki_cmd = sub.add_parser("wiki", help="Generate markdown wiki from community structure")
     wiki_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
     wiki_cmd.add_argument(
@@ -834,23 +807,19 @@ def main() -> None:
         help="External directory to store graph database (useful for network shares)"
     )
 
-    # register
     register_cmd = sub.add_parser(
         "register", help="Register a repository in the multi-repo registry"
     )
     register_cmd.add_argument("path", help="Path to the repository root")
     register_cmd.add_argument("--alias", default=None, help="Short alias for the repository")
 
-    # unregister
     unregister_cmd = sub.add_parser(
         "unregister", help="Remove a repository from the multi-repo registry"
     )
     unregister_cmd.add_argument("path_or_alias", help="Repository path or alias to remove")
 
-    # repos
     sub.add_parser("repos", help="List registered repositories")
 
-    # detect-changes
     detect_cmd = sub.add_parser(
         "detect-changes",
         help="Analyze change impact against the existing graph (read-only). "
@@ -880,10 +849,8 @@ def main() -> None:
              "`pip install tiktoken`.",
     )
 
-    # enrich (Claude Code PreToolUse hook; reads one JSON object from stdin)
     sub.add_parser("enrich", help="Enrich hook input with graph context")
 
-    # dead-code
     dead_cmd = sub.add_parser(
         "dead-code",
         help="Find functions/classes with no callers or test references",
@@ -918,7 +885,6 @@ def main() -> None:
         help="External directory containing the graph database",
     )
 
-    # Graph tool wrappers
     query_cmd = sub.add_parser("query", help="Query graph relationships")
     query_cmd.add_argument(
         "pattern",
@@ -1022,7 +988,6 @@ def main() -> None:
     refactor_cmd.add_argument("--path", default=None, help="File-path substring filter")
     refactor_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
 
-    # serve / mcp
     serve_cmd = sub.add_parser(
         "serve",
         help="Start MCP server (stdio by default, or HTTP on localhost with --http)",
@@ -1069,7 +1034,6 @@ def main() -> None:
         help="Start filesystem watch in a daemon thread while MCP server runs",
     )
 
-    # daemon
     daemon_cmd = sub.add_parser(
         "daemon",
         help="Multi-repo watch daemon (start/stop/status/add/remove)",
@@ -1444,17 +1408,6 @@ def main() -> None:
             db_path = Path(args.data_dir).expanduser().resolve() / "graph.db"
         else:
             db_path = get_db_path(repo_root, read_only=True)
-        legacy_db = repo_root / ".code-review-graph.db"
-        default_db = repo_root / ".code-review-graph" / "graph.db"
-        if (
-            not status_data_dir
-            and not db_path.exists()
-            and db_path.resolve() == default_db.resolve()
-            and legacy_db.exists()
-        ):
-            # Preserve the established one-time legacy migration, but do not
-            # materialize graph state when neither database exists.
-            db_path = get_db_path(repo_root)
     else:
         db_path = get_db_path(repo_root)
     if args.command in ("dead-code", "forget", "status") and not db_path.exists():

@@ -18,21 +18,10 @@ from .constants import crg_home
 logger = logging.getLogger(__name__)
 
 def default_registry_path() -> Path:
-    """Return the full path to ``registry.json``.
-
-    Lives under :func:`~code_review_graph.constants.crg_home`, so ``$CRG_HOME``
-    redirects it along with the rest of the per-user state.
-    """
     return crg_home() / "registry.json"
 
 
 class Registry:
-    """Manages a JSON-based registry of code-review-graph repositories.
-
-    Each entry stores the repo path and an optional alias.
-    The registry lives at ``~/.code-review-graph/registry.json``, or under
-    ``$CRG_HOME`` when that is set.
-    """
 
     def __init__(self, path: Path | None = None) -> None:
         self._path = path or default_registry_path()
@@ -42,7 +31,6 @@ class Registry:
         self._load()
 
     def _load(self) -> None:
-        """Load registry from disk."""
         if self._path.exists():
             try:
                 data = json.loads(self._path.read_text(encoding="utf-8", errors="replace"))

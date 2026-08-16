@@ -150,28 +150,6 @@ def test_status_missing_graph_exits_without_creating_data_tree(
     assert not data_dir.exists()
 
 
-def test_status_preserves_legacy_graph_migration(tmp_path, monkeypatch, capsys):
-    repo = tmp_path / "repo"
-    repo.mkdir()
-    (repo / ".git").mkdir()
-    legacy_db = repo / ".code-review-graph.db"
-    with code_review_graph.graph.GraphStore(legacy_db):
-        pass
-    monkeypatch.delenv("CRG_DATA_DIR", raising=False)
-    argv = ["code-review-graph", "status", "--repo", str(repo)]
-
-    with patch(
-        "code_review_graph.registry.default_registry_path",
-        return_value=tmp_path / "missing-registry.json",
-    ):
-        with patch.object(sys, "argv", argv):
-            cli.main()
-
-    assert "Nodes: 0" in capsys.readouterr().out
-    assert not legacy_db.exists()
-    assert (repo / ".code-review-graph" / "graph.db").exists()
-
-
 def test_status_external_data_dir_does_not_migrate_unrelated_legacy_graph(
     tmp_path, monkeypatch, capsys,
 ):

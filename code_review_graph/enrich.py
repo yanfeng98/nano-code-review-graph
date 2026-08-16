@@ -259,11 +259,6 @@ def enrich_file_read(file_path: str, repo_root: str) -> str:
 
 
 def run_hook() -> None:
-    """Entry point for the enrich CLI subcommand.
-
-    Reads Claude Code hook JSON from stdin, extracts the search pattern,
-    queries the graph, and outputs hookSpecificOutput JSON to stdout.
-    """
     try:
         hook_input = json.load(sys.stdin)
     except (json.JSONDecodeError, ValueError):
@@ -273,7 +268,6 @@ def run_hook() -> None:
     tool_input = hook_input.get("tool_input", {})
     cwd = hook_input.get("cwd", os.getcwd())
 
-    # Find repo root by walking up from cwd
     from .incremental import find_project_root, get_db_path
 
     repo_path = find_project_root(Path(cwd))
