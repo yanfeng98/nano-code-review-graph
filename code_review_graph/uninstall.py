@@ -1030,18 +1030,9 @@ def _process_repo(
                 report,
                 dry_run=dry_run,
             )
-    instruction_sections = {
-        "CLAUDE.md": skills._CLAUDE_MD_SECTION,
-        **{
-            relative: skills._PLATFORM_INSTRUCTION_CUSTOM_SECTIONS.get(
-                relative,
-                (skills._CLAUDE_MD_SECTION_MARKER, skills._CLAUDE_MD_SECTION),
-            )[1]
-            for relative in (
-                *skills._PLATFORM_INSTRUCTION_FILES,
-                *skills._LEGACY_PLATFORM_INSTRUCTION_FILES,
-            )
-        },
+    instruction_sections: dict[str, str] = {
+        relative: skills._CLAUDE_MD_SECTION
+        for relative in ("CLAUDE.md", *skills._PLATFORM_INSTRUCTION_FILES)
     }
     for relative, section in instruction_sections.items():
         _remove_instruction(

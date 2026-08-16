@@ -223,13 +223,9 @@ def test_instruction_inventory_and_git_hook_are_surgical(
 ) -> None:
     instruction_paths = ["CLAUDE.md", *skills._PLATFORM_INSTRUCTION_FILES]
     for relative in instruction_paths:
-        section = skills._PLATFORM_INSTRUCTION_CUSTOM_SECTIONS.get(
-            relative,
-            (skills._CLAUDE_MD_SECTION_MARKER, skills._CLAUDE_MD_SECTION),
-        )[1]
         _write(
             fake_repo / relative,
-            "user instructions\n\n" + section,
+            "user instructions\n\n" + skills._CLAUDE_MD_SECTION,
         )
     hook = fake_repo / ".git" / "hooks" / "pre-commit"
     _write(

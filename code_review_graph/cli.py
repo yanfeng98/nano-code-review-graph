@@ -275,8 +275,6 @@ def _handle_init(args: argparse.Namespace) -> None:
             skills_dir = generate_skills(repo_root)
             print(f"Generated Claude Code skills in {skills_dir}")
 
-    # Confirm before writing instruction files (#173). --yes skips the
-    # prompt; --no-instructions skips the whole block.
     if not skip_instructions and instr_targets:
         if auto_yes or _confirm_yes_no(
             "Inject graph instructions into the files above?",

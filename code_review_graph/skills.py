@@ -812,19 +812,7 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 4. Use `query_graph_tool` pattern=\"tests_for\" to check coverage.
 """
 
-# Maps instruction file path → (marker, section) for files that need content
-# different from the default _CLAUDE_MD_SECTION.
-_PLATFORM_INSTRUCTION_CUSTOM_SECTIONS: dict[str, tuple[str, str]] = {}
-
-
 def _inject_instructions(file_path: Path, marker: str, section: str) -> bool:
-    """Append an instruction section to a file if not already present.
-
-    Idempotent: checks if the marker is already present before appending.
-    Creates the file if it doesn't exist.
-
-    Returns True if the file was modified.
-    """
     existing = ""
     if file_path.exists():
         existing = file_path.read_text(encoding="utf-8", errors="replace")
@@ -842,7 +830,6 @@ def _inject_instructions(file_path: Path, marker: str, section: str) -> bool:
 
 
 def inject_claude_md(repo_root: Path) -> None:
-    """Append MCP tools section to CLAUDE.md."""
     _inject_instructions(
         repo_root / "CLAUDE.md",
         _CLAUDE_MD_SECTION_MARKER,
@@ -853,33 +840,14 @@ _PLATFORM_INSTRUCTION_FILES: dict[str, tuple[str, ...]] = {
     "AGENTS.md": ("opencode", "codex"),
 }
 
-# Superseded paths written by older releases. Kept as empty dict for
-# backward-compatible uninstall iteration.
-_LEGACY_PLATFORM_INSTRUCTION_FILES: dict[str, tuple[str, ...]] = {}
-
 
 def inject_platform_instructions(repo_root: Path, target: str = "all") -> list[str]:
-    """Inject 'use graph first' instructions into platform rule files.
-
-    Writes AGENTS.md depending on ``target``:
-
-    - ``"all"`` (default): writes every file — matches pre-filter behavior.
-    - ``"claude"``: writes nothing (CLAUDE.md is handled by ``inject_claude_md``).
-    - any other platform key (``opencode``, ``codex``): writes only the files
-      associated with that platform.
-
-    Returns list of filenames that were created or updated.
-    """
     updated: list[str] = []
     for filename, owners in _PLATFORM_INSTRUCTION_FILES.items():
         if target != "all" and target not in owners:
             continue
         path = repo_root / filename
-        if filename in _PLATFORM_INSTRUCTION_CUSTOM_SECTIONS:
-            marker, section = _PLATFORM_INSTRUCTION_CUSTOM_SECTIONS[filename]
-        else:
-            marker, section = _CLAUDE_MD_SECTION_MARKER, _CLAUDE_MD_SECTION
-        if _inject_instructions(path, marker, section):
+        if _inject_instructions(path, _CLAUDE_MD_SECTION_MARKER, _CLAUDE_MD_SECTION):
             updated.append(filename)
     return updated
 
