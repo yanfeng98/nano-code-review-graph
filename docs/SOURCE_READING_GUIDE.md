@@ -23,7 +23,7 @@
 | 层级 | 模块 | 作用 |
 |---|---|---|
 | **解析层** | `parser.py`、`custom_languages.py`、`python_resolver.py`、`jedi_resolver.py`、`scoped_resolver.py`、`tsconfig_resolver.py` | 源码 → AST → 节点/边；语言与符号解析 |
-| **存储层** | `graph.py`、`migrations.py`、`graph_diff.py` | SQLite 表结构、CRUD、BFS 影响分析、schema 迁移 |
+| **存储层** | `graph.py`、`graph_diff.py` | SQLite 表结构、CRUD、BFS 影响分析 |
 | **增量层** | `incremental.py`、`forget.py` | git 变更检测、增量重建、删除文件 |
 | **分析层** | `changes.py`、`flows.py`、`communities.py`、`postprocessing.py`、`refactor.py`、`hints.py`、`analysis.py`、`context_savings.py` | 风险评分、执行流、社区聚类、重构建议、token 节省估算 |
 | **搜索/嵌入** | `search.py`、`embeddings.py`、`enrich.py` | FTS5 混合搜索、向量嵌入、符号富化 |
@@ -87,8 +87,7 @@ uv run code-review-graph serve              # 起 MCP server
 - **解析器们**：`python_resolver.py`（Python 导入/调用解析）、`jedi_resolver.py`（可选 jedi 富化）、`scoped_resolver.py`、`tsconfig_resolver.py`（TS path alias）。
 
 ### 存储层
-- **`graph.py`**：`GraphStore`。nodes/edges 表、CRUD、`get_impact_radius()` BFS。
-- **`migrations.py`**：v1-v9 递增 schema 迁移，启动时自动升级。
+- **`graph.py`**：`GraphStore`。`_SCHEMA_SQL` 一次性创建完整 schema、CRUD、`get_impact_radius()` BFS、旧库守卫。
 
 ### 增量层
 - **`incremental.py`**：`get_changed_files()`（git diff）→ 找到依赖文件 → 只重解析变更部分（SHA-256 哈希跳过未变文件）。
@@ -126,7 +125,7 @@ uv run code-review-graph serve              # 起 MCP server
 | `test_tools.py` / `test_prompts.py` | MCP 工具/提示集成 |
 | `test_cli*.py` / `test_daemon.py` | CLI、daemon |
 | `test_embeddings.py` / `test_search.py` | 嵌入、搜索 |
-| `test_migrations.py` | schema 迁移 |
+| `test_schema.py` | 新库 schema 完整性、旧库守卫 |
 | `test_documentation.py` | 文档与实现一致性校验 |
 
 **读法建议**：先读一个模块的测试，再看实现——测试里的断言就是模块的契约。
@@ -148,7 +147,7 @@ uv run code-review-graph serve              # 起 MCP server
 | 加新语言支持 | `parser.py` + `custom_languages.py` + `docs/CUSTOM_LANGUAGES.md` | 修改 `EXTENSION_TO_LANGUAGE` 及 `_*_TYPES` 映射 |
 | 改 MCP 工具行为 | `tools/` 对应文件 + `main.py` 注册 | 加工具要加测试 |
 | 改影响分析/风险评分 | `graph.py` BFS + `changes.py` | 注意 blast radius 语义 |
-| 加新分析维度 | 动 schema → `migrations.py` | 有 v1-v9 先例可循 |
+| 加新分析维度 | 动 schema → `graph.py` 的 `_SCHEMA_SQL` | schema 变更后需删除 `.code-review-graph/` 重建 |
 | 改给 agent 的输出 | `changes.py` + `hints.py` + `prompts.py` | token 效率优先 |
 | 改搜索/嵌入 | `search.py` + `embeddings.py` | |
 | 改 CLI | `cli.py` + `constants.py` | |

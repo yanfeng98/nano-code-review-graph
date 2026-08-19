@@ -73,7 +73,7 @@
 ### SQLite Schema
 - **nodes** 表：id、kind、name、qualified_name、file_path、line_start/end、language、community_id 等。
 - **edges** 表：id、kind、source_qualified、target_qualified、file_path、line
-- **metadata** 表：key-value 对（last_updated、build_type、schema_version）
+- **metadata** 表：key-value 对（last_updated、build_type）
 - **flows** 表：id、name、entry_point_id、depth、node_count、file_count、criticality、path_json
 - **flow_memberships** 表：flow_id、node_id、position
 - **communities** 表：id、name、level、parent_id、cohesion、size、dominant_language、description

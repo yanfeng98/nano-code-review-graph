@@ -213,7 +213,6 @@ def enrich_search(pattern: str, repo_root: str) -> str:
 
 
 def enrich_file_read(file_path: str, repo_root: str) -> str:
-    """Enrich a file read with structural context for functions in that file."""
     from .graph import GraphStore
 
     db_path = Path(repo_root) / ".code-review-graph" / "graph.db"
@@ -276,7 +275,6 @@ def run_hook() -> None:
     if not db_path.exists():
         return
 
-    # Dispatch
     context = ""
     if tool_name == "Read":
         fp = tool_input.get("file_path", "")

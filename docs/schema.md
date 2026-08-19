@@ -166,7 +166,7 @@ CREATE TABLE nodes (
     extra TEXT DEFAULT '{}',
     community_id INTEGER,
     updated_at REAL NOT NULL,
-    signature TEXT   -- migration v2 添加
+    signature TEXT
 );
 
 -- Edges 表

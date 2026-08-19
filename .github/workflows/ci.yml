@@ -87,7 +87,6 @@ jobs:
           tests/test_flows.py
           tests/test_graph.py
           tests/test_integration_v2.py
-          tests/test_migrations.py
           tests/test_postprocessing.py
           tests/test_refactor.py
           tests/test_search.py

@@ -43,7 +43,7 @@
 - **Wiki 生成**：为每个 community 自动生成 markdown wiki 页面，可选 LLM 摘要（ollama）。
 - **Multi-repo registry**：注册多个 repositories，用 `cross_repo_search` 跨所有 repositories 搜索。
 - **全文搜索**：带 porter stemming 的 FTS5 虚拟表，用于 hybrid keyword + vector 搜索。
-- **数据库迁移**：带版本号的 schema migrations（v1-v5），启动时自动升级。
+- **自包含 schema**：`_SCHEMA_SQL` 一次性创建完整 schema（无版本化迁移；schema 变更需删除 `.code-review-graph/` 重建）。
 - **可选依赖组**：`[embeddings]`、`[google-embeddings]`、`[communities]`、`[wiki]`、`[all]`。
 - **TypeScript 路径解析**：tsconfig.json paths/baseUrl alias 解析用于 imports。
 - **486 个 tests**，分布在 22 个 test 文件。

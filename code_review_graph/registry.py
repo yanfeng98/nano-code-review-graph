@@ -197,14 +197,6 @@ class Registry:
             return new_entry
 
     def get_data_dir_for_repo(self, path: str) -> str | None:
-        """Get the stored data directory for a repository.
-
-        Args:
-            path: Repository path (absolute or relative).
-
-        Returns:
-            The stored data_dir path, or None if not set.
-        """
         resolved = str(Path(path).resolve())
         with self._lock:
             for entry in self._repos:

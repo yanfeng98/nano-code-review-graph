@@ -34,7 +34,6 @@ from .constants import (
     MAX_IMPACT_DEPTH,
     MAX_IMPACT_NODES,
 )
-from .migrations import get_schema_version, run_migrations
 from .parser import EdgeInfo, NodeInfo, normalize_file_path
 
 logger = logging.getLogger(__name__)
@@ -88,7 +87,9 @@ CREATE TABLE IF NOT EXISTS nodes (
     is_test INTEGER DEFAULT 0,
     file_hash TEXT,
     extra TEXT DEFAULT '{}',
-    updated_at REAL NOT NULL
+    updated_at REAL NOT NULL,
+    signature TEXT,
+    community_id INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS edges (
@@ -118,6 +119,89 @@ CREATE INDEX IF NOT EXISTS idx_edges_kind ON edges(kind);
 CREATE INDEX IF NOT EXISTS idx_edges_target_kind ON edges(target_qualified, kind);
 CREATE INDEX IF NOT EXISTS idx_edges_source_kind ON edges(source_qualified, kind);
 CREATE INDEX IF NOT EXISTS idx_edges_file ON edges(file_path);
+CREATE INDEX IF NOT EXISTS idx_edges_composite
+    ON edges(kind, source_qualified, target_qualified, file_path, line);
+
+CREATE TABLE IF NOT EXISTS flows (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    entry_point_id INTEGER NOT NULL,
+    depth INTEGER NOT NULL,
+    node_count INTEGER NOT NULL,
+    file_count INTEGER NOT NULL,
+    criticality REAL NOT NULL DEFAULT 0.0,
+    path_json TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS flow_memberships (
+    flow_id INTEGER NOT NULL,
+    node_id INTEGER NOT NULL,
+    position INTEGER NOT NULL,
+    PRIMARY KEY (flow_id, node_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_flows_criticality ON flows(criticality DESC);
+CREATE INDEX IF NOT EXISTS idx_flows_entry ON flows(entry_point_id);
+CREATE INDEX IF NOT EXISTS idx_flow_memberships_node ON flow_memberships(node_id);
+
+CREATE TABLE IF NOT EXISTS communities (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    level INTEGER NOT NULL DEFAULT 0,
+    parent_id INTEGER,
+    cohesion REAL NOT NULL DEFAULT 0.0,
+    size INTEGER NOT NULL DEFAULT 0,
+    dominant_language TEXT,
+    description TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_nodes_community ON nodes(community_id);
+CREATE INDEX IF NOT EXISTS idx_communities_parent ON communities(parent_id);
+CREATE INDEX IF NOT EXISTS idx_communities_cohesion ON communities(cohesion DESC);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS nodes_fts USING fts5(
+    name, qualified_name, file_path, signature,
+    content='nodes', content_rowid='rowid',
+    tokenize='porter unicode61'
+);
+
+CREATE TABLE IF NOT EXISTS community_summaries (
+    community_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    purpose TEXT DEFAULT '',
+    key_symbols TEXT DEFAULT '[]',
+    risk TEXT DEFAULT 'unknown',
+    size INTEGER DEFAULT 0,
+    dominant_language TEXT DEFAULT '',
+    FOREIGN KEY (community_id) REFERENCES communities(id)
+);
+
+CREATE TABLE IF NOT EXISTS flow_snapshots (
+    flow_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    entry_point TEXT NOT NULL,
+    critical_path TEXT DEFAULT '[]',
+    criticality REAL DEFAULT 0.0,
+    node_count INTEGER DEFAULT 0,
+    file_count INTEGER DEFAULT 0,
+    FOREIGN KEY (flow_id) REFERENCES flows(id)
+);
+
+CREATE TABLE IF NOT EXISTS risk_index (
+    node_id INTEGER PRIMARY KEY,
+    qualified_name TEXT NOT NULL,
+    risk_score REAL DEFAULT 0.0,
+    caller_count INTEGER DEFAULT 0,
+    test_coverage TEXT DEFAULT 'unknown',
+    security_relevant INTEGER DEFAULT 0,
+    last_computed TEXT DEFAULT '',
+    FOREIGN KEY (node_id) REFERENCES nodes(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_risk_index_score ON risk_index(risk_score DESC);
 """
 
 
@@ -177,34 +261,26 @@ class GraphStats:
     last_updated: Optional[str]
 
 
-# ---------------------------------------------------------------------------
-# GraphStore
-# ---------------------------------------------------------------------------
-
-
 class GraphStore:
-    """SQLite-backed code knowledge graph."""
 
     def __init__(self, db_path: str | Path) -> None:
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(
             str(self.db_path), timeout=30, check_same_thread=False,
-            isolation_level=None,  # Disable implicit transactions (#135)
+            isolation_level=None,
         )
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA busy_timeout=5000")
-        self._init_schema()
-        # Ensure schema_version is set, then run pending migrations
-        if get_schema_version(self._conn) < 1:
-            # Fresh DB — metadata table just created by _init_schema
-            self._conn.execute(
-                "INSERT OR IGNORE INTO metadata (key, value) "
-                "VALUES ('schema_version', '1')"
-            )
-            self._conn.commit()
-        run_migrations(self._conn)
+        try:
+            self._verify_schema()
+            self._init_schema()
+        except BaseException:
+            # Don't leak an open handle to a stale/corrupt DB on the init
+            # error path (relevant on Windows, which locks open SQLite files).
+            self._conn.close()
+            raise
         self._nxg_cache: nx.DiGraph | None = None
         self._cache_lock = threading.Lock()
 
@@ -217,6 +293,53 @@ class GraphStore:
     def _init_schema(self) -> None:
         self._conn.executescript(_SCHEMA_SQL)
         self._conn.commit()
+
+    def _verify_schema(self) -> None:
+        """Fail loudly if the database predates this fork's schema.
+
+        Runs *before* :meth:`_init_schema` so a stale DB can't trip an
+        obscure ``no such column`` error inside the CREATE INDEX statements.
+
+        There is no migration path: this fork only ever builds fresh
+        databases at the latest schema. ``CREATE TABLE IF NOT EXISTS`` won't
+        add columns to an existing ``nodes``/``edges`` table, so an old-format
+        DB is detectable here. A fresh or empty DB has no ``nodes`` table yet,
+        so it passes and ``_init_schema`` creates the full schema.
+        """
+        tables = {
+            row[0]
+            for row in self._conn.execute(
+                "SELECT name FROM sqlite_master WHERE type IN ('table', 'view')"
+            )
+        }
+        if "nodes" not in tables:
+            return  # fresh/empty DB; _init_schema builds everything
+        required_columns = {
+            "nodes": {"signature", "community_id"},
+            "edges": {"confidence", "confidence_tier"},
+        }
+        missing = {
+            table: sorted(cols - {
+                row[1]
+                for row in self._conn.execute(f"PRAGMA table_info({table})")  # noqa: S608
+            })
+            for table, cols in required_columns.items()
+        }
+        details = [
+            f"{table}: {', '.join(cols)}"
+            for table, cols in missing.items()
+            if cols
+        ]
+        if not details:
+            return
+        # ASCII-only message: a non-ASCII char can trip UnicodeEncodeError
+        # when Python prints the traceback to a cp1252 console on Windows.
+        raise RuntimeError(
+            "Database schema is stale or incompatible "
+            f"(missing column(s) - {'; '.join(details)}). "
+            "This fork does not migrate old databases; "
+            f"delete '{self.db_path}' and rebuild (e.g. 'code-review-graph build')."
+        )
 
     def _invalidate_cache(self) -> None:
         """Invalidate the cached NetworkX graph after write operations."""

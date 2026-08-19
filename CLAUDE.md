@@ -34,7 +34,6 @@ When using code-review-graph MCP tools, follow these rules:
   - `wiki.py` — Markdown wiki generation from community structure
   - `skills.py` — Multi-platform install/config generation and shipped skill metadata
   - `registry.py` — Multi-repo registry helpers
-  - `migrations.py` — Database schema migrations (v1-v9)
   - `tsconfig_resolver.py` — TypeScript path alias resolution
 
 - **Database**: `.code-review-graph/graph.db` (SQLite, WAL mode)
@@ -84,7 +83,7 @@ uv run code-review-graph repos              # List registered repos
 - `tests/test_graph.py` — Graph CRUD, stats, impact radius
 - `tests/test_tools.py` — MCP tool integration tests
 - `tests/test_visualization.py` — Export, HTML generation, C++ resolution
-- `tests/test_incremental.py` — Build, update, migration, git ops
+- `tests/test_incremental.py` — Build, update, git ops
 - `tests/test_multilang.py` — Broad language parsing tests, including SFCs, notebooks, and modern systems/web languages
 - `tests/test_custom_languages.py` — Config-driven custom languages (languages.toml loader + end-to-end Erlang parse)
 - `tests/test_embeddings.py` — Vector encode/decode, similarity, store
@@ -99,7 +98,7 @@ uv run code-review-graph repos              # List registered repos
 - `tests/test_context_savings.py` — Estimated context-savings metadata
 - `tests/test_skills.py` — Install/config generation and shipped skill metadata
 - `tests/test_registry.py` — Multi-repo registry
-- `tests/test_migrations.py` — Database migrations
+- `tests/test_schema.py` — Fresh database schema completeness and stale-DB guard
 - `tests/test_tsconfig_resolver.py` — TypeScript path resolution
 - `tests/test_integration_v2.py` — v2 pipeline integration test
 - `tests/fixtures/` — Sample files for each supported language
