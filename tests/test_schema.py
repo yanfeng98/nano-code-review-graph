@@ -10,8 +10,6 @@ import sqlite3
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from code_review_graph.graph import GraphStore
 
 REQUIRED_TABLES = {
@@ -77,47 +75,6 @@ class TestFreshSchema:
         rows = self.store._conn.execute("PRAGMA index_list(edges)").fetchall()
         indexes = {row[1] if isinstance(row, tuple) else row["name"] for row in rows}
         assert "idx_edges_composite" in indexes
-
-
-class TestStaleSchemaGuard:
-    def test_stale_db_raises_clear_error(self):
-        tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        tmp.close()
-        path = Path(tmp.name)
-        try:
-            # Old-format DB: base tables without the signature/community_id
-            # columns and none of the secondary tables.
-            conn = sqlite3.connect(str(path))
-            conn.executescript(
-                """
-                CREATE TABLE nodes (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    kind TEXT NOT NULL,
-                    name TEXT NOT NULL,
-                    qualified_name TEXT NOT NULL UNIQUE,
-                    file_path TEXT NOT NULL,
-                    updated_at REAL NOT NULL
-                );
-                CREATE TABLE edges (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    kind TEXT NOT NULL,
-                    source_qualified TEXT NOT NULL,
-                    target_qualified TEXT NOT NULL,
-                    file_path TEXT NOT NULL,
-                    line INTEGER DEFAULT 0,
-                    extra TEXT DEFAULT '{}',
-                    updated_at REAL NOT NULL
-                );
-                CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-                """
-            )
-            conn.commit()
-            conn.close()
-
-            with pytest.raises(RuntimeError, match="rebuild"):
-                GraphStore(path)
-        finally:
-            path.unlink(missing_ok=True)
 
     def test_empty_db_is_treated_as_fresh(self):
         tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)

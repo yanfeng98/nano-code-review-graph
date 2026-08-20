@@ -274,7 +274,6 @@ class GraphStore:
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA busy_timeout=5000")
         try:
-            self._verify_schema()
             self._init_schema()
         except BaseException:
             # Don't leak an open handle to a stale/corrupt DB on the init
@@ -293,53 +292,6 @@ class GraphStore:
     def _init_schema(self) -> None:
         self._conn.executescript(_SCHEMA_SQL)
         self._conn.commit()
-
-    def _verify_schema(self) -> None:
-        """Fail loudly if the database predates this fork's schema.
-
-        Runs *before* :meth:`_init_schema` so a stale DB can't trip an
-        obscure ``no such column`` error inside the CREATE INDEX statements.
-
-        There is no migration path: this fork only ever builds fresh
-        databases at the latest schema. ``CREATE TABLE IF NOT EXISTS`` won't
-        add columns to an existing ``nodes``/``edges`` table, so an old-format
-        DB is detectable here. A fresh or empty DB has no ``nodes`` table yet,
-        so it passes and ``_init_schema`` creates the full schema.
-        """
-        tables = {
-            row[0]
-            for row in self._conn.execute(
-                "SELECT name FROM sqlite_master WHERE type IN ('table', 'view')"
-            )
-        }
-        if "nodes" not in tables:
-            return  # fresh/empty DB; _init_schema builds everything
-        required_columns = {
-            "nodes": {"signature", "community_id"},
-            "edges": {"confidence", "confidence_tier"},
-        }
-        missing = {
-            table: sorted(cols - {
-                row[1]
-                for row in self._conn.execute(f"PRAGMA table_info({table})")  # noqa: S608
-            })
-            for table, cols in required_columns.items()
-        }
-        details = [
-            f"{table}: {', '.join(cols)}"
-            for table, cols in missing.items()
-            if cols
-        ]
-        if not details:
-            return
-        # ASCII-only message: a non-ASCII char can trip UnicodeEncodeError
-        # when Python prints the traceback to a cp1252 console on Windows.
-        raise RuntimeError(
-            "Database schema is stale or incompatible "
-            f"(missing column(s) - {'; '.join(details)}). "
-            "This fork does not migrate old databases; "
-            f"delete '{self.db_path}' and rebuild (e.g. 'code-review-graph build')."
-        )
 
     def _invalidate_cache(self) -> None:
         """Invalidate the cached NetworkX graph after write operations."""
