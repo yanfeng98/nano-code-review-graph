@@ -1595,6 +1595,29 @@ class TestWatchReconciliation:
         finally:
             store.close()
 
+    def test_watch_non_fatal_mode_keeps_running(self, tmp_path):
+        """auto-watch (fatal_on_failure=False) logs a failed batch and keeps the
+        handler alive instead of marking it failed."""
+        broken = tmp_path / "broken.py"
+        broken.write_text("def broken():\n    pass\n")
+        store = GraphStore(tmp_path / "graph.db")
+        handler = _create_watch_handler(
+            tmp_path, store, None, fatal_on_failure=False
+        )
+        try:
+            from watchdog.events import FileCreatedEvent
+
+            with patch(
+                "code_review_graph.incremental.incremental_update",
+                side_effect=RuntimeError("update failed"),
+            ):
+                handler.process([FileCreatedEvent(str(broken))])
+
+            # failure should be logged, not recorded → raise_if_failed no-ops.
+            handler.raise_if_failed()
+        finally:
+            store.close()
+
     def test_watch_callback_failure_propagates_to_boundary(self, tmp_path):
         source = tmp_path / "source.py"
         source.write_text("def source():\n    pass\n")

@@ -1175,8 +1175,19 @@ def _create_watch_handler(
     repo_root: Path,
     store: GraphStore,
     on_files_updated: Optional[Callable],
+    fatal_on_failure: bool = True,
 ):
-    """Create the debounced watchdog handler for one repository."""
+    """Create the debounced watchdog handler for one repository.
+
+    Args:
+        fatal_on_failure: When True (the ``watch`` CLI foreground behaviour),
+            a failed incremental update or post-processing step marks the
+            handler failed and ``raise_if_failed`` re-raises it, stopping the
+            watch loop. When False (the background ``serve --auto-watch``
+            path), failures are logged and the loop keeps running so a single
+            transient error (e.g. a file mid-save) does not silently kill the
+            default watcher.
+    """
     from watchdog.events import FileSystemEvent, FileSystemEventHandler
     from watchdog.utils.event_debouncer import EventDebouncer
 
@@ -1186,8 +1197,9 @@ def _create_watch_handler(
     resolved_root = lexical_root.resolve()
 
     class WatchBatchProcessor:
-        def __init__(self) -> None:
+        def __init__(self, fatal_on_failure: bool) -> None:
             self.failure: BaseException | None = None
+            self._fatal_on_failure = fatal_on_failure
 
         def _relative_path(self, path: str) -> str | None:
             candidate = Path(os.path.abspath(path))
@@ -1291,13 +1303,18 @@ def _create_watch_handler(
                     postprocess_result = on_files_updated(store)
                     _raise_watch_postprocess_warnings(postprocess_result)
             except BaseException as exc:
-                self.failure = exc
+                if self._fatal_on_failure:
+                    self.failure = exc
+                else:
+                    logger.error(
+                        "watch batch failed (continuing): %s", exc
+                    )
 
         def raise_if_failed(self) -> None:
             if self.failure is not None:
                 raise RuntimeError("watch update failed") from self.failure
 
-    processor = WatchBatchProcessor()
+    processor = WatchBatchProcessor(fatal_on_failure)
     debouncer = EventDebouncer(_DEBOUNCE_SECONDS, processor.process)
 
     class GraphUpdateHandler(FileSystemEventHandler):
@@ -1328,6 +1345,7 @@ def watch(
     repo_root: Path,
     store: GraphStore,
     on_files_updated: Optional[Callable] = None,
+    fatal_on_failure: bool = True,
 ) -> None:
     """Watch for file changes and auto-update the graph.
 
@@ -1340,15 +1358,27 @@ def watch(
             batch of file updates completes.  Receives the store as its
             only argument.  Used by the CLI to run post-processing
             (FTS, flows, communities) after watch updates.
+        fatal_on_failure: Raise on a failed batch (foreground ``watch`` CLI)
+            or log-and-continue (background auto-watch).  See
+            :func:`_create_watch_handler`.
     """
     from watchdog.observers import Observer
 
-    initial = incremental_update(repo_root, store, changed_files=[])
-    _raise_watch_update_errors(initial, "initial watch reconciliation")
-    if initial["files_updated"] > 0 and on_files_updated is not None:
-        postprocess_result = on_files_updated(store)
-        _raise_watch_postprocess_warnings(postprocess_result)
-    handler = _create_watch_handler(repo_root, store, on_files_updated)
+    try:
+        initial = incremental_update(repo_root, store, changed_files=[])
+        _raise_watch_update_errors(initial, "initial watch reconciliation")
+        if initial["files_updated"] > 0 and on_files_updated is not None:
+            postprocess_result = on_files_updated(store)
+            _raise_watch_postprocess_warnings(postprocess_result)
+    except BaseException as exc:
+        if fatal_on_failure:
+            raise
+        logger.error(
+            "initial watch reconciliation failed (continuing): %s", exc
+        )
+    handler = _create_watch_handler(
+        repo_root, store, on_files_updated, fatal_on_failure=fatal_on_failure
+    )
     observer = Observer()
     observer.schedule(handler, str(repo_root), recursive=True)
     handler.start()
@@ -1374,8 +1404,20 @@ def start_watch_thread(
     repo_root: Path,
     store: GraphStore,
     daemon: bool = True,
+    on_files_updated: Optional[Callable] = None,
+    fatal_on_failure: bool = True,
 ) -> threading.Thread | None:
     """Start watch mode in a background thread.
+
+    Args:
+        repo_root: Repository root to watch.
+        store: Graph database to update.
+        daemon: Run the thread as a daemon (default True).
+        on_files_updated: Optional callback invoked after each debounced
+            batch of file updates, forwarded to :func:`watch`.
+        fatal_on_failure: Whether a failed batch raises (default) or is logged
+            and skipped so the background watcher keeps running.  The
+            ``serve --auto-watch`` path passes False to stay resilient.
 
     Returns the started thread, or None if watchdog is unavailable.
     """
@@ -1388,6 +1430,10 @@ def start_watch_thread(
     thread = threading.Thread(
         target=watch,
         args=(repo_root, store),
+        kwargs={
+            "on_files_updated": on_files_updated,
+            "fatal_on_failure": fatal_on_failure,
+        },
         daemon=daemon,
         name="crg-watch",
     )

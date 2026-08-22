@@ -15,13 +15,14 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from fastmcp import FastMCP
 
 from . import incremental as _incremental
 from .graph import GraphStore
 from .incremental import find_project_root, get_db_path, start_watch_thread
+from .postprocessing import run_post_processing
 from .prompts import (
     architecture_map_prompt,
     debug_issue_prompt,
@@ -64,6 +65,24 @@ from .tools import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _watch_postprocess(store: GraphStore) -> dict[str, Any]:
+    """Run post-processing after an auto-watch batch without killing the watcher.
+
+    Post-processing steps (FTS, flows, communities) are non-fatal and may
+    warn (e.g. missing optional deps such as ``igraph``). Log those warnings
+    but strip them so ``_raise_watch_postprocess_warnings`` does not tear down
+    the background watcher thread on the next file save.
+    """
+    result = run_post_processing(store)
+    warnings = result.get("warnings") or []
+    for warning in warnings:
+        logger.warning("watch post-processing: %s", warning)
+    if warnings:
+        result = dict(result)
+        result["warnings"] = []
+    return result
 
 # NOTE: Thread-safe for stdio MCP (single-threaded). If adding HTTP/SSE
 # transport with concurrent requests, replace with contextvars.ContextVar.
@@ -1117,7 +1136,13 @@ def main(
     try:
         if auto_watch:
             watch_store = GraphStore(get_db_path(root))
-            thread = start_watch_thread(root, watch_store, daemon=True)
+            thread = start_watch_thread(
+                root,
+                watch_store,
+                daemon=True,
+                on_files_updated=_watch_postprocess,
+                fatal_on_failure=False,
+            )
             if thread is None:
                 logger.warning("Auto-watch was requested but could not be started")
 

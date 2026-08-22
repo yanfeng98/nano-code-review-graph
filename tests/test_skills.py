@@ -897,7 +897,7 @@ class TestDetectServeCommand:
         )
         cmd, args = _detect_serve_command()
         assert cmd == "poetry"
-        assert args == ["run", "code-review-graph", "serve"]
+        assert args == ["run", "code-review-graph", "serve", "--auto-watch"]
 
     def test_virtual_env_pypoetry_returns_poetry_run(self, monkeypatch):
         """VIRTUAL_ENV with 'pypoetry' (poetry run) → 'poetry run' invocation."""
@@ -909,7 +909,7 @@ class TestDetectServeCommand:
         )
         cmd, args = _detect_serve_command()
         assert cmd == "poetry"
-        assert args == ["run", "code-review-graph", "serve"]
+        assert args == ["run", "code-review-graph", "serve", "--auto-watch"]
 
     def test_poetry_env_without_poetry_on_path_falls_through(self, monkeypatch):
         """If poetry venv is detected but poetry binary is missing, fall through."""
@@ -936,7 +936,7 @@ class TestDetectServeCommand:
         )
         cmd, args = _detect_serve_command()
         assert cmd == "uv"
-        assert args == ["run", "code-review-graph", "serve"]
+        assert args == ["run", "code-review-graph", "serve", "--auto-watch"]
 
     def test_uv_lock_detection_returns_uv_run(self, monkeypatch, tmp_path):
         """uv.lock alongside sys.executable → detected as a uv project."""
@@ -956,7 +956,7 @@ class TestDetectServeCommand:
         assert _in_uv_project() is True
         cmd, args = _detect_serve_command()
         assert cmd == "uv"
-        assert args == ["run", "code-review-graph", "serve"]
+        assert args == ["run", "code-review-graph", "serve", "--auto-watch"]
 
     def test_uvx_fallback(self, monkeypatch):
         """Not in Poetry/uv but uvx available → use uvx (original behaviour)."""
@@ -970,7 +970,7 @@ class TestDetectServeCommand:
         )
         cmd, args = _detect_serve_command()
         assert cmd == "uvx"
-        assert args == ["code-review-graph", "serve"]
+        assert args == ["code-review-graph", "serve", "--auto-watch"]
 
     def test_sys_executable_fallback(self, monkeypatch):
         """Nothing else available → fall back to sys.executable -m."""
@@ -981,7 +981,7 @@ class TestDetectServeCommand:
         monkeypatch.setattr("code_review_graph.skills.shutil.which", lambda _: None)
         cmd, args = _detect_serve_command()
         assert cmd == sys.executable
-        assert args == ["-m", "code_review_graph", "serve"]
+        assert args == ["-m", "code_review_graph", "serve", "--auto-watch"]
 
     def test_poetry_takes_priority_over_uv(self, monkeypatch):
         """Poetry detection wins even when UV_PROJECT_ENVIRONMENT is also set."""

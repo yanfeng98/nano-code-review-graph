@@ -78,17 +78,17 @@ def _detect_serve_command() -> tuple[str, list[str]]:
     if _in_poetry_project():
         poetry = shutil.which("poetry")
         if poetry:
-            return ("poetry", ["run", "code-review-graph", "serve"])
+            return ("poetry", ["run", "code-review-graph", "serve", "--auto-watch"])
 
     if os.environ.get("UV_PROJECT_ENVIRONMENT") or _in_uv_project():
         uv = shutil.which("uv")
         if uv:
-            return ("uv", ["run", "code-review-graph", "serve"])
+            return ("uv", ["run", "code-review-graph", "serve", "--auto-watch"])
 
     if shutil.which("uvx"):
-        return ("uvx", ["code-review-graph", "serve"])
+        return ("uvx", ["code-review-graph", "serve", "--auto-watch"])
 
-    return (sys.executable, ["-m", "code_review_graph", "serve"])
+    return (sys.executable, ["-m", "code_review_graph", "serve", "--auto-watch"])
 
 
 def _build_server_entry(

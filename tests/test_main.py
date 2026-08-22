@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import logging
 import threading
 
 import pytest
@@ -460,3 +461,19 @@ class TestApplyToolFilter:
         crg_main._apply_tool_filter(" query_graph_tool , semantic_search_nodes_tool ")
         remaining = await self._tool_names()
         assert remaining == {"query_graph_tool", "semantic_search_nodes_tool"}
+
+
+def test_watch_postprocess_strips_warnings(monkeypatch, caplog):
+    """_watch_postprocess keeps non-fatal post-processing warnings out of the
+    background watcher's error boundary so auto-watch never dies on a step
+    that merely warns (e.g. a missing optional dependency)."""
+    def fake_run_post(store):
+        return {"fts_indexed": 10, "warnings": ["bogus warning", "another"]}
+    monkeypatch.setattr(crg_main, "run_post_processing", fake_run_post)
+
+    with caplog.at_level(logging.WARNING, logger="code_review_graph.main"):
+        result = crg_main._watch_postprocess(None)
+
+    assert result["fts_indexed"] == 10
+    assert result.get("warnings") == []
+    assert any("bogus warning" in rec.message for rec in caplog.records)
