@@ -69,8 +69,7 @@ LOCAL_DEFAULT_MODEL = "all-MiniLM-L6-v2"
 # The dependency import itself touches process-global Torch state, so one lock
 # must cover availability checks, imports, and model construction across every
 # model name. A per-model lock would still allow two first imports to race.
-# Populated by ``prewarm_local_embeddings()`` at server startup (see ``main.main``)
-# and by ``LocalEmbeddingProvider._get_model`` on first lazy load. Sharing the
+# Populated by ``LocalEmbeddingProvider._get_model`` on first lazy load. Sharing the
 # loaded model across ``LocalEmbeddingProvider`` instances avoids re-importing
 # ``sentence_transformers`` + ``torch`` from worker threads, which deadlocks
 # ``semantic_search_nodes_tool`` on Windows stdio MCP (#385 fixed the peer
@@ -78,33 +77,6 @@ LOCAL_DEFAULT_MODEL = "all-MiniLM-L6-v2"
 # torch DLL / OpenMP init runs inside an executor thread).
 _MODEL_CACHE: dict[str, Any] = {}
 _MODEL_INIT_LOCK = threading.RLock()
-
-
-def prewarm_local_embeddings(model_name: str | None = None) -> None:
-    """Eagerly load the local sentence-transformer model on the calling thread.
-
-    Call this from the **main thread** before entering an asyncio event loop
-    (e.g. before ``mcp.run()``) on Windows to prevent a deadlock where lazy-
-    loading ``sentence_transformers`` + ``torch`` inside a FastMCP executor
-    worker thread blocks indefinitely on DLL init / OpenMP thread-pool
-    registration.
-
-    No-op when ``sentence-transformers`` is not installed (cloud-provider
-    setups remain unaffected) or when the configured model is already cached.
-
-    Args:
-        model_name: Optional override; falls back to the ``CRG_EMBEDDING_MODEL``
-            environment variable and then to ``LOCAL_DEFAULT_MODEL``.
-    """
-    resolved = model_name or os.environ.get(
-        "CRG_EMBEDDING_MODEL", LOCAL_DEFAULT_MODEL
-    )
-    try:
-        LocalEmbeddingProvider(resolved)._get_model()
-    except ImportError:
-        return  # cloud-only setup: nothing to pre-warm
-    except Exception as exc:  # pragma: no cover — best-effort startup hook
-        logger.warning("prewarm_local_embeddings(%s) skipped: %s", resolved, exc)
 
 
 class LocalEmbeddingProvider(EmbeddingProvider):

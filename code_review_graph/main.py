@@ -13,7 +13,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import sys
 from pathlib import Path
 from typing import Any, Optional
 
@@ -1107,14 +1106,6 @@ def main(
 ) -> None:
     """Run the MCP server (stdio or HTTP).
 
-    On Windows, Python 3.8+ defaults to ``ProactorEventLoop``, which
-    interacts poorly with ``concurrent.futures.ProcessPoolExecutor``
-    (used by ``full_build``) over a stdio MCP transport — the combination
-    produces silent hangs on ``build_or_update_graph_tool`` and
-    ``embed_graph_tool``. Switching to ``WindowsSelectorEventLoopPolicy``
-    before fastmcp starts its loop avoids the deadlock.
-    See: #46, #136
-
     Args:
         repo_root: Default repository root for all tool calls.
         tools: Comma-separated list of tool names to expose.
@@ -1146,19 +1137,6 @@ def main(
             )
             if thread is None:
                 logger.warning("Auto-watch was requested but could not be started")
-
-        if sys.platform == "win32":
-            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-            # Pre-warm sentence-transformers on the main thread before fastmcp's
-            # event loop starts. Lazy-loading ``torch`` + tokenizers inside an
-            # executor worker thread deadlocks ``semantic_search_nodes_tool`` on
-            # Windows stdio MCP (DLL init / OpenMP thread-pool registration grabs
-            # locks the loop needs). #385 added ``asyncio.to_thread`` to peer
-            # tools but cannot fix this case — the dangerous initialization has
-            # to happen on the main thread before any worker thread is spawned.
-            from .embeddings import prewarm_local_embeddings
-
-            prewarm_local_embeddings()
 
         if transport == "stdio":
             # Stdio MCP must keep stdout strictly JSON-RPC. FastMCP's banner/update

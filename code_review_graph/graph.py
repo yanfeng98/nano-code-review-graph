@@ -53,23 +53,6 @@ def _compatible_edge_languages(language: str) -> tuple[str, ...]:
     return (language,)
 
 
-def _bridge_qualified_name(qualified_name: str) -> str:
-    """Return *qualified_name* with its file-path component POSIX-normalized.
-
-    Qualified names embed the file path before the first ``::`` (File nodes
-    are just the path). Stored identities always use forward slashes (#774),
-    so a Windows-native spelling must be bridged to find the POSIX-keyed row.
-    Only the path component is rewritten — the symbol part may legitimately
-    contain backslashes.
-    """
-    path_part, sep, symbol_part = qualified_name.partition("::")
-    return normalize_file_path(path_part) + sep + symbol_part
-
-
-# ---------------------------------------------------------------------------
-# Schema
-# ---------------------------------------------------------------------------
-
 _SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS nodes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -276,8 +259,6 @@ class GraphStore:
         try:
             self._init_schema()
         except BaseException:
-            # Don't leak an open handle to a stale/corrupt DB on the init
-            # error path (relevant on Windows, which locks open SQLite files).
             self._conn.close()
             raise
         self._nxg_cache: nx.DiGraph | None = None
@@ -500,14 +481,6 @@ class GraphStore:
         row = self._conn.execute(
             "SELECT * FROM nodes WHERE qualified_name = ?", (qualified_name,)
         ).fetchone()
-        if row is None:
-            # Bridge Windows-native path spellings to the stored POSIX
-            # identity (#774), mirroring the file-keyed lookups above.
-            bridged = _bridge_qualified_name(qualified_name)
-            if bridged != qualified_name:
-                row = self._conn.execute(
-                    "SELECT * FROM nodes WHERE qualified_name = ?", (bridged,)
-                ).fetchone()
         return self._row_to_node(row) if row else None
 
     def get_nodes_by_file(self, file_path: str) -> list[GraphNode]:

@@ -210,16 +210,15 @@ def test_model_cache_remains_scoped_by_model_name(monkeypatch):
     assert set(embeddings._MODEL_CACHE) == {"alpha", "beta"}
 
 
-def test_posix_server_start_does_not_prewarm_local_embeddings(monkeypatch, tmp_path):
-    """Unused local embeddings impose no model import/load cost on POSIX."""
+def test_server_start_does_not_load_embedding_model(monkeypatch, tmp_path):
+    """Starting the MCP server loads no local embedding model."""
     events: list[str] = []
     monkeypatch.delenv("CRG_TOOLS", raising=False)
     monkeypatch.setattr(crg_main, "_default_repo_root", None)
-    monkeypatch.setattr(crg_main.sys, "platform", "linux")
     monkeypatch.setattr(
-        embeddings,
-        "prewarm_local_embeddings",
-        lambda: events.append("prewarm"),
+        embeddings.LocalEmbeddingProvider,
+        "_get_model",
+        lambda self: events.append("prewarm"),
     )
     monkeypatch.setattr(
         crg_main.mcp,
@@ -230,37 +229,3 @@ def test_posix_server_start_does_not_prewarm_local_embeddings(monkeypatch, tmp_p
     crg_main.main(repo_root=str(tmp_path))
 
     assert events == ["run"]
-
-
-def test_windows_server_still_prewarms_before_mcp_run(monkeypatch, tmp_path):
-    """Windows retains main-thread prewarm for its worker-thread deadlock."""
-    events: list[str] = []
-    policy = object()
-    monkeypatch.delenv("CRG_TOOLS", raising=False)
-    monkeypatch.setattr(crg_main, "_default_repo_root", None)
-    monkeypatch.setattr(crg_main.sys, "platform", "win32")
-    monkeypatch.setattr(
-        crg_main.asyncio,
-        "WindowsSelectorEventLoopPolicy",
-        lambda: policy,
-        raising=False,
-    )
-    monkeypatch.setattr(
-        crg_main.asyncio,
-        "set_event_loop_policy",
-        lambda value: events.append("policy") if value is policy else None,
-    )
-    monkeypatch.setattr(
-        embeddings,
-        "prewarm_local_embeddings",
-        lambda: events.append("prewarm"),
-    )
-    monkeypatch.setattr(
-        crg_main.mcp,
-        "run",
-        lambda **_kwargs: events.append("run"),
-    )
-
-    crg_main.main(repo_root=str(tmp_path))
-
-    assert events == ["policy", "prewarm", "run"]

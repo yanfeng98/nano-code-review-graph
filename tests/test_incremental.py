@@ -39,8 +39,6 @@ class TestParseExecutorSelection:
         monkeypatch.setattr(
             incremental_module, "_MCP_STDIO_ACTIVE", True, raising=False,
         )
-        monkeypatch.setattr(incremental_module.sys, "platform", "linux")
-        monkeypatch.setattr(incremental_module.sys.stdin, "isatty", lambda: False)
 
         assert incremental_module._select_executor_kind() == "thread"
 
@@ -49,8 +47,6 @@ class TestParseExecutorSelection:
         monkeypatch.setattr(
             incremental_module, "_MCP_STDIO_ACTIVE", False, raising=False,
         )
-        monkeypatch.setattr(incremental_module.sys, "platform", "linux")
-        monkeypatch.setattr(incremental_module.sys.stdin, "isatty", lambda: False)
 
         assert incremental_module._select_executor_kind() == "process"
 

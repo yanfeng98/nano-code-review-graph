@@ -4,7 +4,7 @@ import logging
 import sqlite3
 import tempfile
 import time
-from pathlib import Path, PureWindowsPath
+from pathlib import Path
 
 import pytest
 
@@ -72,27 +72,6 @@ class TestGraphStore:
         result = self.store.get_node("/test/file.py::MyClass.do_thing")
         assert result is not None
         assert result.parent_name == "MyClass"
-
-    def test_get_node_bridges_windows_native_qualified_names(self):
-        """A Windows-native path prefix still finds the POSIX-keyed node (#774)."""
-        path = "repo/pkg/mod.py"
-        self.store.upsert_node(self._make_file_node(path))
-        self.store.upsert_node(self._make_func_node("my_func", path))
-        self.store.commit()
-
-        native_prefix = str(PureWindowsPath(path))
-        assert native_prefix == "repo\\pkg\\mod.py"
-        native_qn = f"{native_prefix}::my_func"
-        result = self.store.get_node(native_qn)
-        assert result is not None
-        assert result.qualified_name == "repo/pkg/mod.py::my_func"
-
-        file_node = self.store.get_node(native_prefix)
-        assert file_node is not None
-        assert file_node.qualified_name == "repo/pkg/mod.py"
-
-        assert self.store.get_node(f"{native_prefix}::missing") is None
-
 
     def test_upsert_edge(self):
         edge = EdgeInfo(

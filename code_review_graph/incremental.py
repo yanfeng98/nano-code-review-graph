@@ -13,7 +13,6 @@ import logging
 import os
 import re
 import subprocess
-import sys
 import threading
 import time
 from pathlib import Path, PurePosixPath
@@ -41,11 +40,9 @@ def _select_executor_kind() -> str:
     """Return 'process' or 'thread' for parallel parsing.
 
     Defaults to ``process`` (the original behavior, fastest on Linux/macOS).
-    Auto-switches to ``thread`` for an active MCP stdio server on every
-    platform, where ``ProcessPoolExecutor`` workers can inherit the transport
-    pipe/socket and prevent EOF shutdown. The older Windows non-TTY fallback
-    remains for direct integrations that predate the explicit transport flag
-    (issues #46, #136, PR #615).
+    Auto-switches to ``thread`` for an active MCP stdio server, where
+    ``ProcessPoolExecutor`` workers can inherit the transport pipe/socket
+    and prevent EOF shutdown.
 
     Override explicitly with ``CRG_PARSE_EXECUTOR={process,thread}``.
 
@@ -58,8 +55,6 @@ def _select_executor_kind() -> str:
     if explicit in ("process", "thread"):
         return explicit
     if _MCP_STDIO_ACTIVE:
-        return "thread"
-    if sys.platform == "win32" and not sys.stdin.isatty():
         return "thread"
     return "process"
 
