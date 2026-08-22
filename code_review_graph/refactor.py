@@ -220,7 +220,7 @@ _MIN_PKG_SEGMENT_LEN = 4  # ignore short dirs like "src", "lib", "app"
 @functools.lru_cache(maxsize=4096)
 def _path_segments(file_path: str) -> tuple[str, ...]:
     """Return directory segments long enough to serve as package-name anchors."""
-    parts = file_path.replace("\\", "/").split("/")
+    parts = file_path.split("/")
     return tuple(
         p for p in parts[:-1]  # skip the filename itself
         if len(p) >= _MIN_PKG_SEGMENT_LEN and p not in ("home", "src", "lib", "app")

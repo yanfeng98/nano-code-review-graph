@@ -129,7 +129,7 @@ def _extract_file_prefix(file_paths: list[str]) -> str:
     parts: list[str] = []
     for fp in file_paths:
         # Use the last directory component or file stem
-        segments = fp.replace("\\", "/").split("/")
+        segments = fp.split("/")
         # Take the parent dir if it exists, otherwise the file stem
         if len(segments) >= 2:
             parts.append(segments[-2])
@@ -485,7 +485,7 @@ def _detect_file_based(
     # Collect all directory paths (normalized, without filename)
     all_dir_parts: list[list[str]] = []
     for n in nodes:
-        parts = n.file_path.replace("\\", "/").split("/")
+        parts = n.file_path.split("/")
         all_dir_parts.append([p for p in parts[:-1] if p])
 
     # Find the longest common prefix among directory parts
@@ -502,7 +502,7 @@ def _detect_file_based(
     def _group_at_depth(depth: int) -> dict[str, list[GraphNode]]:
         groups: dict[str, list[GraphNode]] = defaultdict(list)
         for n in nodes:
-            parts = n.file_path.replace("\\", "/").split("/")
+            parts = n.file_path.split("/")
             dir_parts = [p for p in parts[:-1] if p]
             remainder = dir_parts[prefix_len:]
             if remainder:

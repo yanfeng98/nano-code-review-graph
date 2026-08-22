@@ -565,20 +565,18 @@ def _path_is_within(path: Path, root: Path) -> bool:
 
 
 def normalize_file_path(path: "str | PurePath") -> str:
-    """Return *path* as a forward-slash (POSIX) string for graph identity.
+    """Return *path* as a forward-slash string for graph identity.
 
     ``file_path`` values and the path component of qualified names are graph
-    identity: they must be separator-stable across operating systems so a
-    graph built on Windows produces the same identifiers as one built on
-    Linux/macOS, and so consumers that reconstruct identifiers from ``Path``
-    objects always agree with the parser. See issue #774.
+    identity, so ``Path`` objects are resolved to their POSIX string form to
+    keep the parser and consumers on a single canonical spelling.
 
     Only apply this to file *paths* — never to symbol names: qualified
     identifiers legitimately contain backslashes.
     """
     if isinstance(path, PurePath):
         return path.as_posix()
-    return str(path).replace("\\", "/")
+    return str(path)
 
 
 @dataclass

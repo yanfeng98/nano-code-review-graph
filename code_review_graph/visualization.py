@@ -122,7 +122,7 @@ def _build_name_index(
                 # Index by every path suffix so C/C++ bare includes resolve.
                 # e.g. "/abs/libs/trading/Foo.hpp" is also indexed as
                 # "Foo.hpp", "trading/Foo.hpp", "libs/trading/Foo.hpp", …
-                parts = fp.replace("\\", "/").split("/")
+                parts = fp.split("/")
                 for i in range(len(parts)):
                     suffix = "/".join(parts[i:])
                     if suffix:
@@ -377,7 +377,7 @@ def _aggregate_file(data: dict) -> dict:
     # Build file nodes
     file_nodes = []
     for fp, count in file_symbol_count.items():
-        parts = fp.replace("\\", "/").split("/")
+        parts = fp.split("/")
         short = parts[-1] if parts else fp
         parent = parts[-2] if len(parts) >= 2 else ""
         label = f"{parent}/{short}" if parent else short

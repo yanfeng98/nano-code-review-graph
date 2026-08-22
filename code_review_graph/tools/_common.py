@@ -234,12 +234,12 @@ def _resolve_graph_file_paths(
             seen.add(path)
 
     for file_path in file_paths:
-        raw = file_path.replace("\\", "/")
+        raw = file_path
         candidates = [raw]
         path = Path(file_path)
         if path.is_absolute():
             try:
-                candidates.append(str(path.resolve().relative_to(root)).replace("\\", "/"))
+                candidates.append(str(path.resolve().relative_to(root)))
             except ValueError:
                 pass
         else:
@@ -251,7 +251,7 @@ def _resolve_graph_file_paths(
 
         suffixes = []
         for candidate in candidates:
-            normalized = candidate.replace("\\", "/")
+            normalized = candidate
             if normalized not in suffixes:
                 suffixes.append(normalized)
 

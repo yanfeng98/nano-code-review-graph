@@ -287,7 +287,7 @@ def _should_ignore(path: str, patterns: list[str]) -> bool:
     ``**/<dir>/**`` and unanchored single-directory patterns match at any
     depth. A leading slash anchors a pattern to the repository root.
     """
-    normalized = path.replace("\\", "/").lstrip("/")
+    normalized = path.lstrip("/")
     parts = PurePosixPath(normalized).parts
     for pattern in patterns:
         anchored = pattern.startswith("/")

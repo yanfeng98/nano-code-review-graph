@@ -33,7 +33,7 @@ def resolve_python_imports(store: GraphStore) -> dict[str, int]:
     modules: dict[str, set[str]] = {}
     for file_path in python_files:
         parts = [
-            part for part in file_path.replace("\\", "/").split("/") if part
+            part for part in file_path.split("/") if part
         ]
         if not parts:
             continue
