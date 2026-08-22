@@ -33,12 +33,9 @@ pipx install code-review-graph
 
 `pipx` 在隔离的 venv 中安装 CLI 工具。如果之后仍然找不到命令，运行 `pipx ensurepath`，或把 `~/.local/bin` 加到你的 PATH。
 
-**选项 2——使用 `uvx`（无需安装）：**
+**选项 2——本仓库不发布到 PyPI（不要用 `uvx`）：**
 
-```bash
-uvx code-review-graph install
-uvx code-review-graph build
-```
+本 fork 无需也不应通过 `uvx code-review-graph` 获取工具——那会解析到 PyPI 上的上游包，而不是这份源码。请在本仓库内 `uv sync --extra dev`，再用 `uv run code-review-graph …` 或 `python -m code_review_graph …` 调用（见选项 3）。
 
 **选项 3——作为 Python 模块运行（始终有效）：**
 
@@ -63,7 +60,7 @@ source ~/.zshrc
 
 | 部分 | Scope | 位置 |
 |------|-------|------|
-| Python 包 | 用户级 | 通过 `pip`/`pipx`/`uvx` 安装一次 |
+| Python 包 | 用户级 | 通过本仓库 `uv sync --extra dev`（editable）或本地 wheel 安装一次 |
 | Graph 数据库 | 项目级 | 每个项目内的 `.code-review-graph/graph.db` |
 | MCP server 配置（`.mcp.json`） | 项目级 | Claude Code 为每个项目启动一个 MCP server，`cwd=<project>` |
 | Multi-repo registry | 用户级 | `~/.code-review-graph/registry.json`（仅用于 `cross_repo_search`） |
@@ -77,12 +74,12 @@ source ~/.zshrc
 **修复——把 `.mcp.json` 中的 `command`/`args` 以及 `.claude/settings.json` 中的任何 hook 命令更新为匹配你的 venv：**
 
 ```json
-// .mcp.json —— 指向你的 venv 的 Python 或 venv 内的 uvx
+// .mcp.json —— 指向本仓库可导入的包（本 fork 不发布到 PyPI，请勿用 uvx）
 {
   "mcpServers": {
     "code-review-graph": {
-      "command": "/path/to/your/venv/bin/uvx",
-      "args": ["code-review-graph", "serve"]
+      "command": "/path/to/your/venv/bin/python",
+      "args": ["-m", "code_review_graph", "serve", "--auto-watch"]
     }
   }
 }
@@ -153,8 +150,8 @@ Graph 使用带 WAL 模式的 SQLite。如果看到锁错误：
 
 ## MCP server 无法启动
 - 验证 `uv` 已安装（`uv --version`；用 `pip install uv` 或 `brew install uv` 安装）
-- 检查 `uvx code-review-graph serve` 能否无错误运行
-- 如果使用自定义 `.mcp.json`，确保它使用 `"command": "uvx"` 和 `"args": ["code-review-graph", "serve"]`
+- 检查 `python -m code_review_graph serve` 能否无错误运行（本 fork 不发布到 PyPI，请勿用 `uvx code-review-graph`）
+- 如果使用自定义 `.mcp.json`，确保 `command`/`args` 指向本仓库可导入的包（`python -m code_review_graph serve`，绝对解释器路径最稳）
 - 重新运行 `code-review-graph install` 以重新生成配置
 
 ## Windows / WSL

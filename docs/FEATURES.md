@@ -1,5 +1,7 @@
 # 功能
 
+> 本 fork 不发布到 PyPI。下文是上游项目的历史功能记录，其中「PyPI 自动发布」「基于 `uvx` 的可移植配置」等条目不适用于本 fork（已移除 `publish.yml` 与 `uvx` 路径）。当前用法见 README：`uv sync --extra dev` / `uv run code-review-graph …`，或构建本地 wheel 分发。
+
 ## v2.3.7（当前）
 - **无需 fork 的自定义语言**：在你的 repo 中放入 `.code-review-graph/languages.toml`，即可索引 tree-sitter-language-pack 提供的任何 grammar——扩展名映射加 node-type 列表，经过校验和上限控制，内置语言始终优先。参见 [CUSTOM_LANGUAGES.md](CUSTOM_LANGUAGES.md)。
 - **docs/FAQ.md**：CRG 与 LSP、RAG、grep/agentic 搜索及相邻工具的对比；何时*不*该使用它；验证步骤；monorepo/worktree 与 registry 指引。

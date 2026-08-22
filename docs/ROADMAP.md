@@ -1,5 +1,7 @@
 # 路线图
 
+> 本 fork 不发布到 PyPI。下文「发布时通过 GitHub Actions 自动发布到 PyPI」「可移植的基于 `uvx` 的 MCP 配置」等条目在本 fork 不适用（已移除 `publish.yml` 与 `uvx` 路径）。当前用法见 README。
+
 ## 已发布
 
 ### v2.3.7

@@ -38,6 +38,8 @@ node_modules/
 # Claude Code
 .claude/
 .claude-plugin/
+# Per-machine MCP config (contains the absolute venv path; generate via install)
+.mcp.json
 
 # Qoder
 .qoder/
