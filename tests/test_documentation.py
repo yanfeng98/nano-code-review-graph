@@ -24,12 +24,14 @@ USER_DOC_FILES = README_FILES + (
 )
 
 
-def test_pip_extra_examples_use_cross_shell_double_quotes():
-    """Extras must survive zsh globbing without breaking Windows cmd.exe."""
+def test_optional_extra_docs_use_uv_sync():
+    """The fork documents optional deps via ``uv sync --extra`` — never
+    ``pip install code-review-graph[...]``, which would pull the upstream
+    PyPI package instead of this repo."""
     for readme_name in README_FILES:
         content = (ROOT / readme_name).read_text(encoding="utf-8")
         for group in OPTIONAL_GROUPS:
-            command = f'pip install "code-review-graph[{group}]"'
+            command = "uv sync --all" if group == "all" else f"uv sync --extra {group}"
             assert command in content, f"{readme_name} is missing {command}"
 
 

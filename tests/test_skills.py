@@ -917,13 +917,13 @@ class TestDetectServeCommand:
         monkeypatch.delenv("VIRTUAL_ENV", raising=False)
         monkeypatch.delenv("UV_PROJECT_ENVIRONMENT", raising=False)
         monkeypatch.setattr("code_review_graph.skills._in_uv_project", lambda: False)
-        # poetry not on PATH → should fall through to uvx
+        # poetry not on PATH → should fall through to the local package
         monkeypatch.setattr(
             "code_review_graph.skills.shutil.which",
             lambda x: "/usr/bin/uvx" if x == "uvx" else None,
         )
         cmd, _ = _detect_serve_command()
-        assert cmd == "uvx"
+        assert cmd == sys.executable
 
     def test_uv_project_env_returns_uv_run(self, monkeypatch):
         """UV_PROJECT_ENVIRONMENT set + uv on PATH → 'uv run' invocation."""
@@ -958,8 +958,10 @@ class TestDetectServeCommand:
         assert cmd == "uv"
         assert args == ["run", "code-review-graph", "serve", "--auto-watch"]
 
-    def test_uvx_fallback(self, monkeypatch):
-        """Not in Poetry/uv but uvx available → use uvx (original behaviour)."""
+    def test_uvx_never_used(self, monkeypatch):
+        """uvx is ignored even when present: this fork is never published to
+        PyPI, so ``uvx code-review-graph`` would resolve upstream instead of
+        this repo's locally importable package."""
         monkeypatch.delenv("POETRY_ACTIVE", raising=False)
         monkeypatch.delenv("VIRTUAL_ENV", raising=False)
         monkeypatch.delenv("UV_PROJECT_ENVIRONMENT", raising=False)
@@ -969,8 +971,8 @@ class TestDetectServeCommand:
             lambda x: "/usr/bin/uvx" if x == "uvx" else None,
         )
         cmd, args = _detect_serve_command()
-        assert cmd == "uvx"
-        assert args == ["code-review-graph", "serve", "--auto-watch"]
+        assert cmd == sys.executable
+        assert args == ["-m", "code_review_graph", "serve", "--auto-watch"]
 
     def test_sys_executable_fallback(self, monkeypatch):
         """Nothing else available → fall back to sys.executable -m."""

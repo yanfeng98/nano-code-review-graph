@@ -85,9 +85,9 @@ def _detect_serve_command() -> tuple[str, list[str]]:
         if uv:
             return ("uv", ["run", "code-review-graph", "serve", "--auto-watch"])
 
-    if shutil.which("uvx"):
-        return ("uvx", ["code-review-graph", "serve", "--auto-watch"])
-
+    # No uvx fallback: this fork is never published to PyPI, so ``uvx
+    # code-review-graph`` would resolve to the upstream package instead of
+    # this repo.  Always serve from the locally importable package.
     return (sys.executable, ["-m", "code_review_graph", "serve", "--auto-watch"])
 
 

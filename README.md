@@ -25,12 +25,14 @@
 ## 快速开始
 
 ```bash
-pip install code-review-graph
-code-review-graph install          # 自动检测并配置所有支持的平台
-code-review-graph build            # 解析代码库
+git clone https://github.com/yanfeng98/nano-code-review-graph.git
+cd code-review-graph
+uv sync --extra dev                       # editable 安装 + 开发依赖(pytest/ruff/mypy)
+uv run code-review-graph install          # 自动检测并配置所有支持的平台
+uv run code-review-graph build            # 解析代码库
 ```
 
-一条命令完成所有配置。`install` 会检测你安装了哪些 AI 编码工具，为每个工具写入正确的 MCP 配置，安装平台原生 hooks/skills，并将图感知指令注入平台规则文件。它会自动判断你是通过 `uvx` 还是 `pip`/`pipx` 安装的，并生成相应的配置。安装后请重启编辑器或工具。
+一条命令完成所有配置。`install` 会检测你安装了哪些 AI 编码工具，为每个工具写入正确的 MCP 配置，安装平台原生 hooks/skills，并将图感知指令注入平台规则文件。生成的 MCP 命令指向**本地包**（`uv run` / `-m code_review_graph`）而非 `uvx`——这份代码不发布到 PyPI，`uvx code-review-graph` 只会拉到上游原版。安装后请重启编辑器或工具。
 
 <p align="center">
   <img src="diagrams/diagram8_supported_platforms.png" alt="一次安装，全平台支持：自动检测 Codex、Claude Code 和 OpenCode" width="85%" />
@@ -39,12 +41,12 @@ code-review-graph build            # 解析代码库
 指定特定平台：
 
 ```bash
-code-review-graph install --platform codex       # 仅配置 Codex
-code-review-graph install --platform claude-code  # 仅配置 Claude Code
-code-review-graph install --platform opencode     # 仅配置 OpenCode
+uv run code-review-graph install --platform codex       # 仅配置 Codex
+uv run code-review-graph install --platform claude-code  # 仅配置 Claude Code
+uv run code-review-graph install --platform opencode     # 仅配置 OpenCode
 ```
 
-需要 Python 3.10+。为获得最佳体验，建议安装 [uv](https://docs.astral.sh/uv/)（如果可用，MCP 配置将使用 `uvx`，否则回退到直接使用 `code-review-graph` 命令）。
+需要 Python 3.10+。建议用 [uv](https://docs.astral.sh/uv/) 管理。命令以 `uv run code-review-graph …` 或 `.venv/bin/code-review-graph …` 调用（取决于是否激活 venv）；`uvx` 不适用，因为本仓库不发布到 PyPI。
 
 如需从 Git 或 SVN 项目中移除 CRG，可在工作树内任意位置使用对称的卸载命令。目标会被规范化为工作树根目录，非仓库目录会被拒绝。仅移除 CRG 拥有的文件和条目，不相关的 MCP 服务器、hooks、skills 和 JSONC 注释保持不变。共享配置的更改使用原子替换，失败写入不会影响原文件。
 
@@ -351,14 +353,14 @@ node_modules/**
 
 注意：在 git 仓库中，仅跟踪的文件会被索引（`git ls-files`），因此被 gitignore 的文件会自动跳过。使用 `.code-review-graphignore` 来排除已跟踪的文件或在不使用 git 时。
 
-可选的依赖组：
+可选依赖组（本仓库用 `uv sync` 安装,不用 `pip install code-review-graph[...]`,后者会装到 PyPI 上游）:
 
 ```bash
-pip install "code-review-graph[embeddings]"          # 本地向量嵌入（sentence-transformers）
-pip install "code-review-graph[communities]"         # 社区检测（igraph）
-pip install "code-review-graph[enrichment]"          # Python 调用解析增强（Jedi）
-pip install "code-review-graph[wiki]"                # 含 LLM 摘要的 Wiki 生成（ollama）
-pip install "code-review-graph[all]"                 # 所有可选依赖
+uv sync --extra embeddings    # 本地向量嵌入（sentence-transformers）
+uv sync --extra communities   # 社区检测（igraph）
+uv sync --extra enrichment    # Python 调用解析增强（Jedi）
+uv sync --extra wiki          # 含 LLM 摘要的 Wiki 生成（ollama）
+uv sync --all                 # 所有可选依赖
 ```
 
 ### 环境变量
@@ -461,8 +463,6 @@ CLI 标志优先级高于环境变量。当两者都未设置时，所有工具�
    ```
 
 3. 如需**在 clone 仓库中开发**而不进行全局安装，使用 `uv sync` 和 `uv run code-review-graph …`（或在 `uv sync` 后激活 `.venv`）。
-
-**诊断（可选）：** `python3 scripts/diagnose_pypi_connectivity.py` — 如果打印 `FAILED`，问题是环境/网络，而非此仓库中错误的包名。
 
 ### Windows 配置问题（无效 JSON / 连接关闭）
 如果你使用 Windows 并通过 Claude Code 连接时遇到 `Invalid JSON: EOF while parsing` 或 `MCP error -32000: Connection closed`，不要在配置中使用 `cmd /c` 包装器。
