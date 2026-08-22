@@ -585,22 +585,7 @@ code-review-graph build       # 生成该项目的图
 ```bash
 git clone https://github.com/yanfeng98/nano-code-review-graph.git
 cd code-review-graph
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-pytest
+uv sync --extra dev                # editable 安装 + 开发依赖(pytest/ruff/mypy)
+uv run pytest tests/ --tb=short -q # 测试
+uv run ruff check code_review_graph/  # lint
 ```
-
-<details>
-<summary><strong>添加新语言</strong></summary>
-<br>
-
-编辑 `code_review_graph/parser.py`，将你的扩展名添加到 `EXTENSION_TO_LANGUAGE`，以及在 `_CLASS_TYPES`、`_FUNCTION_TYPES`、`_IMPORT_TYPES` 和 `_CALL_TYPES` 中添加节点类型映射。附带测试用例并提交 PR。
-
-</details>
-
-<p align="center">
-<br>
-<a href="https://code-review-graph.com">code-review-graph.com</a><br><br>
-<code>pip install code-review-graph && code-review-graph install</code><br>
-<sub>支持 Codex、Claude Code 和 OpenCode</sub>
-</p>
