@@ -66,7 +66,7 @@ open .code-review-graph/graph.html
 
 ### 6. 语义搜索（可选）
 ```bash
-pip install "code-review-graph[embeddings]"
+uv sync --extra embeddings   # 本 fork 不发布到 PyPI，勿用 pip install code-review-graph[embeddings]
 ```
 然后使用 `embed_graph_tool` 计算 vectors。`semantic_search_nodes_tool` 在存在匹配的 embeddings 时自动使用 vector 相似度，否则回退到 keyword/FTS 搜索。
 

@@ -147,7 +147,7 @@ Graph 使用带 WAL 模式的 SQLite。如果看到锁错误：
 - 检查 hooks 是否在 `.claude/settings.json` 中配置（重新运行 `code-review-graph install` 以重新生成）
 
 ## Embeddings 不工作
-- 用 `pip install "code-review-graph[embeddings]"` 安装
+- 用 `uv sync --extra embeddings` 安装（本 fork 不发布到 PyPI，勿用 `pip install "code-review-graph[embeddings]"`）
 - 运行 `embed_graph_tool` 计算 vectors
 - 首次 embedding 运行会下载模型（约 90MB，一次性）
 
@@ -168,21 +168,21 @@ Graph 使用带 WAL 模式的 SQLite。如果看到锁错误：
 
 ## Community detection 需要 igraph
 
-- 用 `pip install "code-review-graph[communities]"` 安装
+- 用 `uv sync --extra communities` 安装（本 fork 不发布到 PyPI，勿用 `pip install "code-review-graph[communities]"`）
 - 没有 igraph 时，community detection 回退到基于文件的 grouping（精确度较低但仍可用）
 
 ## 带 LLM 摘要的 Wiki 生成
 
-- 用 `pip install "code-review-graph[wiki]"` 安装
+- 用 `uv sync --extra wiki` 安装（本 fork 不发布到 PyPI，勿用 `pip install "code-review-graph[wiki]"`）
 - 需要运行中的 Ollama 实例来生成 LLM 摘要
 - 没有 Ollama 时，wiki 页面仅以结构信息生成（无文字摘要）
 
 ## 可选依赖组
 
-如果某个 tool 返回 ImportError，安装相应的可选组：
-- `pip install "code-review-graph[embeddings]"` 用于语义搜索
+如果某个 tool 返回 ImportError，安装相应的可选组（本 fork 不发布到 PyPI，勿用 `pip install "code-review-graph[...]"`）：
+- `uv sync --extra embeddings` 用于语义搜索
 - OpenAI 兼容 embeddings 使用 stdlib HTTP clients，只需要各自的环境变量
-- `pip install "code-review-graph[communities]"` 用于基于 igraph 的 community detection
-- `pip install "code-review-graph[enrichment]"` 用于通过 Jedi 的 Python call-resolution enrichment
-- `pip install "code-review-graph[wiki]"` 用于 wiki LLM 摘要（ollama）
-- `pip install "code-review-graph[all]"` 用于全部功能
+- `uv sync --extra communities` 用于基于 igraph 的 community detection
+- `uv sync --extra enrichment` 用于通过 Jedi 的 Python call-resolution enrichment
+- `uv sync --extra wiki` 用于 wiki LLM 摘要（ollama）
+- `uv sync --all` 用于全部功能

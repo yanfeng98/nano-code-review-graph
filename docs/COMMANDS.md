@@ -110,7 +110,7 @@ repo_root: str | None
 model: str | None    # Embedding 模型名称
 provider: str | None # local、openai
 ```
-本地 embeddings 需要：`pip install "code-review-graph[embeddings]"`。Cloud providers 使用 stdlib HTTP clients，需要它们各自的 provider 环境变量。
+本地 embeddings 需要：`uv sync --extra embeddings`（本 fork 不发布到 PyPI，勿用 `pip install "code-review-graph[embeddings]"`）。Cloud providers 使用 stdlib HTTP clients，需要它们各自的 provider 环境变量。
 
 #### `list_graph_stats_tool`
 ```
