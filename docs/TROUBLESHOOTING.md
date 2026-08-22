@@ -1,5 +1,7 @@
 # 故障排查
 
+> **本 fork 不发布到 PyPI。** 下文出现的 `pip install code-review-graph` / `pipx`/`uvx` 安装命令都会解析到 **PyPI 上游原版**,而不是这份源码。本 fork 请用本地 editable:`git clone` 后 `uv sync --extra dev`,再以 `uv run code-review-graph …` 或 `.venv/bin/code-review-graph …` 调用;或构建本地 wheel 分发。
+
 ## 常见安装/设置问题的快速参考
 
 四个问题涵盖了大多数支持咨询。先检查这些：
@@ -24,11 +26,12 @@ code-review-graph install                 # 重写 .claude/settings.json
 
 `pip install` 把 console script 放进了不在你 `$PATH` 上的 `bin/` 目录。四个修复方案，按推荐顺序：
 
-**选项 1——使用 `pipx`（最干净）：**
+**选项 1——本 fork 不发布到 PyPI（`pipx install code-review-graph` 会装上游）：**
 
 ```bash
-pip uninstall code-review-graph
-pipx install code-review-graph
+# 用本仓库 editable：clone 后
+uv sync --extra dev
+uv run code-review-graph --help      # 或 .venv/bin/code-review-graph --help
 ```
 
 `pipx` 在隔离的 venv 中安装 CLI 工具。如果之后仍然找不到命令，运行 `pipx ensurepath`，或把 `~/.local/bin` 加到你的 PATH。

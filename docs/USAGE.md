@@ -5,9 +5,11 @@
 ## 安装
 
 ```bash
-pip install code-review-graph
-code-review-graph install    # 自动检测并配置所有受支持的 platform
-code-review-graph build      # 解析你的 codebase
+# 本 fork 不发布到 PyPI，用本地 editable 安装：
+git clone <your-fork-url> && cd <your-fork-dir>
+uv sync --extra dev          # editable + dev 依赖
+uv run code-review-graph install   # 自动检测并配置所有受支持的 platform
+uv run code-review-graph build     # 解析你的 codebase
 ```
 
 `install` 会检测你已安装的 AI 编码工具，为每个工具写入正确的 MCP 配置，并在支持的地方安装 platform 原生的 hooks。安装后请重启你的编辑器/工具。

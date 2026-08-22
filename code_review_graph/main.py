@@ -381,8 +381,9 @@ async def embed_graph_tool(
 ) -> dict:
     """Compute vector embeddings for all graph nodes to enable semantic search.
 
-    Requires: pip install code-review-graph[embeddings] (local provider only;
-    cloud providers use stdlib urllib).
+    Requires: uv sync --extra embeddings (local provider only; this fork is
+    never published to PyPI, so pip install code-review-graph[embeddings] would
+    pull the upstream package. Cloud providers use stdlib urllib).
     Default provider: local. Default model: all-MiniLM-L6-v2.
     Override provider via `provider` param, model via `model` param or
     CRG_EMBEDDING_MODEL / CRG_OPENAI_MODEL env vars.

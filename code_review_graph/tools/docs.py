@@ -24,8 +24,10 @@ def embed_graph(
 ) -> dict[str, Any]:
     """Compute vector embeddings for all graph nodes to enable semantic search.
 
-    Requires: ``pip install code-review-graph[embeddings]`` (local provider only;
-    the ``openai`` cloud provider uses stdlib ``urllib``).
+    Requires: ``uv sync --extra embeddings`` (local provider only; this fork is
+    never published to PyPI, so ``pip install code-review-graph[embeddings]``
+    would pull the upstream package. The ``openai`` cloud provider uses stdlib
+    ``urllib``).
     Default model: all-MiniLM-L6-v2. Override via ``model`` param or
     provider-specific env vars such as CRG_EMBEDDING_MODEL or CRG_OPENAI_MODEL.
     Changing the model or provider re-embeds all nodes automatically.
@@ -69,7 +71,7 @@ def embed_graph(
                 else:
                     err = (
                         "The local embedding provider needs sentence-transformers. "
-                        "Install with: pip install code-review-graph[embeddings] — "
+                        "Install with: uv sync --extra embeddings — "
                         "or switch provider to 'openai'."
                     )
                 return {"status": "error", "error": err}

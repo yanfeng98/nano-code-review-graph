@@ -147,7 +147,7 @@ class LocalEmbeddingProvider(EmbeddingProvider):
             except ImportError:
                 raise ImportError(
                     "sentence-transformers not installed. "
-                    "Run: pip install code-review-graph[embeddings]"
+                    "Run: uv sync --extra embeddings"
                 )
 
             # Publish only a fully constructed model. Failed attempts leave

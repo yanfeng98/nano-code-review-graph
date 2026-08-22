@@ -3,8 +3,8 @@
 AI 编码 agents：只读取你需要的那个精确 `<section>`。永远不要加载整个文件。
 
 <section name="usage">
-快速安装：pip install code-review-graph
-然后：code-review-graph install && code-review-graph build
+快速安装（本 fork 不发布到 PyPI，用本地 editable）：git clone 后 uv sync --extra dev
+然后：uv run code-review-graph install && uv run code-review-graph build
 构建 graph：code-review-graph build（CLI）或 build_or_update_graph_tool
 之后只使用 review_changes / pre_merge_check prompts。
 始终以 get_minimal_context_tool(task="your task") 开始——返回约 100 tokens，包含 risk、communities、flows 和建议的下一步 tools。
@@ -42,7 +42,7 @@ MIT 许可证。核心 graph/review 工作流在本地运行，无遥测。数�
 </section>
 
 <section name="embeddings">
-可选：pip install "code-review-graph[embeddings]"
+可选：uv sync --extra embeddings
 然后调用 embed_graph_tool 计算 vectors。
 semantic_search_nodes_tool 在可用时自动使用 vectors，否则回退到 keyword + FTS5。
 Providers：本地 sentence-transformers、OpenAI 兼容端点。
