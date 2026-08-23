@@ -475,8 +475,6 @@ class GraphStore:
         """Rollback the current transaction."""
         self._conn.rollback()
 
-    # --- Read operations ---
-
     def get_node(self, qualified_name: str) -> Optional[GraphNode]:
         row = self._conn.execute(
             "SELECT * FROM nodes WHERE qualified_name = ?", (qualified_name,)
@@ -487,7 +485,6 @@ class GraphStore:
         return list(self.iter_nodes_by_file(file_path))
 
     def iter_nodes_by_file(self, file_path: str) -> Iterator[GraphNode]:
-        """Yield file nodes without first materializing the complete row set."""
         rows = self._conn.execute(
             "SELECT * FROM nodes WHERE file_path = ?", (normalize_file_path(file_path),)
         )
@@ -508,7 +505,6 @@ class GraphStore:
         return list(self.iter_edges_by_source(qualified_name))
 
     def iter_edges_by_source(self, qualified_name: str) -> Iterator[GraphEdge]:
-        """Yield outgoing edges without first materializing the complete set."""
         rows = self._conn.execute(
             "SELECT * FROM edges WHERE source_qualified = ?", (qualified_name,)
         )
@@ -519,7 +515,6 @@ class GraphStore:
         return list(self.iter_edges_by_target(qualified_name))
 
     def iter_edges_by_target(self, qualified_name: str) -> Iterator[GraphEdge]:
-        """Yield incoming edges without first materializing the complete set."""
         rows = self._conn.execute(
             "SELECT * FROM edges WHERE target_qualified = ?", (qualified_name,)
         )

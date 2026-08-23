@@ -15,6 +15,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from .graph import GraphNode, GraphStore
+
 logger = logging.getLogger(__name__)
 
 # Flags that consume the next token in grep/rg commands
@@ -69,7 +71,6 @@ def extract_pattern(tool_name: str, tool_input: dict[str, Any]) -> str | None:
 
 
 def _make_relative(file_path: str, repo_root: str) -> str:
-    """Make a file path relative to repo_root for display."""
     try:
         return str(Path(file_path).relative_to(repo_root))
     except ValueError:
@@ -77,7 +78,6 @@ def _make_relative(file_path: str, repo_root: str) -> str:
 
 
 def _get_community_name(conn: Any, community_id: int) -> str:
-    """Fetch a community name by ID."""
     row = conn.execute(
         "SELECT name FROM communities WHERE id = ?", (community_id,)
     ).fetchone()
@@ -85,7 +85,6 @@ def _get_community_name(conn: Any, community_id: int) -> str:
 
 
 def _get_flow_names_for_node(conn: Any, node_id: int) -> list[str]:
-    """Fetch execution flow names that a node participates in (max 3)."""
     rows = conn.execute(
         "SELECT f.name FROM flow_memberships fm "
         "JOIN flows f ON fm.flow_id = f.id "
@@ -97,12 +96,10 @@ def _get_flow_names_for_node(conn: Any, node_id: int) -> list[str]:
 
 def _format_node_context(
     node: Any,
-    store: Any,
+    store: GraphStore,
     conn: Any,
     repo_root: str,
 ) -> list[str]:
-    """Format a single node's structural context as plain text lines."""
-    from .graph import GraphNode
     assert isinstance(node, GraphNode)
 
     qn = node.qualified_name
@@ -112,13 +109,11 @@ def _format_node_context(
 
     header = f"{node.name} ({loc})"
 
-    # Community
     if node.extra.get("community_id"):
         cname = _get_community_name(conn, node.extra["community_id"])
         if cname:
             header += f" [{cname}]"
     else:
-        # Check via direct query
         row = conn.execute(
             "SELECT community_id FROM nodes WHERE id = ?", (node.id,)
         ).fetchone()
@@ -129,7 +124,6 @@ def _format_node_context(
 
     lines = [header]
 
-    # Callers (max 5, deduplicated)
     callers: list[str] = []
     seen: set[str] = set()
     for e in store.get_edges_by_target(qn):
@@ -141,7 +135,6 @@ def _format_node_context(
     if callers:
         lines.append(f"  Called by: {', '.join(callers)}")
 
-    # Callees (max 5, deduplicated)
     callees: list[str] = []
     seen.clear()
     for e in store.get_edges_by_source(qn):
@@ -153,14 +146,10 @@ def _format_node_context(
     if callees:
         lines.append(f"  Calls: {', '.join(callees)}")
 
-    # Execution flows
     flow_names = _get_flow_names_for_node(conn, node.id)
     if flow_names:
         lines.append(f"  Flows: {', '.join(flow_names)}")
 
-    # Tests
-    # TESTED_BY edges are stored as source=production, target=test by the
-    # parser, so look them up by source. See: #515
     tests: list[str] = []
     for e in store.get_edges_by_source(qn):
         if e.kind == "TESTED_BY" and len(tests) < 3:
@@ -224,7 +213,6 @@ def enrich_file_read(file_path: str, repo_root: str) -> str:
         conn = store._conn
         nodes = store.get_nodes_by_file(file_path)
         if not nodes:
-            # Try with resolved path
             try:
                 resolved = str(Path(file_path).resolve())
                 nodes = store.get_nodes_by_file(resolved)
@@ -233,7 +221,6 @@ def enrich_file_read(file_path: str, repo_root: str) -> str:
         if not nodes:
             return ""
 
-        # Filter to functions/classes/types (skip File nodes), limit to 10
         interesting = [
             n for n in nodes
             if n.kind in ("Function", "Class", "Type", "Test")
