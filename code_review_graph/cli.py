@@ -1135,11 +1135,6 @@ def main() -> None:
         from .incremental import find_project_root, get_db_path
 
         if args.repo:
-            # For an explicit --repo the walk must treat .code-review-graph
-            # as a project boundary too: the plain .git/.svn walk resolves a
-            # registered monorepo subdirectory to the monorepo root and the
-            # graph built at the --repo path is never found (#697). Nearest
-            # marker wins, so pointing inside a repo still works.
             repo_root = _find_explicit_repo_root(Path(args.repo).expanduser())
             if repo_root is None:
                 print(
