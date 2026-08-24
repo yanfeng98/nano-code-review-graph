@@ -174,22 +174,11 @@ def rrf_merge(*result_lists: list[tuple[int, float]], k: int = 60) -> list[tuple
     return merged
 
 
-# ---------------------------------------------------------------------------
-# FTS5 search
-# ---------------------------------------------------------------------------
-
-
 def _fts_search(
     conn: sqlite3.Connection,
     query: str,
     limit: int = 50,
 ) -> list[tuple[int, float]]:
-    """Run an FTS5 BM25 search against the nodes_fts table.
-
-    Returns list of ``(node_id, bm25_score)`` tuples. The BM25 score is
-    negated so higher = better (FTS5 returns negative BM25).
-    """
-    # Sanitize: wrap in double quotes to prevent FTS5 operator injection
     safe_query = '"' + query.replace('"', '""') + '"'
 
     try:
@@ -198,7 +187,6 @@ def _fts_search(
             "ORDER BY rank LIMIT ?",
             (safe_query, limit),
         ).fetchall()
-        # FTS5 rank is negative BM25 (lower = better), negate for consistency
         return [(row[0], -row[1]) for row in rows]
     except sqlite3.OperationalError as e:
         logger.warning("FTS5 search failed: %s", e)

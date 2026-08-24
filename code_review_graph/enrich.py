@@ -19,7 +19,6 @@ from .graph import GraphNode, GraphStore
 
 logger = logging.getLogger(__name__)
 
-# Flags that consume the next token in grep/rg commands
 _RG_FLAGS_WITH_VALUES = frozenset({
     "-e", "-f", "-m", "-A", "-B", "-C", "-g", "--glob",
     "-t", "--type", "--include", "--exclude", "--max-count",
@@ -30,17 +29,11 @@ _RG_FLAGS_WITH_VALUES = frozenset({
 
 
 def extract_pattern(tool_name: str, tool_input: dict[str, Any]) -> str | None:
-    """Extract a search pattern from a tool call's input.
-
-    Returns None if no meaningful pattern can be extracted.
-    """
     if tool_name == "Grep":
         return tool_input.get("pattern")
 
     if tool_name == "Glob":
         raw = tool_input.get("pattern", "")
-        # Extract meaningful name from glob: "**/auth*.ts" -> "auth"
-        # Skip pure extension globs like "**/*.ts"
         match = re.search(r"[*/]([a-zA-Z][a-zA-Z0-9_]{2,})", raw)
         return match.group(1) if match else None
 
@@ -163,7 +156,6 @@ def _format_node_context(
 
 
 def enrich_search(pattern: str, repo_root: str) -> str:
-    """Search the graph for pattern and return enriched context."""
     from .graph import GraphStore
     from .search import _fts_search
 
