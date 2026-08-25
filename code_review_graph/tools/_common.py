@@ -131,10 +131,6 @@ def with_provenance(result: Any, repo_root: str | None = None) -> Any:
         result["_graph"] = provenance
     return result
 
-# Common JS/TS builtin method names filtered from callers_of results.
-# "Who calls .map()?" returns hundreds of hits and is never useful.
-# These are kept in the graph (callees_of still shows them) but excluded
-# when doing reverse call tracing to reduce noise.
 _BUILTIN_CALL_NAMES: set[str] = {
     "map", "filter", "reduce", "reduceRight", "forEach", "find", "findIndex",
     "some", "every", "includes", "indexOf", "lastIndexOf",

@@ -17,10 +17,6 @@ from ._common import _BUILTIN_CALL_NAMES, _get_store, _resolve_graph_file_paths
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Tool 2: get_impact_radius
-# ---------------------------------------------------------------------------
-
 _QUERY_PATTERNS = {
     "callers_of": "Find all functions that call a given function",
     "references_to": "Find all nodes that reference a given symbol",
@@ -203,7 +199,6 @@ def query_graph(
         total_results = 0
 
         def add_result(result: dict[str, Any], edge: Any | None = None) -> None:
-            """Count every logical result but retain only the bounded prefix."""
             nonlocal total_results
             total_results += 1
             if len(results) >= response_limit:
@@ -212,9 +207,6 @@ def query_graph(
             if edge is not None:
                 edges_out.append(edge_to_dict(edge))
 
-        # For callers_of, skip common builtins early (bare names only)
-        # "Who calls .map()?" returns hundreds of useless hits.
-        # Qualified names (e.g. "utils.py::map") bypass this filter.
         if (
             pattern == "callers_of"
             and target in _BUILTIN_CALL_NAMES
