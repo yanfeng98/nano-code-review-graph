@@ -175,12 +175,6 @@ _BUILTIN_CALL_NAMES: set[str] = {
 
 
 def _validate_repo_root(path: "Path | str") -> Path:
-    """Validate that a path is a plausible project root.
-
-    Ensures the path is an existing directory that contains a ``.git``,
-    ``.svn``, or ``.code-review-graph`` directory, preventing arbitrary
-    file-system traversal via the ``repo_root`` parameter.
-    """
     resolved = Path(path).resolve()
     if not resolved.is_dir():
         raise ValueError(
@@ -201,16 +195,10 @@ def _validate_repo_root(path: "Path | str") -> Path:
 
 
 def _resolve_root(repo_root: str | None = None) -> Path:
-    """Resolve and validate the repository root without opening a store."""
     return _validate_repo_root(Path(repo_root)) if repo_root else find_project_root()
 
 
 def _get_store(repo_root: str | None = None) -> tuple[GraphStore, Path]:
-    """Resolve repo root and open the graph store.
-
-    Callers own the returned store and must close it (try/finally or
-    context manager) to avoid leaking SQLite file descriptors.
-    """
     root = _resolve_root(repo_root)
     db_path = get_db_path(root)
     return GraphStore(db_path), root

@@ -176,11 +176,6 @@ def get_impact_radius(
         store.close()
 
 
-# ---------------------------------------------------------------------------
-# Tool 3: query_graph
-# ---------------------------------------------------------------------------
-
-
 def query_graph(
     pattern: str,
     target: str,
@@ -188,22 +183,6 @@ def query_graph(
     detail_level: str = "standard",
     max_results: int = 100,
 ) -> dict[str, Any]:
-    """Run a predefined graph query.
-
-    Args:
-        pattern: Query pattern. One of: callers_of, references_to, callees_of,
-                 imports_of, importers_of, children_of, tests_for, inheritors_of,
-                 triggers_of, triggered_by, publishers_of, listeners_of,
-                 handlers_of, endpoints_for, file_summary.
-        target: The node name, qualified name, or file path to query about.
-        repo_root: Repository root path. Auto-detected if omitted.
-        detail_level: "standard" (full output) or "minimal" (summary only).
-        max_results: Maximum results to return. Minimal mode additionally caps
-            visible results at five and reports the exact omitted count.
-
-    Returns:
-        Matching nodes and their aligned edges, with total and omitted counts.
-    """
     if isinstance(max_results, bool) or max_results < 1:
         raise ValueError("max_results must be an integer greater than or equal to 1")
 
