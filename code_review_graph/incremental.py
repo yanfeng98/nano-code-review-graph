@@ -101,7 +101,6 @@ DEFAULT_IGNORE_PATTERNS = [
     "**/.code-review-graph/**",
     "**/node_modules/**",
     "**/.git/**",
-    "**/.svn/**",
     "**/__pycache__/**",
     "*.pyc",
     "**/.venv/**",
@@ -135,18 +134,6 @@ DEFAULT_IGNORE_PATTERNS = [
 ]
 
 
-def find_svn_root(start: Path | None = None) -> Optional[Path]:
-    current = start or Path.cwd()
-    candidate: Optional[Path] = None
-    while current != current.parent:
-        if (current / ".svn").exists():
-            candidate = current
-        current = current.parent
-    if (current / ".svn").exists():
-        candidate = current
-    return candidate
-
-
 def find_repo_root(
     start: Path | None = None,
     stop_at: Path | None = None,
@@ -160,15 +147,13 @@ def find_repo_root(
         current = current.parent
     if (current / ".git").exists():
         return current
-    return find_svn_root(start)
+    return None
 
 
 def detect_vcs(root: Path) -> str:
-    """Return ``'git'``, ``'svn'``, or ``'none'`` based on VCS markers at *root*."""
+    """Return ``'git'`` or ``'none'`` based on VCS markers at *root*."""
     if (root / ".git").exists():
         return "git"
-    if (root / ".svn").exists():
-        return "svn"
     return "none"
 
 
@@ -365,38 +350,7 @@ def _git_branch_info(repo_root: Path) -> tuple[str, str]:
     return branch, sha
 
 
-def _svn_revision_info(repo_root: Path) -> tuple[str, str]:
-    """Return (branch_path, revision_str) for the current SVN working copy."""
-    branch = ""
-    rev = ""
-    try:
-        result = subprocess.run(
-            ["svn", "info", "--non-interactive"],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
-            cwd=str(repo_root), timeout=_GIT_TIMEOUT,
-            stdin=subprocess.DEVNULL,
-        )
-        if result.returncode == 0:
-            for line in result.stdout.splitlines():
-                if line.startswith("URL: "):
-                    url = line[5:].strip()
-                    # Extract trunk/branches/tags segment from SVN URL
-                    for marker in ("/branches/", "/tags/", "/trunk"):
-                        if marker in url:
-                            idx = url.index(marker)
-                            branch = url[idx:].lstrip("/")
-                            break
-                    if not branch and url:
-                        branch = url.rstrip("/").split("/")[-1]
-                elif line.startswith("Revision: "):
-                    rev = line[10:].strip()
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        pass
-    return branch, rev
-
-
 _SAFE_GIT_REF = re.compile(r"^[A-Za-z0-9_.~^/@{}\-]+$")
-_SAFE_SVN_REV = re.compile(r"^r?\d+(:r?\d+|:HEAD|:BASE|:COMMITTED)?$", re.IGNORECASE)
 
 
 def _decode_name_status_paths(output: bytes) -> list[str]:
@@ -433,12 +387,6 @@ def _store_vcs_metadata(repo_root: Path, store: "GraphStore") -> None:
             store.set_metadata("git_branch", branch)
         if sha:
             store.set_metadata("git_head_sha", sha)
-    elif vcs == "svn":
-        branch, rev = _svn_revision_info(repo_root)
-        if branch:
-            store.set_metadata("svn_branch", branch)
-        if rev:
-            store.set_metadata("svn_revision", rev)
 
 
 def _commit_object_exists(repo_root: Path, ref: str) -> bool:
@@ -475,7 +423,7 @@ def resolve_incremental_base(repo_root: Path, store: "GraphStore") -> str | None
 
     Returns:
         - the stored commit SHA when it is still a usable diff base;
-        - ``"HEAD~1"`` for SVN or non-git working copies, whose change
+        - ``"HEAD~1"`` for non-git working copies, whose change
           discovery ignores or reinterprets the base anyway;
         - ``None`` for a git repo with no usable anchor (a fresh or legacy
           database, or a stored commit lost to a history rewrite or shallow
@@ -491,15 +439,7 @@ def resolve_incremental_base(repo_root: Path, store: "GraphStore") -> str | None
 
 
 def get_changed_files(repo_root: Path, base: str = "HEAD~1") -> list[str]:
-    """Get list of changed files via git diff or svn status.
-
-    For SVN working copies the *base* parameter is ignored; modified/added/
-    deleted files are detected from ``svn status``.  Pass an SVN revision
-    range (e.g. ``"r100:HEAD"``) as *base* to compare against a specific
-    revision instead.
-    """
-    if detect_vcs(repo_root) == "svn":
-        return _get_svn_changed_files(repo_root, base if _SAFE_SVN_REV.match(base) else None)
+    """Get list of changed files via git diff."""
     # Git path
     if base.startswith("-") or not _SAFE_GIT_REF.fullmatch(base):
         logger.warning("Invalid git ref rejected: %s", base)
@@ -530,56 +470,8 @@ def get_changed_files(repo_root: Path, base: str = "HEAD~1") -> list[str]:
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return []
 
-def _get_svn_changed_files(repo_root: Path, rev_range: str | None = None) -> list[str]:
-    """Return changed files in an SVN working copy.
-
-    When *rev_range* is given (e.g. ``"r100:HEAD"``), ``svn diff --summarize``
-    is used to list files changed between those revisions.  Otherwise
-    ``svn status`` reports working-copy modifications.
-    """
-    try:
-        if rev_range:
-            result = subprocess.run(
-                ["svn", "diff", "--summarize", "--non-interactive", "-r", rev_range],
-                capture_output=True, text=True, encoding="utf-8", errors="replace",
-                cwd=str(repo_root), timeout=_GIT_TIMEOUT,
-                stdin=subprocess.DEVNULL,
-            )
-            if result.returncode != 0:
-                logger.warning("svn diff --summarize failed (rc=%d): %s",
-                               result.returncode, result.stderr[:200])
-                return []
-            files = []
-            for line in result.stdout.splitlines():
-                # Format: "M       path/to/file"  (first char is status)
-                if len(line) >= 2 and line[0] in ("M", "A", "D"):
-                    files.append(line[1:].strip())
-            return files
-        else:
-            result = subprocess.run(
-                ["svn", "status", "--non-interactive"],
-                capture_output=True, text=True, encoding="utf-8", errors="replace",
-                cwd=str(repo_root), timeout=_GIT_TIMEOUT,
-                stdin=subprocess.DEVNULL,
-            )
-            files = []
-            for line in result.stdout.splitlines():
-                if len(line) < 2:
-                    continue
-                status_char = line[0]
-                # M=modified, A=added, D=deleted, R=replaced, C=conflicted
-                if status_char in ("M", "A", "D", "R", "C"):
-                    # SVN status: 8 fixed-width columns then the path
-                    path = line[8:].strip() if len(line) > 8 else line[1:].strip()
-                    files.append(path)
-            return files
-    except (FileNotFoundError, subprocess.TimeoutExpired, UnicodeDecodeError):
-        return []
-
 def get_staged_and_unstaged(repo_root: Path) -> list[str]:
     """Get all modified files (staged + unstaged + untracked)."""
-    if detect_vcs(repo_root) == "svn":
-        return _get_svn_changed_files(repo_root)
     try:
         result = subprocess.run(
             [
@@ -618,7 +510,7 @@ def get_all_tracked_files(
     repo_root: Path,
     recurse_submodules: bool | None = None,
 ) -> list[str]:
-    """Get all files tracked by git or svn.
+    """Get all files tracked by git.
 
     Args:
         repo_root: Repository root directory.
@@ -626,11 +518,7 @@ def get_all_tracked_files(
             ``git ls-files`` so that files inside git submodules are
             included.  When *None* (default), falls back to the
             ``CRG_RECURSE_SUBMODULES`` environment variable.
-            (Ignored for SVN working copies.)
     """
-    if detect_vcs(repo_root) == "svn":
-        return _get_svn_all_tracked_files(repo_root)
-
     if recurse_submodules is None:
         recurse_submodules = _RECURSE_SUBMODULES
 
@@ -650,33 +538,6 @@ def get_all_tracked_files(
         return [f.strip() for f in result.stdout.splitlines() if f.strip()]
     except (FileNotFoundError, subprocess.TimeoutExpired, UnicodeDecodeError):
         return []
-
-def _get_svn_all_tracked_files(repo_root: Path) -> list[str]:
-    """Return SVN-versioned files by walking the working copy.
-
-    Uses ``svn list -R`` to get the server-side file list, falling back to
-    a filesystem walk (which is also the fallback in :func:`collect_all_files`).
-    """
-    try:
-        result = subprocess.run(
-            ["svn", "list", "--recursive", "--non-interactive"],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
-            cwd=str(repo_root), timeout=60,  # svn list queries the server
-            stdin=subprocess.DEVNULL,
-        )
-        if result.returncode == 0:
-            # svn list returns paths relative to the WC URL; directories end with "/"
-            files = [
-                f.strip()
-                for f in result.stdout.splitlines()
-                if f.strip() and not f.strip().endswith("/")
-            ]
-            if files:
-                return files
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        pass
-    # Fallback: let collect_all_files do a filesystem walk
-    return []
 
 
 def collect_all_files(

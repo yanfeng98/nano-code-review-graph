@@ -182,13 +182,12 @@ def _validate_repo_root(path: "Path | str") -> Path:
         )
     has_vcs = (
         (resolved / ".git").exists()
-        or (resolved / ".svn").exists()
         or (resolved / ".code-review-graph").exists()
     )
     if not has_vcs:
         raise ValueError(
             f"repo_root does not look like a project root "
-            f"(no .git, .svn, or .code-review-graph directory found): "
+            f"(no .git or .code-review-graph directory found): "
             f"{resolved}"
         )
     return resolved

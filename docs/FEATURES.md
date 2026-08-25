@@ -28,7 +28,7 @@
 - **Windows MCP 可靠性**：本地 embedding 模型在 Windows 上会在 FastMCP 启动 worker dispatch 之前预热，以避免语义搜索死锁。
 - **Parser 正确性**：Rust `#[test]` 和常见的 async test 属性现在会生成 `Test` nodes。
 - **Graph 查找正确性**：Review、impact 和 file-summary tools 将用户可见路径解析为存储的 graph 路径；`callers_of` 即使存在同文件 callers 时也会包含跨文件 callers。
-- **安装/运行时可靠性**：生成的 Codex/Claude hooks 会排空 stdin，wheel 中提供捆绑的文档，缺失的本地 embeddings 报告不可用状态，`.svn` 根目录通过校验。
+- **安装/运行时可靠性**：生成的 Codex/Claude hooks 会排空 stdin，wheel 中提供捆绑的文档，缺失的本地 embeddings 报告不可用状态。
 - **CLI 可靠性**：`build --skip-postprocess` 和 `update --skip-flows` 遵守所请求的 post-processing 级别。
 - **广泛的 parser 覆盖**：Python、JavaScript/TypeScript/TSX、Rust、C/C++、shell 脚本、Verilog/SystemVerilog、Ansible playbooks/roles/tasks、通过 TypeScript parser 解析的 Astro 文件，以及 Jupyter notebooks。通用 YAML 不被当作源码处理。
 - **设计上的本地优先**：SQLite graph 存储保持本地，无遥测、无 cloud-default 行为。

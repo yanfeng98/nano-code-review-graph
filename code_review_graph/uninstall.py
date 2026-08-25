@@ -1141,7 +1141,7 @@ def _normalise_repo(path: Path, home: Path, report: UninstallReport) -> Path | N
 
     repository_root = find_repo_root(resolved)
     if repository_root is None:
-        report.skipped_paths.append(f"{resolved} (not inside a Git or SVN repository)")
+        report.skipped_paths.append(f"{resolved} (not inside a Git repository)")
         return None
     try:
         repository_root = repository_root.resolve(strict=True)

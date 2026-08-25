@@ -481,7 +481,7 @@ def test_resolve_incremental_base_non_git(tmp_path: Path) -> None:
     store = GraphStore(str(plain / "graph.db"))
     try:
         # Non-git working copies keep the concrete "HEAD~1" default so the
-        # SVN/plain change-discovery path never receives None.
+        # non-git change-discovery path never receives None.
         assert resolve_incremental_base(plain, store) == "HEAD~1"
     finally:
         store.close()

@@ -67,8 +67,6 @@ def test_status_json_is_the_only_stdout_and_includes_current_sha(capsys):
     store.get_metadata.side_effect = {
         "git_branch": "main",
         "git_head_sha": "old-sha",
-        "svn_revision": None,
-        "svn_branch": None,
     }.get
     argv = ["code-review-graph", "status", "--repo", "repo-root", "--json"]
 
@@ -101,8 +99,6 @@ def test_status_json_is_the_only_stdout_and_includes_current_sha(capsys):
         "built_at_commit": "old-sha",
         "current_branch": "feature",
         "current_sha": "current-sha",
-        "svn_branch": None,
-        "svn_revision": None,
     }
     assert output.count("\n") == 1
 

@@ -39,7 +39,7 @@
    └────┬────┘ └────┬────┘  └──────┬──────┘
         │           │              │
         ▼           ▼              ▼
-   Tree-sitter   SQLite DB      git/svn diff
+   Tree-sitter   SQLite DB      git diff
    grammars      (.code-review- subprocess
                  graph/
                  graph.db)
@@ -55,7 +55,7 @@
 5. 用时间戳更新 metadata
 
 ### 增量更新
-1. `get_changed_files()` 使用 VCS 元数据识别变更的文件（默认 git diff，增量层支持 SVN）
+1. `get_changed_files()` 使用 VCS 元数据识别变更的文件（默认 git diff）
 2. `find_dependents()` 查询 graph 中导入这些变更文件的文件
 3. 重新解析变更 + 依赖的文件（其他文件通过 hash 比较跳过）
 4. 只更新 SQLite 中受影响的行

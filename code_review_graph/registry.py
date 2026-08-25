@@ -73,13 +73,12 @@ class Registry:
             raise ValueError(f"Path is not a directory: {resolved}")
         has_repo_marker = (
             (resolved / ".git").exists()
-            or (resolved / ".svn").exists()
             or (resolved / ".code-review-graph").exists()
         )
         if not has_repo_marker:
             raise ValueError(
                 f"Path does not look like a repository "
-                f"(no .git, .svn, or .code-review-graph): {resolved}"
+                f"(no .git or .code-review-graph): {resolved}"
             )
 
         with self._lock:

@@ -407,7 +407,7 @@ def _find_explicit_repo_root(start: Path) -> "Path | None":
     while True:
         if any(
             (current / marker).exists()
-            for marker in (".code-review-graph", ".git", ".svn")
+            for marker in (".code-review-graph", ".git")
         ):
             return current
         if current == current.parent:
@@ -585,7 +585,7 @@ def main() -> None:
     uninstall_cmd.add_argument(
         "--repo",
         default=None,
-        help="Path inside a Git/SVN repository to clean (default: current directory)",
+        help="Path inside a Git repository to clean (default: current directory)",
     )
     uninstall_cmd.add_argument(
         "--all-repos",
@@ -1138,7 +1138,7 @@ def main() -> None:
             repo_root = _find_explicit_repo_root(Path(args.repo).expanduser())
             if repo_root is None:
                 print(
-                    f"--repo does not look like a project root (no .git, .svn, "
+                    f"--repo does not look like a project root (no .git "
                     f"or .code-review-graph found at or above): {args.repo}",
                     file=sys.stderr,
                 )
@@ -1577,8 +1577,6 @@ def main() -> None:
             current_sha = None
             if vcs == "git":
                 current_branch, current_sha = _git_branch_info(repo_root)
-            stored_svn_branch = store.get_metadata("svn_branch")
-            stored_rev = store.get_metadata("svn_revision")
 
             if args.json_output:
                 print(json.dumps({
@@ -1592,8 +1590,6 @@ def main() -> None:
                     "built_at_commit": stored_sha,
                     "current_branch": current_branch,
                     "current_sha": current_sha,
-                    "svn_branch": stored_svn_branch,
-                    "svn_revision": stored_rev,
                 }))
             elif not args.quiet:
                 print(f"Nodes: {stats.total_nodes}")
@@ -1611,11 +1607,6 @@ def main() -> None:
                         f"but you are now on '{current_branch}'. "
                         f"Run 'code-review-graph build' to rebuild."
                     )
-                if vcs == "svn":
-                    if stored_svn_branch:
-                        print(f"SVN branch: {stored_svn_branch}")
-                    if stored_rev:
-                        print(f"SVN revision at build: {stored_rev}")
 
         elif args.command == "forget":
             stored_files = store.get_all_files()

@@ -48,7 +48,7 @@ uv run code-review-graph install --platform opencode     # 仅配置 OpenCode
 
 需要 Python 3.10+。建议用 [uv](https://docs.astral.sh/uv/) 管理。命令以 `uv run code-review-graph …` 或 `.venv/bin/code-review-graph …` 调用（取决于是否激活 venv）；`uvx` 不适用，因为本仓库不发布到 PyPI。
 
-如需从 Git 或 SVN 项目中移除 CRG，可在工作树内任意位置使用对称的卸载命令。目标会被规范化为工作树根目录，非仓库目录会被拒绝。仅移除 CRG 拥有的文件和条目，不相关的 MCP 服务器、hooks、skills 和 JSONC 注释保持不变。共享配置的更改使用原子替换，失败写入不会影响原文件。
+如需从 Git 项目中移除 CRG，可在工作树内任意位置使用对称的卸载命令。目标会被规范化为工作树根目录，非仓库目录会被拒绝。仅移除 CRG 拥有的文件和条目，不相关的 MCP 服务器、hooks、skills 和 JSONC 注释保持不变。共享配置的更改使用原子替换，失败写入不会影响原文件。
 
 ```bash
 code-review-graph uninstall --dry-run    # 预览所有操作，不实际写入

@@ -583,13 +583,8 @@ class TestGraphPathResolution:
 
 
 class TestRepoRootValidation:
-    def test_validate_repo_root_accepts_svn_working_copy(self, tmp_path):
-        (tmp_path / ".svn").mkdir()
-
-        assert _validate_repo_root(tmp_path) == tmp_path.resolve()
-
-    def test_validate_repo_root_error_mentions_svn_marker(self, tmp_path):
-        with pytest.raises(ValueError, match=r"\.git, \.svn, or \.code-review-graph"):
+    def test_validate_repo_root_error_mentions_git_marker(self, tmp_path):
+        with pytest.raises(ValueError, match=r"\.git or \.code-review-graph"):
             _validate_repo_root(tmp_path)
 
 

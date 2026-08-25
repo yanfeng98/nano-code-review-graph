@@ -380,7 +380,7 @@ def test_non_repository_directory_is_refused_without_deleting_data(
     assert _read_jsonc(config) == {"mcpServers": {"code-review-graph": {}}}
     assert report.total_actions == 0
     assert any(
-        str(ordinary_directory) in item and "Git or SVN repository" in item
+        str(ordinary_directory) in item and "Git repository" in item
         for item in report.skipped_paths
     )
 

@@ -38,7 +38,7 @@ code-review-graph is a **local development tool**. It:
 | Vector | Mitigation |
 |--------|------------|
 | SQL Injection | All queries use parameterized `?` placeholders |
-| Path Traversal | `_validate_repo_root()` requires `.git`, `.svn`, or `.code-review-graph` directory |
+| Path Traversal | `_validate_repo_root()` requires `.git` or `.code-review-graph` directory |
 | Prompt Injection | `_sanitize_name()` strips control characters, caps at 256 chars |
 | XSS (visualization) | `escH()` escapes HTML entities; `</script>` escaped in JSON |
 | Subprocess Injection | No `shell=True`; all git commands use list arguments |

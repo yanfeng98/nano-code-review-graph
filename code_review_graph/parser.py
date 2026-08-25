@@ -5106,7 +5106,7 @@ class CodeParser:
         if self._repo_root is not None:
             return self._repo_root
         for candidate in (caller_dir, *caller_dir.parents):
-            if (candidate / ".git").exists() or (candidate / ".svn").exists():
+            if (candidate / ".git").exists():
                 return candidate
         return caller_dir
 
