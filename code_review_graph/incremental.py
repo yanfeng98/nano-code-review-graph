@@ -470,6 +470,7 @@ def get_changed_files(repo_root: Path, base: str = "HEAD~1") -> list[str]:
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return []
 
+
 def get_staged_and_unstaged(repo_root: Path) -> list[str]:
     """Get all modified files (staged + unstaged + untracked)."""
     try:
@@ -505,6 +506,7 @@ def get_staged_and_unstaged(repo_root: Path) -> list[str]:
         return files
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return []
+
 
 def get_all_tracked_files(
     repo_root: Path,
