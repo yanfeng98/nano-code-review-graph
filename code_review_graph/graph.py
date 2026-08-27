@@ -1190,7 +1190,6 @@ class GraphStore:
         if not words:
             return []
 
-        # Phase 1: FTS5 search (uses the indexed nodes_fts table)
         try:
             if len(words) == 1:
                 fts_query = '"' + query.replace('"', '""') + '"'
@@ -1206,10 +1205,9 @@ class GraphStore:
             ).fetchall()
             if rows:
                 return [self._row_to_node(r) for r in rows]
-        except Exception:  # nosec B110 - FTS5 table may not exist on older schemas
+        except Exception:
             pass
 
-        # Phase 2: LIKE fallback (substring matching)
         conditions: list[str] = []
         params: list[str | int] = []
         for word in words:
@@ -1220,13 +1218,12 @@ class GraphStore:
             params.extend([f"%{w}%", f"%{w}%"])
 
         where = " AND ".join(conditions)
-        sql = f"SELECT * FROM nodes WHERE {where} LIMIT ?"  # nosec B608
+        sql = f"SELECT * FROM nodes WHERE {where} LIMIT ?"
         params.append(limit)
         rows = self._conn.execute(sql, params).fetchall()
         return [self._row_to_node(r) for r in rows]
 
     def count_search_nodes(self, query: str) -> int:
-        """Count nodes using the same FTS-first semantics as ``search_nodes``."""
         words = query.split()
         if not words:
             return 0
@@ -1246,7 +1243,7 @@ class GraphStore:
             ).fetchone()[0]
             if count:
                 return int(count)
-        except Exception:  # nosec B110 - FTS5 may not exist on older schemas
+        except Exception:
             pass
 
         conditions: list[str] = []

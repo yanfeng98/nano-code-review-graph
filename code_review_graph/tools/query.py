@@ -38,7 +38,6 @@ _QUERY_PATTERNS = {
 def _rank_disambiguation_candidates(
     candidates: list[GraphNode], target: str,
 ) -> list[dict[str, Any]]:
-    """Return deterministic, sanitized candidates ordered by match quality."""
     target_lower = target.lower()
 
     def score(node: GraphNode) -> tuple[int, str]:
@@ -254,8 +253,6 @@ def query_graph(
                             f"'{target}' matches {candidate_count} node(s). "
                             "Re-run with a qualified_name from disambiguation."
                         ),
-                        # Preserve the established key while adding the clearer
-                        # agent-facing name introduced by #458.
                         "candidates": ranked,
                         "disambiguation": ranked,
                         "candidate_count": candidate_count,
