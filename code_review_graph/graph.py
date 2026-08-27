@@ -1204,8 +1204,8 @@ class GraphStore:
                     '"' + w.replace('"', '""') + '"' for w in words
                 )
             rows = self._conn.execute(
-                "SELECT n.* FROM nodes_fts f "
-                "JOIN nodes n ON f.rowid = n.id "
+                "SELECT n.* FROM nodes_fts "
+                "JOIN nodes n ON nodes_fts.rowid = n.id "
                 "WHERE nodes_fts MATCH ? LIMIT ?",
                 (fts_query, limit),
             ).fetchall()
@@ -1244,8 +1244,8 @@ class GraphStore:
                     '"' + word.replace('"', '""') + '"' for word in words
                 )
             count = self._conn.execute(
-                "SELECT COUNT(*) FROM nodes_fts f "
-                "JOIN nodes n ON f.rowid = n.id "
+                "SELECT COUNT(*) FROM nodes_fts "
+                "JOIN nodes n ON nodes_fts.rowid = n.id "
                 "WHERE nodes_fts MATCH ?",
                 (fts_query,),
             ).fetchone()[0]
