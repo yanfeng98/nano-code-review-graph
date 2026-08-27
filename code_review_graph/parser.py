@@ -557,18 +557,10 @@ def _path_is_within(path: Path, root: Path) -> bool:
         return False
     return True
 
-
-
-# ---------------------------------------------------------------------------
-# Data models for extracted entities
-# ---------------------------------------------------------------------------
-
-
 def normalize_file_path(path: "str | PurePath") -> str:
     if isinstance(path, PurePath):
         return path.as_posix()
     return str(path)
-
 
 @dataclass
 class NodeInfo:

@@ -1186,11 +1186,6 @@ class GraphStore:
         return [r["file_path"] for r in rows]
 
     def search_nodes(self, query: str, limit: int = 20) -> list[GraphNode]:
-        """Keyword search across node names.
-
-        Tries FTS5 first (fast, tokenized matching), then falls back to
-        LIKE-based substring search when FTS5 returns no results.
-        """
         words = query.split()
         if not words:
             return []

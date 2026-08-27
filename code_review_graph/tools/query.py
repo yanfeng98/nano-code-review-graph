@@ -224,8 +224,6 @@ def query_graph(
                 "results": [], "edges": [],
             }
 
-        # Resolve target - try as-is, then as absolute path, then search.
-        # file_summary targets are paths, so skip broad node search.
         node = None
         if pattern != "file_summary":
             node = store.get_node(target)
