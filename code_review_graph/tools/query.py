@@ -280,9 +280,7 @@ def query_graph(
                         caller = store.get_node(e.source_qualified)
                         if caller:
                             add_result(node_to_dict(caller), e)
-            # Fallback: CALLS edges store unqualified target names
-            # (e.g. "generateTestCode") while qn is fully qualified
-            # (e.g. "file.ts::generateTestCode"). Search by plain name too.
+
             if node:
                 cpp_overload_count = (
                     store.count_nodes_by_name(
@@ -297,9 +295,6 @@ def query_graph(
                     node.name,
                     language=node.language or None,
                 ):
-                    # A C++ overload set deliberately keeps the target bare.
-                    # Its candidates support disambiguation, but do not prove
-                    # that any one exact overload was called.
                     if (
                         "ambiguous_targets" in e.extra
                         or "unresolved_targets" in e.extra
@@ -385,9 +380,6 @@ def query_graph(
                     add_result({"import_target": e.target_qualified}, e)
 
         elif pattern == "importers_of":
-            # Find edges where target matches this file.
-            # Use resolve() to canonicalize the path, matching how
-            # _resolve_module_to_file stores edge targets.
             abs_target = (
                 str((root / target).resolve()) if node is None
                 else node.file_path
@@ -411,8 +403,6 @@ def query_graph(
                         add_result(node_to_dict(child))
 
         elif pattern == "tests_for":
-            # Keep the normal sanitized node response while adding the
-            # direct/indirect marker returned by the bounded store lookup.
             seen: set[str] = set()
             for match in store.get_transitive_tests(qn):
                 test_qn = match.get("qualified_name")
@@ -424,7 +414,6 @@ def query_graph(
                     result["indirect"] = bool(match.get("indirect", False))
                     add_result(result)
                     seen.add(test_qn)
-            # Also search by naming convention
             name = node.name if node else target
             cpp_overload_set = bool(
                 node
@@ -453,9 +442,6 @@ def query_graph(
                     child = store.get_node(e.source_qualified)
                     if child:
                         add_result(node_to_dict(child), e)
-            # Fallback: INHERITS/IMPLEMENTS edges store unqualified base names
-            # (e.g. "Animal") while qn is fully qualified
-            # (e.g. "src/animals.rs::Animal"). Search by plain name too. See: #87
             if total_results == 0 and node:
                 for kind in ("INHERITS", "IMPLEMENTS"):
                     for e in store.iter_edges_by_target_name(

@@ -38,15 +38,11 @@ from .parser import EdgeInfo, NodeInfo, normalize_file_path
 
 logger = logging.getLogger(__name__)
 
-# These are the canonical language values stored for the JavaScript ecosystem.
-# JSX files are stored as ``javascript`` and Astro files as ``typescript`` by
-# ``EXTENSION_TO_LANGUAGE``; TSX keeps its own grammar name.
 _JAVASCRIPT_LANGUAGE_FAMILY = ("javascript", "typescript", "tsx")
 _JAVASCRIPT_LANGUAGE_FAMILY_SET = frozenset(_JAVASCRIPT_LANGUAGE_FAMILY)
 
 
 def _compatible_edge_languages(language: str) -> tuple[str, ...]:
-    """Return languages that can safely share unresolved bare edge targets."""
     normalized = language.casefold()
     if normalized in _JAVASCRIPT_LANGUAGE_FAMILY_SET:
         return _JAVASCRIPT_LANGUAGE_FAMILY
@@ -545,7 +541,6 @@ class GraphStore:
     def iter_edges_by_target_name(
         self, name: str, kind: str = "CALLS", language: str | None = None,
     ) -> Iterator[GraphEdge]:
-        """Yield exact bare-target edges without materializing all matches."""
         if language:
             languages = _compatible_edge_languages(language)
             placeholders = ", ".join("?" for _ in languages)
@@ -1264,7 +1259,6 @@ class GraphStore:
         language: str | None = None,
         kinds: tuple[str, ...] = (),
     ) -> int:
-        """Count exact-name nodes with optional language and kind filters."""
         conditions = ["name = ?"]
         params: list[Any] = [name]
         if language is not None:
@@ -1275,7 +1269,7 @@ class GraphStore:
             conditions.append(f"kind IN ({placeholders})")
             params.extend(kinds)
         where = " AND ".join(conditions)
-        sql = f"SELECT COUNT(*) FROM nodes WHERE {where}"  # nosec B608
+        sql = f"SELECT COUNT(*) FROM nodes WHERE {where}"
         return int(self._conn.execute(sql, params).fetchone()[0])
 
     # --- Impact / Graph traversal ---
