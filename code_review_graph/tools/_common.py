@@ -217,9 +217,8 @@ def _resolve_graph_file_paths(
             seen.add(path)
 
     for file_path in file_paths:
-        raw = file_path
-        candidates = [raw]
         path = Path(file_path)
+        candidates = [file_path]
         if path.is_absolute():
             try:
                 candidates.append(str(path.resolve().relative_to(root)))
@@ -232,14 +231,8 @@ def _resolve_graph_file_paths(
             if store.get_nodes_by_file(candidate):
                 add(candidate)
 
-        suffixes = []
         for candidate in candidates:
-            normalized = candidate
-            if normalized not in suffixes:
-                suffixes.append(normalized)
-
-        for suffix in suffixes:
-            for matched_path in store.get_files_matching(suffix):
+            for matched_path in store.get_files_matching(candidate):
                 add(matched_path)
 
     return resolved
