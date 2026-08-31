@@ -45,9 +45,6 @@ MAX_IMPACT_DEPTH = int(os.environ.get("CRG_MAX_IMPACT_DEPTH", "2"))
 MAX_BFS_DEPTH = int(os.environ.get("CRG_MAX_BFS_DEPTH", "15"))
 MAX_SEARCH_RESULTS = int(os.environ.get("CRG_MAX_SEARCH_RESULTS", "20"))
 
-# Impact traversal engine: "sql" (bounded SQLite relaxation) or "networkx".
-BFS_ENGINE = os.environ.get("CRG_BFS_ENGINE", "sql")
-
 # ---------------------------------------------------------------------------
 # Impact-radius scoring
 # ---------------------------------------------------------------------------

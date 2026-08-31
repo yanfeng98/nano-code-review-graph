@@ -21,7 +21,6 @@ from typing import Any, Optional
 import networkx as nx
 
 from .constants import (
-    BFS_ENGINE,
     IMPACT_DEFAULT_EDGE_DIRECTION,
     IMPACT_DEFAULT_EDGE_WEIGHT,
     IMPACT_DEPTH_DECAY,
@@ -1290,9 +1289,8 @@ class GraphStore:
     ) -> dict[str, Any]:
         """Find dependents and tests impacted by changed files within depth N.
 
-        Delegates to ``get_impact_radius_sql()`` by default (faster for
-        large graphs).  Set ``CRG_BFS_ENGINE=networkx`` to use the legacy
-        Python-side BFS via NetworkX.
+        Delegates to ``get_impact_radius_sql()`` (bounded best-score
+        relaxation in SQLite), which is faster for large graphs.
 
         Dependency-shaped edges propagate from target to source, while
         TESTED_BY propagates from production source to test target. CONTAINS
@@ -1306,10 +1304,6 @@ class GraphStore:
           - edges: connecting edges
           - impact_scores: qualified name to best-path score
         """
-        if BFS_ENGINE == "networkx":
-            return self._get_impact_radius_networkx(
-                changed_files, max_depth=max_depth, max_nodes=max_nodes,
-            )
         return self.get_impact_radius_sql(
             changed_files, max_depth=max_depth, max_nodes=max_nodes,
         )
@@ -1522,90 +1516,6 @@ class GraphStore:
             "impact_scores": {
                 node.qualified_name: round(
                     score_by_qn.get(node.qualified_name, 0.0), 4,
-                )
-                for node in impacted_nodes
-            },
-        }
-
-    # -- NetworkX BFS version (legacy) ------------------------------------
-
-    def _get_impact_radius_networkx(
-        self,
-        changed_files: list[str],
-        max_depth: int = MAX_IMPACT_DEPTH,
-        max_nodes: int = MAX_IMPACT_NODES,
-    ) -> dict[str, Any]:
-        """BFS via NetworkX (legacy). Used when CRG_BFS_ENGINE=networkx."""
-        max_depth = max(0, int(max_depth))
-        max_nodes = max(0, int(max_nodes))
-        nxg = self._build_networkx_graph()
-
-        seeds = self._impact_seed_qns(changed_files)
-
-        best: dict[str, float] = dict.fromkeys(seeds, 1.0)
-        frontier = dict(best)
-
-        for _ in range(max_depth):
-            if not frontier:
-                break
-            next_frontier: dict[str, float] = {}
-            for qn, score in frontier.items():
-                if qn not in nxg:
-                    continue
-                neighbors = [
-                    (target, data["impact_outgoing_weight"])
-                    for _, target, data in nxg.out_edges(qn, data=True)
-                    if "impact_outgoing_weight" in data
-                ] + [
-                    (source, data["impact_incoming_weight"])
-                    for source, _, data in nxg.in_edges(qn, data=True)
-                    if "impact_incoming_weight" in data
-                ]
-                for other_qn, weight in neighbors:
-                    new_score = score * weight * IMPACT_DEPTH_DECAY
-                    if new_score <= IMPACT_SCORE_FLOOR:
-                        continue
-                    if new_score > best.get(other_qn, 0.0):
-                        best[other_qn] = new_score
-                        next_frontier[other_qn] = new_score
-            frontier = next_frontier
-
-        changed_nodes = self._batch_get_nodes(seeds)
-        impacted_qns = set(best) - seeds
-        impacted_nodes = self._batch_get_nodes(impacted_qns)
-        impacted_nodes = [
-            node for node in impacted_nodes
-            if not node.extra.get("verilog_kind")
-        ]
-        impacted_nodes.sort(
-            key=lambda node: (
-                -best.get(node.qualified_name, 0.0),
-                node.qualified_name,
-            )
-        )
-
-        total_impacted = len(impacted_nodes)
-        truncated = total_impacted > max_nodes
-        if truncated:
-            impacted_nodes = impacted_nodes[:max_nodes]
-
-        impacted_files = list({n.file_path for n in impacted_nodes})
-
-        relevant_edges: list[GraphEdge] = []
-        all_qns = seeds | {n.qualified_name for n in impacted_nodes}
-        if all_qns:
-            relevant_edges = self.get_edges_among(all_qns)
-
-        return {
-            "changed_nodes": changed_nodes,
-            "impacted_nodes": impacted_nodes,
-            "impacted_files": impacted_files,
-            "edges": relevant_edges,
-            "truncated": truncated,
-            "total_impacted": total_impacted,
-            "impact_scores": {
-                node.qualified_name: round(
-                    best.get(node.qualified_name, 0.0), 4,
                 )
                 for node in impacted_nodes
             },
