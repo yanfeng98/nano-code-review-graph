@@ -202,12 +202,6 @@ def _get_store(repo_root: str | None = None) -> tuple[GraphStore, Path]:
 def _resolve_graph_file_paths(
     store: GraphStore, root: Path, file_paths: list[str],
 ) -> list[str]:
-    """Resolve user-facing file paths to the paths stored in the graph.
-
-    Graphs may contain absolute paths, repo-relative paths, or cwd-relative
-    paths depending on how they were built. Tool inputs are usually relative to
-    repo root, so exact matching alone can miss existing graph nodes.
-    """
     resolved: list[str] = []
     seen: set[str] = set()
 

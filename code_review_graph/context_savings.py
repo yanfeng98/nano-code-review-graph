@@ -14,7 +14,6 @@ CHARS_PER_TOKEN = 4
 
 
 def estimate_tokens(value: Any) -> int:
-    """Estimate token count with a conservative 4 chars/token approximation."""
     if value is None:
         return 0
     if isinstance(value, str):
@@ -33,7 +32,6 @@ def estimate_tokens(value: Any) -> int:
 
 
 def estimate_file_tokens(repo_root: Path, files: Iterable[str]) -> int:
-    """Estimate tokens for changed files using file sizes, not file contents."""
     total = 0
     root = repo_root.resolve()
     for file_name in files:
@@ -58,7 +56,6 @@ def estimate_context_savings(
     original_tokens: int | None = None,
     returned_tokens: int | None = None,
 ) -> dict[str, int | bool] | None:
-    """Return tiny savings metadata, or None when no baseline is available."""
     baseline = (
         original_tokens
         if original_tokens is not None
@@ -90,7 +87,6 @@ def attach_context_savings(
     returned_context: Any | None = None,
     returned_tokens: int | None = None,
 ) -> dict[str, Any]:
-    """Attach compact ``context_savings`` metadata when it can be estimated."""
     estimate = estimate_context_savings(
         original_context=original_context,
         returned_context=result if returned_context is None else returned_context,

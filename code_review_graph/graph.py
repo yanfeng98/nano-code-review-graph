@@ -1287,23 +1287,6 @@ class GraphStore:
         max_depth: int = MAX_IMPACT_DEPTH,
         max_nodes: int = MAX_IMPACT_NODES,
     ) -> dict[str, Any]:
-        """Find dependents and tests impacted by changed files within depth N.
-
-        Delegates to ``get_impact_radius_sql()`` (bounded best-score
-        relaxation in SQLite), which is faster for large graphs.
-
-        Dependency-shaped edges propagate from target to source, while
-        TESTED_BY propagates from production source to test target. CONTAINS
-        does not expand the traversal because every node in a changed file is
-        already seeded.
-
-        Returns dict with:
-          - changed_nodes: nodes in changed files
-          - impacted_nodes: reachable nodes ordered by best-path impact score
-          - impacted_files: unique set of affected files
-          - edges: connecting edges
-          - impact_scores: qualified name to best-path score
-        """
         return self.get_impact_radius_sql(
             changed_files, max_depth=max_depth, max_nodes=max_nodes,
         )
@@ -1718,7 +1701,6 @@ class GraphStore:
         return result
 
     def get_files_matching(self, pattern: str) -> list[str]:
-        """Return distinct ``file_path`` values matching a LIKE suffix."""
         rows = self._conn.execute(
             "SELECT DISTINCT file_path FROM nodes "
             "WHERE file_path LIKE ?",

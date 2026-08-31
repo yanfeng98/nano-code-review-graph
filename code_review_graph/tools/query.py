@@ -62,21 +62,6 @@ def get_impact_radius(
     base: str = "HEAD~1",
     detail_level: str = "standard",
 ) -> dict[str, Any]:
-    """Analyze the blast radius of changed files.
-
-    Args:
-        changed_files: Explicit list of changed file paths (relative to repo root).
-                       If omitted, auto-detects from git diff.
-        max_depth: How many hops to traverse in the graph (default: 2).
-        max_results: Maximum impacted nodes to return (default: 500).
-        repo_root: Repository root path. Auto-detected if omitted.
-        base: Git ref for auto-detecting changes (default: HEAD~1).
-        detail_level: "standard" (full output) or "minimal" (summary only).
-
-    Returns:
-        Changed nodes, impacted nodes, impacted files, connecting edges,
-        plus ``truncated`` flag and ``total_impacted`` count.
-    """
     if isinstance(max_results, bool) or max_results < 1:
         raise ValueError("max_results must be an integer greater than or equal to 1")
 
@@ -98,7 +83,6 @@ def get_impact_radius(
                 "total_impacted": 0,
             }
 
-        # Resolve user-facing paths to the file paths stored in the graph.
         original_tokens = estimate_file_tokens(root, changed_files)
         abs_files = _resolve_graph_file_paths(store, root, changed_files)
         result = store.get_impact_radius(
