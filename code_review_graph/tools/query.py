@@ -535,11 +535,6 @@ def query_graph(
         store.close()
 
 
-# ---------------------------------------------------------------------------
-# Tool 5: semantic_search_nodes
-# ---------------------------------------------------------------------------
-
-
 def semantic_search_nodes(
     query: str,
     kind: str | None = None,
@@ -550,24 +545,6 @@ def semantic_search_nodes(
     provider: str | None = None,
     detail_level: str = "standard",
 ) -> dict[str, Any]:
-    """Search for nodes by name, keyword, or semantic similarity.
-
-    Uses hybrid search (FTS5 BM25 + vector embeddings merged via Reciprocal
-    Rank Fusion) as the primary search path, with graceful fallback to
-    keyword matching.
-
-    Args:
-        query: Search string to match against node names and qualified names.
-        kind: Optional filter by node kind (File, Class, Function, Type, Test).
-        limit: Maximum results to return (default: 20).
-        repo_root: Repository root path. Auto-detected if omitted.
-        context_files: Optional list of file paths. Nodes in these files
-            receive a relevance boost.
-        detail_level: "standard" (full output) or "minimal" (summary only).
-
-    Returns:
-        Ranked list of matching nodes.
-    """
     store, root = _get_store(repo_root)
     try:
         mode_out: list[str] = []

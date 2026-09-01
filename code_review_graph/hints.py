@@ -12,8 +12,6 @@ import time
 from collections import deque
 from typing import Any
 
-# ---- intent categories and their characteristic tool names ----
-
 _INTENT_TOOLS: dict[str, set[str]] = {
     "reviewing": {
         "detect_changes", "get_review_context", "get_affected_flows", "get_impact_radius",
@@ -28,8 +26,6 @@ _INTENT_TOOLS: dict[str, set[str]] = {
         "list_communities", "get_architecture_overview", "list_flows", "list_graph_stats",
     },
 }
-
-# ---- workflow adjacency: for each tool, which tools are useful next ----
 
 _WORKFLOW: dict[str, list[dict[str, str]]] = {
     "list_flows": [
@@ -167,7 +163,6 @@ _WORKFLOW: dict[str, list[dict[str, str]]] = {
 # Maximum items per hints category returned to the caller.
 _MAX_PER_CATEGORY = 3
 
-# Session history caps.
 _MAX_TOOLS_HISTORY = 100
 _MAX_NODES_TRACKED = 1000
 
@@ -178,7 +173,6 @@ _MAX_NODES_TRACKED = 1000
 
 
 class SessionState:
-    """In-memory session state for a single MCP connection."""
 
     def __init__(self) -> None:
         self.tools_called: deque[str] = deque(maxlen=_MAX_TOOLS_HISTORY)
@@ -188,37 +182,23 @@ class SessionState:
         self.last_tool_time: float = 0.0
 
     def record_tool_call(self, tool_name: str) -> None:
-        """Record a tool invocation (FIFO, capped at 100)."""
         self.tools_called.append(tool_name)
         self.last_tool_time = time.time()
 
     def record_nodes(self, node_ids: list[str]) -> None:
-        """Record queried node identifiers (capped at 1000)."""
         for nid in node_ids:
             if len(self.nodes_queried) >= _MAX_NODES_TRACKED:
                 break
             self.nodes_queried.add(nid)
 
     def record_files(self, files: list[str]) -> None:
-        """Record touched file paths."""
         self.files_touched.update(files)
 
 
-# ---------------------------------------------------------------------------
-# Intent inference
-# ---------------------------------------------------------------------------
-
-
 def infer_intent(session: SessionState) -> str:
-    """Classify the user's likely intent from their tool-call history.
-
-    Returns one of: ``"reviewing"``, ``"debugging"``, ``"refactoring"``,
-    ``"exploring"`` (default).
-    """
     if not session.tools_called:
         return "exploring"
 
-    # Score each intent by how many of the last N calls match its tools.
     recent = list(session.tools_called)[-10:]
     scores: dict[str, int] = {intent: 0 for intent in _INTENT_TOOLS}
     for tool in recent:
@@ -232,37 +212,16 @@ def infer_intent(session: SessionState) -> str:
     return best
 
 
-# ---------------------------------------------------------------------------
-# Hints generation
-# ---------------------------------------------------------------------------
-
-
 def generate_hints(
     tool_name: str,
     result: dict[str, Any],
     session: SessionState,
 ) -> dict[str, Any]:
-    """Build context-aware hints for a tool response.
-
-    Returns::
-
-        {
-            "next_steps": [{"tool": ..., "suggestion": ...}, ...],
-            "related": [...],
-            "warnings": [...],
-        }
-
-    At most ``_MAX_PER_CATEGORY`` items per list.  Tools already called
-    in this session are suppressed from ``next_steps``.
-    """
-    # Update session state.
     session.record_tool_call(tool_name)
     session.inferred_intent = infer_intent(session)
 
     next_steps = _build_next_steps(tool_name, session)
     warnings = _extract_warnings(result)
-    # Build related BEFORE tracking, so that the current result's files
-    # are not yet in files_touched and can appear as suggestions.
     related = _build_related(tool_name, result, session)
 
     # Collect files/nodes from result for session tracking.
@@ -305,7 +264,6 @@ def _track_result(result: dict[str, Any], session: SessionState) -> None:
 def _build_next_steps(
     tool_name: str, session: SessionState
 ) -> list[dict[str, str]]:
-    """Return next-step suggestions, filtering already-called tools."""
     called = set(session.tools_called)
     candidates = _WORKFLOW.get(tool_name, [])
     out: list[dict[str, str]] = []
@@ -316,10 +274,8 @@ def _build_next_steps(
 
 
 def _extract_warnings(result: dict[str, Any]) -> list[str]:
-    """Pull warning signals from a tool result."""
     warnings: list[str] = []
 
-    # Test gaps
     test_gaps = result.get("test_gaps")
     if isinstance(test_gaps, list) and test_gaps:
         names = [g.get("name", g) if isinstance(g, dict) else str(g) for g in test_gaps[:5]]
@@ -327,12 +283,10 @@ def _extract_warnings(result: dict[str, Any]) -> list[str]:
             f"Test coverage gaps: {', '.join(names)}"
         )
 
-    # High risk score
     risk = result.get("risk_score")
     if isinstance(risk, (int, float)) and risk > 0.7:
         warnings.append(f"High risk score ({risk:.2f}) — review carefully")
 
-    # Coupling warnings from architecture overview
     arch_warnings = result.get("warnings")
     if isinstance(arch_warnings, list):
         for w in arch_warnings[:3]:
@@ -365,16 +319,10 @@ def _build_related(
 
     return related
 
-
-# ---------------------------------------------------------------------------
-# Module-level session singleton
-# ---------------------------------------------------------------------------
-
 _session = SessionState()
 
 
 def get_session() -> SessionState:
-    """Return the global in-memory session state."""
     return _session
 
 
