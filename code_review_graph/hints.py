@@ -222,7 +222,7 @@ def generate_hints(
 
     next_steps = _build_next_steps(tool_name, session)
     warnings = _extract_warnings(result)
-    related = _build_related(tool_name, result, session)
+    related = _build_related(result, session)
 
     # Collect files/nodes from result for session tracking.
     _track_result(result, session)
@@ -299,15 +299,13 @@ def _extract_warnings(result: dict[str, Any]) -> list[str]:
 
 
 def _build_related(
-    tool_name: str,
     result: dict[str, Any],
     session: SessionState,
 ) -> list[str]:
-    """Suggest related node/file identifiers from the result."""
+    """Suggest impacted files the user hasn't touched yet."""
     related: list[str] = []
     seen: set[str] = set()
 
-    # Suggest impacted files the user hasn't touched yet
     impacted = result.get("impacted_files")
     if isinstance(impacted, list):
         for f in impacted:
