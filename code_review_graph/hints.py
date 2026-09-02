@@ -160,9 +160,7 @@ _WORKFLOW: dict[str, list[dict[str, str]]] = {
     ],
 }
 
-# Maximum items per hints category returned to the caller.
 _MAX_PER_CATEGORY = 3
-
 _MAX_TOOLS_HISTORY = 100
 _MAX_NODES_TRACKED = 1000
 
@@ -224,7 +222,6 @@ def generate_hints(
     warnings = _extract_warnings(result)
     related = _build_related(result, session)
 
-    # Collect files/nodes from result for session tracking.
     _track_result(result, session)
 
     return {
@@ -234,20 +231,12 @@ def generate_hints(
     }
 
 
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
-
 def _track_result(result: dict[str, Any], session: SessionState) -> None:
-    """Extract node IDs and file paths from a tool result and record them."""
-    # Files
     for key in ("changed_files", "impacted_files"):
         files = result.get(key)
         if isinstance(files, list):
             session.record_files([f for f in files if isinstance(f, str)])
 
-    # Nodes — look in common result shapes
     node_ids: list[str] = []
     for key in ("results", "changed_nodes", "impacted_nodes"):
         items = result.get(key)
@@ -302,7 +291,6 @@ def _build_related(
     result: dict[str, Any],
     session: SessionState,
 ) -> list[str]:
-    """Suggest impacted files the user hasn't touched yet."""
     related: list[str] = []
     seen: set[str] = set()
 

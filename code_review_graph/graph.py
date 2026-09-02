@@ -1793,7 +1793,6 @@ class GraphStore:
         return {r["qualified_name"] for r in rows}
 
     def get_node_kind_by_id(self, node_id: int) -> str | None:
-        """Return just the ``kind`` column for a node, or ``None``."""
         row = self._conn.execute(
             "SELECT kind FROM nodes WHERE id = ?", (node_id,),
         ).fetchone()

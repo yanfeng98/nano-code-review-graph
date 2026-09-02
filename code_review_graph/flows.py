@@ -564,33 +564,19 @@ def incremental_trace_flows(
     return count
 
 
-# ---------------------------------------------------------------------------
-# Query helpers
-# ---------------------------------------------------------------------------
-
-
 def get_flows(
     store: GraphStore,
     sort_by: str = "criticality",
     limit: int = 50,
 ) -> list[dict]:
-    """Retrieve stored flows from the database.
-
-    Args:
-        store: The graph store.
-        sort_by: Column to sort by (``criticality``, ``depth``, ``node_count``).
-        limit: Maximum number of flows to return.
-    """
     allowed_sort = {"criticality", "depth", "node_count", "file_count", "name"}
     if sort_by not in allowed_sort:
         sort_by = "criticality"
 
     order = "DESC" if sort_by in ("criticality", "depth", "node_count", "file_count") else "ASC"
 
-    # NOTE: get_flows reads from the flows table which is managed by
-    # the flows module; _conn access is documented coupling.
     rows = store._conn.execute(
-        f"SELECT * FROM flows ORDER BY {sort_by} {order} LIMIT ?",  # nosec B608
+        f"SELECT * FROM flows ORDER BY {sort_by} {order} LIMIT ?",
         (limit,),
     ).fetchall()
 

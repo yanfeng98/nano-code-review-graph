@@ -9,10 +9,6 @@ from ..flows import get_flow_by_id, get_flows
 from ..hints import generate_hints, get_session
 from ._common import _get_store
 
-# ---------------------------------------------------------------------------
-# Tool 10: list_flows  [EXPLORE]
-# ---------------------------------------------------------------------------
-
 
 def list_flows(
     repo_root: str | None = None,
@@ -21,30 +17,11 @@ def list_flows(
     kind: str | None = None,
     detail_level: str = "standard",
 ) -> dict[str, Any]:
-    """List execution flows in the codebase, sorted by criticality.
-
-    [EXPLORE] Retrieves stored execution flows from the knowledge graph.
-    Each flow represents a call chain starting from an entry point
-    (e.g. HTTP handler, CLI command, test function).
-
-    Args:
-        repo_root: Repository root path. Auto-detected if omitted.
-        sort_by: Sort column: criticality, depth, node_count, file_count,
-                 or name.
-        limit: Maximum flows to return (default: 50).
-        kind: Optional filter by entry point kind (e.g. "Test", "Function").
-        detail_level: "standard" (default) returns full flow data;
-                      "minimal" returns only name, criticality, and
-                      node_count per flow.
-
-    Returns:
-        List of flows with criticality scores.
-    """
     store, root = _get_store(repo_root)
     try:
         fetch_limit = (
             limit if not kind else limit * 10
-        )  # fetch more when filtering
+        )
         flows = get_flows(store, sort_by=sort_by, limit=fetch_limit)
 
         if kind:
