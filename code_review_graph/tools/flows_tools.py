@@ -59,33 +59,12 @@ def list_flows(
         store.close()
 
 
-# ---------------------------------------------------------------------------
-# Tool 11: get_flow  [EXPLORE]
-# ---------------------------------------------------------------------------
-
-
 def get_flow(
     flow_id: int | None = None,
     flow_name: str | None = None,
     include_source: bool = False,
     repo_root: str | None = None,
 ) -> dict[str, Any]:
-    """Get details of a single execution flow.
-
-    [EXPLORE] Retrieves full path details for a flow, including each step's
-    function name, file, and line numbers.  Optionally includes source
-    snippets for every step in the path.
-
-    Args:
-        flow_id: Database ID of the flow (from list_flows).
-        flow_name: Name to search for (partial match). Ignored if flow_id
-                   given.
-        include_source: If True, include source code snippets for each step.
-        repo_root: Repository root path. Auto-detected if omitted.
-
-    Returns:
-        Flow details with steps, or not_found status.
-    """
     store, root = _get_store(repo_root)
     try:
         flow: dict | None = None
@@ -93,7 +72,6 @@ def get_flow(
         if flow_id is not None:
             flow = get_flow_by_id(store, flow_id)
         elif flow_name is not None:
-            # Search flows by name match
             all_flows = get_flows(
                 store, sort_by="criticality", limit=500
             )
@@ -108,7 +86,6 @@ def get_flow(
                 "summary": "No flow found matching the given criteria.",
             }
 
-        # Optionally include source snippets for each step
         if include_source and "steps" in flow:
             for step in flow["steps"]:
                 fp = Path(step["file"]) if step.get("file") else None

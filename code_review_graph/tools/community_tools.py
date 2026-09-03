@@ -11,10 +11,6 @@ from ..graph import node_to_dict
 from ..hints import generate_hints, get_session
 from ._common import _get_store
 
-# ---------------------------------------------------------------------------
-# Tool 13: list_communities  [EXPLORE]
-# ---------------------------------------------------------------------------
-
 
 def list_communities_func(
     repo_root: str | None = None,
@@ -22,24 +18,6 @@ def list_communities_func(
     min_size: int = 0,
     detail_level: str = "standard",
 ) -> dict[str, Any]:
-    """List detected code communities in the codebase.
-
-    [EXPLORE] Retrieves stored communities from the knowledge graph.
-    Each community represents a cluster of related code entities
-    (functions, classes) detected via the Leiden algorithm or
-    file-based grouping.
-
-    Args:
-        repo_root: Repository root path. Auto-detected if omitted.
-        sort_by: Sort column: size, cohesion, or name.
-        min_size: Minimum community size to include (default: 0).
-        detail_level: "standard" (default) returns full community data;
-                      "minimal" returns only name, size, and cohesion
-                      per community.
-
-    Returns:
-        List of communities with size and cohesion scores.
-    """
     store, root = _get_store(repo_root)
     try:
         communities = get_communities(
@@ -65,32 +43,12 @@ def list_communities_func(
         store.close()
 
 
-# ---------------------------------------------------------------------------
-# Tool 14: get_community  [EXPLORE]
-# ---------------------------------------------------------------------------
-
-
 def get_community_func(
     community_name: str | None = None,
     community_id: int | None = None,
     include_members: bool = False,
     repo_root: str | None = None,
 ) -> dict[str, Any]:
-    """Get details of a single code community.
-
-    [EXPLORE] Retrieves a community by its database ID or by name match.
-    Optionally includes the full list of member nodes.
-
-    Args:
-        community_name: Name to search for (partial match). Ignored if
-                        community_id given.
-        community_id: Database ID of the community.
-        include_members: If True, include full member node details.
-        repo_root: Repository root path. Auto-detected if omitted.
-
-    Returns:
-        Community details, or not_found status.
-    """
     store, root = _get_store(repo_root)
     try:
         community: dict | None = None

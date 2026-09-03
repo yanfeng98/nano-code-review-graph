@@ -960,33 +960,19 @@ def store_communities(
 def get_communities(
     store: GraphStore, sort_by: str = "size", min_size: int = 0
 ) -> list[dict[str, Any]]:
-    """Retrieve stored communities from the database.
-
-    Args:
-        store: The GraphStore instance.
-        sort_by: Column to sort by ("size", "cohesion", "name").
-        min_size: Minimum community size to include.
-
-    Returns:
-        List of community dicts.
-    """
     valid_sorts = {"size", "cohesion", "name"}
     if sort_by not in valid_sorts:
         sort_by = "size"
 
     order = "DESC" if sort_by in ("size", "cohesion") else "ASC"
 
-    # NOTE: get_communities reads the communities table which has no
-    # dedicated GraphStore method (it's a domain-specific table managed
-    # entirely by the communities module).  We use _conn for this query.
     rows = store._conn.execute(
-        f"SELECT * FROM communities WHERE size >= ? ORDER BY {sort_by} {order}",  # nosec B608
+        f"SELECT * FROM communities WHERE size >= ? ORDER BY {sort_by} {order}",
         (min_size,),
     ).fetchall()
 
     communities: list[dict[str, Any]] = []
     for row in rows:
-        # Fetch member qualified names for this community
         member_qns = [
             _sanitize_name(qn)
             for qn in store.get_community_member_qns(row["id"])

@@ -1613,10 +1613,7 @@ class GraphStore:
         ).fetchall()
         return [self._row_to_node(r) for r in rows]
 
-    # --- Public query helpers (used by flows, changes, communities, etc.) ---
-
     def get_node_by_id(self, node_id: int) -> Optional[GraphNode]:
-        """Fetch a single node by its integer primary key."""
         row = self._conn.execute(
             "SELECT * FROM nodes WHERE id = ?", (node_id,)
         ).fetchone()
@@ -1843,7 +1840,6 @@ class GraphStore:
     def get_community_member_qns(
         self, community_id: int,
     ) -> list[str]:
-        """Return qualified names of nodes in a community."""
         rows = self._conn.execute(
             "SELECT qualified_name FROM nodes "
             "WHERE community_id = ?",
@@ -1854,7 +1850,6 @@ class GraphStore:
     def get_nodes_by_community_id(
         self, community_id: int,
     ) -> list[GraphNode]:
-        """Return all nodes belonging to a community."""
         rows = self._conn.execute(
             "SELECT * FROM nodes WHERE community_id = ?",
             (community_id,),

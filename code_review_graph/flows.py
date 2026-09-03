@@ -598,12 +598,6 @@ def get_flows(
 
 
 def get_flow_by_id(store: GraphStore, flow_id: int) -> Optional[dict]:
-    """Retrieve a single flow with full path details.
-
-    Returns a dict with the flow metadata plus a ``steps`` list containing
-    each node's name, kind, file, and line info.
-    """
-    # NOTE: get_flow_by_id reads from the flows table; see store_flows note.
     row = store._conn.execute(
         "SELECT * FROM flows WHERE id = ?", (flow_id,)
     ).fetchone()
@@ -612,7 +606,6 @@ def get_flow_by_id(store: GraphStore, flow_id: int) -> Optional[dict]:
 
     path_ids: list[int] = json.loads(row["path_json"])
 
-    # Build detailed step info.
     steps: list[dict] = []
     for nid in path_ids:
         node = store.get_node_by_id(nid)
