@@ -543,6 +543,23 @@ args = ["serve", "--auto-watch"]
 
 > **不要**用 `uv run code-review-graph serve` 作为 MCP 命令：`uv run` 会在**目标项目**（cwd）解析项目环境，非 uv 项目会启动失败。绝对路径指向本仓库 `.venv` 是最稳妥的。
 
+> **`claude mcp add` 提示已存在，或 `claude mcp list` 报 `Conflicting scopes`？**
+>
+> - `claude mcp add` **不会覆盖**已有条目（提示 `MCP server code-review-graph already exists`）。先删旧条目再重加即可带上 `--auto-watch`：
+>
+>   ```bash
+>   claude mcp remove code-review-graph -s user
+>   claude mcp add --scope user code-review-graph -- /absolute/path/to/code-review-graph/.venv/bin/code-review-graph serve --auto-watch
+>   ```
+>
+> - `Conflicting scopes` 表示同名 server 同时在**用户级**与**项目级**（`.mcp.json`）定义且命令不同。保留一条即可；推荐保留用户级、删掉项目级：
+>
+>   ```bash
+>   claude mcp remove code-review-graph -s project
+>   ```
+>
+> 改完需重启编辑器 / CLI 生效。
+
 ### 打包分发：构建 wheel，本地交给他人（不发布 PyPI）
 
 用 `uv build` 在本地构建分发文件，把产物直接交给他人用 `pip` 安装：
