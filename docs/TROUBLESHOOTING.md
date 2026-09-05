@@ -152,7 +152,7 @@ Graph 使用带 WAL 模式的 SQLite。如果看到锁错误：
 - 首次 embedding 运行会下载模型（约 90MB，一次性）
 
 ## MCP server 无法启动
-- 验证 `uv` 已安装（`uv --version`；用 `pip install uv` 或 `brew install uv` 安装）
+- 验证 `uv` 已安装（`uv --version`；用 `pip install uv` 或 `curl -LsSf https://astral.sh/uv/install.sh | sh` 安装）
 - 检查 `python -m code_review_graph serve` 能否无错误运行（本 fork 不发布到 PyPI，请勿用 `uvx code-review-graph`）
 - 如果使用自定义 `.mcp.json`，确保 `command`/`args` 指向本仓库可导入的包（`python -m code_review_graph serve`，绝对解释器路径最稳）
 - 重新运行 `code-review-graph install` 以重新生成配置
