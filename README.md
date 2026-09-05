@@ -494,7 +494,7 @@ uv run ruff check code_review_graph/          # lint
 >   /home/luyanfeng/luyanfeng/nano-code-review-graph/.venv/bin/code-review-graph serve --auto-watch
 > ```
 >
-> 验证：在**任意非本仓库目录**运行 `claude mcp get code-review-graph`，应显示 `Scope: User config`、`Command` 指向上述绝对路径、`Status: ✓ Connected`；在 Claude Code 里输入 `/mcp` 也能看到连接状态。本仓库内因项目级 `.mcp.json`（`uvx`）优先，会显示 PyPI 版——这是预期行为，**其他项目**才用你配置的本地编辑版。
+> 验证：在**任意目录**（含本仓库）运行 `claude mcp get code-review-graph`，应显示 `Scope: User config`、`Command` 指向上述绝对路径、`Status: ✓ Connected`；在 Claude Code 里输入 `/mcp` 也能看到连接状态。用**一条用户级注册**即可对所有项目生效；不要在本仓库 `.mcp.json` 里再留同名项目级条目，否则 `claude mcp list` 会报 `Conflicting scopes`。
 
 > **Codex 同样可用（等价命令）：**
 >
