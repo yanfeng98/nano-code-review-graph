@@ -657,11 +657,6 @@ def list_graph_stats(repo_root: str | None = None) -> dict[str, Any]:
         store.close()
 
 
-# ---------------------------------------------------------------------------
-# Tool 9: find_large_functions
-# ---------------------------------------------------------------------------
-
-
 def find_large_functions(
     min_lines: int = 50,
     kind: str | None = None,
@@ -669,21 +664,6 @@ def find_large_functions(
     limit: int = 50,
     repo_root: str | None = None,
 ) -> dict[str, Any]:
-    """Find functions, classes, or files exceeding a line-count threshold.
-
-    Useful for identifying decomposition targets, code-quality audits,
-    and enforcing size limits during code review.
-
-    Args:
-        min_lines: Minimum line count to flag (default: 50).
-        kind: Filter by node kind: Function, Class, File, or Test.
-        file_path_pattern: Filter by file path substring (e.g. "components/").
-        limit: Maximum results (default: 50).
-        repo_root: Repository root path. Auto-detected if omitted.
-
-    Returns:
-        Oversized nodes with line counts, ordered largest first.
-    """
     store, root = _get_store(repo_root)
     try:
         nodes = store.get_nodes_by_size(
@@ -701,7 +681,6 @@ def find_large_functions(
                 if n.line_start and n.line_end
                 else 0
             )
-            # Make file_path relative for readability
             try:
                 d["relative_path"] = str(Path(n.file_path).relative_to(root))
             except ValueError:

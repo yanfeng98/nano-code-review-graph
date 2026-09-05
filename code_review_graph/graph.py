@@ -1574,18 +1574,6 @@ class GraphStore:
         file_path_pattern: str | None = None,
         limit: int = 50,
     ) -> list[GraphNode]:
-        """Find nodes within a line-count range, ordered largest first.
-
-        Args:
-            min_lines: Minimum line count threshold (inclusive).
-            max_lines: Maximum line count threshold (inclusive). None = no upper bound.
-            kind: Filter by node kind (Function, Class, File, etc.).
-            file_path_pattern: SQL LIKE pattern to filter by file path.
-            limit: Maximum results to return.
-
-        Returns:
-            List of GraphNode objects, ordered by line count descending.
-        """
         conditions = [
             "line_start IS NOT NULL",
             "line_end IS NOT NULL",
@@ -1607,7 +1595,7 @@ class GraphStore:
         params.append(limit)
         where = " AND ".join(conditions)
         rows = self._conn.execute(
-            f"SELECT * FROM nodes WHERE {where} "  # nosec B608
+            f"SELECT * FROM nodes WHERE {where} "
             "ORDER BY (line_end - line_start + 1) DESC LIMIT ?",
             params,
         ).fetchall()
