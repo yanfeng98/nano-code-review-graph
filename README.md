@@ -491,7 +491,7 @@ uv run ruff check code_review_graph/          # lint
 >
 > ```bash
 > claude mcp add --scope user code-review-graph -- \
->   /home/luyanfeng/luyanfeng/nano-code-review-graph/.venv/bin/code-review-graph serve
+>   /home/luyanfeng/luyanfeng/nano-code-review-graph/.venv/bin/code-review-graph serve --auto-watch
 > ```
 >
 > 验证：在**任意非本仓库目录**运行 `claude mcp get code-review-graph`，应显示 `Scope: User config`、`Command` 指向上述绝对路径、`Status: ✓ Connected`；在 Claude Code 里输入 `/mcp` 也能看到连接状态。本仓库内因项目级 `.mcp.json`（`uvx`）优先，会显示 PyPI 版——这是预期行为，**其他项目**才用你配置的本地编辑版。
@@ -500,20 +500,20 @@ uv run ruff check code_review_graph/          # lint
 >
 > ```bash
 > codex mcp add code-review-graph -- \
->   /home/luyanfeng/luyanfeng/nano-code-review-graph/.venv/bin/code-review-graph serve
+>   /home/luyanfeng/luyanfeng/nano-code-review-graph/.venv/bin/code-review-graph serve --auto-watch
 > ```
 >
-> `codex mcp add` 没有 `--scope` 参数——它总是写入用户级 `~/.codex/config.toml`（等价于 Claude 的 `--scope user`）。验证：运行 `codex mcp list`，应看到 `code-review-graph` 状态为 `enabled`，`Command` 指向上述绝对路径、`Args` 为 `serve`。
+> `codex mcp add` 没有 `--scope` 参数——它总是写入用户级 `~/.codex/config.toml`（等价于 Claude 的 `--scope user`）。验证：运行 `codex mcp list`，应看到 `code-review-graph` 状态为 `enabled`，`Command` 指向上述绝对路径、`Args` 为 `serve --auto-watch`。
 
 ```jsonc
 // Claude Code（全局）：~/.claude.json 顶层 mcpServers
-// 或运行：claude mcp add --scope user code-review-graph -- /absolute/path/to/code-review-graph/.venv/bin/code-review-graph serve
+// 或运行：claude mcp add --scope user code-review-graph -- /absolute/path/to/code-review-graph/.venv/bin/code-review-graph serve --auto-watch
 {
   "mcpServers": {
     "code-review-graph": {
       "type": "stdio",
       "command": "/absolute/path/to/code-review-graph/.venv/bin/code-review-graph",
-      "args": ["serve"]
+      "args": ["serve", "--auto-watch"]
     }
   }
 }
@@ -521,10 +521,10 @@ uv run ruff check code_review_graph/          # lint
 
 ```toml
 # Codex：~/.codex/config.toml
-# 或运行：codex mcp add code-review-graph -- /absolute/path/to/code-review-graph/.venv/bin/code-review-graph serve
+# 或运行：codex mcp add code-review-graph -- /absolute/path/to/code-review-graph/.venv/bin/code-review-graph serve --auto-watch
 [mcp_servers.code-review-graph]
 command = "/absolute/path/to/code-review-graph/.venv/bin/code-review-graph"
-args = ["serve"]
+args = ["serve", "--auto-watch"]
 ```
 
 ```jsonc
@@ -532,12 +532,14 @@ args = ["serve"]
 "mcp": {
   "code-review-graph": {
     "type": "local",
-    "command": ["/absolute/path/to/code-review-graph/.venv/bin/code-review-graph", "serve"]
+    "command": ["/absolute/path/to/code-review-graph/.venv/bin/code-review-graph", "serve", "--auto-watch"]
   }
 }
 ```
 
 这些是**全局（用户级）**配置，所有项目共用。每个目标项目以该项目为工作目录启动 server，自动读取各项目自己的 `.code-review-graph/graph.db`。改动源码后**即时生效**，重启编辑器加载新配置即可。
+
+> **`--auto-watch` 才开启自动更新。** 不带 `--auto-watch` 时 `serve` 只在收到工具调用时响应，不监听文件；图仅在调用 `build_or_update_graph_tool` 或运行 `code-review-graph update` 时才做增量（只重扫改动文件，<2s）。带 `--auto-watch` 则用后台 watchdog 监听文件保存事件，自动增量更新并跑 post-processing（FTS/flows/communities）——所以 VSCode 里改完代码，图会随之刷新。它绑定**项目根**（server 启动时的 cwd 就近找 `.git`），每个项目用自己的 `.code-review-graph/graph.db`；依赖文件系统事件，在大仓库/网络挂载/某些容器文件系统上可能延迟或缺事件，此时用 `update` 兜底。改动 MCP 命令后需重启编辑器/CLI 才生效。
 
 > **不要**用 `uv run code-review-graph serve` 作为 MCP 命令：`uv run` 会在**目标项目**（cwd）解析项目环境，非 uv 项目会启动失败。绝对路径指向本仓库 `.venv` 是最稳妥的。
 
