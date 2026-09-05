@@ -496,6 +496,15 @@ uv run ruff check code_review_graph/          # lint
 >
 > 验证：在**任意非本仓库目录**运行 `claude mcp get code-review-graph`，应显示 `Scope: User config`、`Command` 指向上述绝对路径、`Status: ✓ Connected`；在 Claude Code 里输入 `/mcp` 也能看到连接状态。本仓库内因项目级 `.mcp.json`（`uvx`）优先，会显示 PyPI 版——这是预期行为，**其他项目**才用你配置的本地编辑版。
 
+> **Codex 同样可用（等价命令）：**
+>
+> ```bash
+> codex mcp add code-review-graph -- \
+>   /home/luyanfeng/luyanfeng/nano-code-review-graph/.venv/bin/code-review-graph serve
+> ```
+>
+> `codex mcp add` 没有 `--scope` 参数——它总是写入用户级 `~/.codex/config.toml`（等价于 Claude 的 `--scope user`）。验证：运行 `codex mcp list`，应看到 `code-review-graph` 状态为 `enabled`，`Command` 指向上述绝对路径、`Args` 为 `serve`。
+
 ```jsonc
 // Claude Code（全局）：~/.claude.json 顶层 mcpServers
 // 或运行：claude mcp add --scope user code-review-graph -- /absolute/path/to/code-review-graph/.venv/bin/code-review-graph serve
@@ -512,6 +521,7 @@ uv run ruff check code_review_graph/          # lint
 
 ```toml
 # Codex：~/.codex/config.toml
+# 或运行：codex mcp add code-review-graph -- /absolute/path/to/code-review-graph/.venv/bin/code-review-graph serve
 [mcp_servers.code-review-graph]
 command = "/absolute/path/to/code-review-graph/.venv/bin/code-review-graph"
 args = ["serve"]
