@@ -99,23 +99,10 @@ def get_community_func(
         store.close()
 
 
-# ---------------------------------------------------------------------------
-# Tool 15: get_architecture_overview  [EXPLORE]
-# ---------------------------------------------------------------------------
-
-
 _MINIMAL_COMMUNITY_FIELDS = ("id", "name", "size", "cohesion", "dominant_language")
 
 
 def _minimal_overview(overview: dict[str, Any]) -> dict[str, Any]:
-    """Compress overview for ``detail_level="minimal"``.
-
-    The full overview can exceed 600KB on medium repos because it embeds
-    every community's member list and every individual cross-community
-    edge. Minimal mode drops member lists and aggregates the edge list
-    to one row per community pair with a count and the top edge kinds —
-    enough to spot coupling smells without exploding token budgets.
-    """
     communities = [
         {k: c[k] for k in _MINIMAL_COMMUNITY_FIELDS if k in c}
         for c in overview.get("communities", [])
@@ -125,7 +112,6 @@ def _minimal_overview(overview: dict[str, Any]) -> dict[str, Any]:
     edge_pair_counts: Counter[tuple[int, int]] = Counter()
     edge_pair_kinds: dict[tuple[int, int], Counter[str]] = {}
     for e in overview.get("cross_community_edges", []):
-        # Use canonical (low, high) ordering so A↔B and B↔A aggregate together.
         a, b = e["source_community"], e["target_community"]
         pair = (a, b) if a <= b else (b, a)
         edge_pair_counts[pair] += 1
@@ -151,24 +137,6 @@ def get_architecture_overview_func(
     repo_root: str | None = None,
     detail_level: str = "minimal",
 ) -> dict[str, Any]:
-    """Generate an architecture overview based on community structure.
-
-    [EXPLORE] Builds a high-level view of the codebase architecture by
-    analyzing community boundaries and cross-community coupling.
-    Includes warnings for high coupling between communities.
-
-    Args:
-        repo_root: Repository root path. Auto-detected if omitted.
-        detail_level: "minimal" (default) drops community member lists
-                      and aggregates edges to one row per community pair
-                      (typical reduction: 600KB -> <5KB);
-                      "standard" returns the full overview including
-                      per-edge cross-community detail.
-
-    Returns:
-        Architecture overview with communities, cross-community edges,
-        and warnings.
-    """
     store, root = _get_store(repo_root)
     try:
         full_overview = get_architecture_overview(store)

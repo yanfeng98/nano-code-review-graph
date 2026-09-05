@@ -1890,10 +1890,7 @@ class GraphStore:
             results.extend(r["source_qualified"] for r in rows)
         return results
 
-    # --- Public edge access (for visualization etc.) ---
-
     def get_all_edges(self) -> list[GraphEdge]:
-        """Return all edges in the graph."""
         rows = self._conn.execute("SELECT * FROM edges").fetchall()
         return [self._row_to_edge(r) for r in rows]
 

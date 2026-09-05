@@ -1004,34 +1004,19 @@ def _is_test_community(name: str) -> bool:
 
 
 def get_architecture_overview(store: GraphStore) -> dict[str, Any]:
-    """Generate an architecture overview based on community structure.
-
-    Builds a node-to-community mapping, counts cross-community edges,
-    and generates warnings for high coupling.
-
-    Args:
-        store: The GraphStore instance.
-
-    Returns:
-        Dict with keys: communities, cross_community_edges, warnings.
-    """
     communities = get_communities(store)
 
-    # Build node -> community_id mapping
     node_to_community: dict[str, int] = {}
     for comm in communities:
         comm_id = comm.get("id", 0)
         for qn in comm.get("members", []):
             node_to_community[qn] = comm_id
 
-    # Count cross-community edges
     all_edges = store.get_all_edges()
     cross_edges: list[dict[str, Any]] = []
     cross_counts: Counter[tuple[int, int]] = Counter()
 
     for e in all_edges:
-        # TESTED_BY edges are expected cross-community coupling (test → code),
-        # not an architectural smell.
         if e.kind == "TESTED_BY":
             continue
         src_comm = node_to_community.get(e.source_qualified)
@@ -1051,15 +1036,12 @@ def get_architecture_overview(store: GraphStore) -> dict[str, Any]:
                 "target": _sanitize_name(e.target_qualified),
             })
 
-    # Generate warnings for high coupling, skipping test-dominated pairs.
     warnings: list[str] = []
     comm_name_map = {c.get("id", 0): c["name"] for c in communities}
     for (c1, c2), count in cross_counts.most_common():
         if count > 10:
             name1 = comm_name_map.get(c1, f"community-{c1}")
             name2 = comm_name_map.get(c2, f"community-{c2}")
-            # Skip pairs where either community is test-dominated — coupling
-            # between test and production code is expected, not architectural.
             if _is_test_community(name1) or _is_test_community(name2):
                 continue
             warnings.append(
