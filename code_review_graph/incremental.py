@@ -39,7 +39,7 @@ _PARSE_WORKER_STATE = threading.local()
 def _select_executor_kind() -> str:
     """Return 'process' or 'thread' for parallel parsing.
 
-    Defaults to ``process`` (the original behavior, fastest on Linux/macOS).
+    Defaults to ``process`` (the original behavior, fastest).
     Auto-switches to ``thread`` for an active MCP stdio server, where
     ``ProcessPoolExecutor`` workers can inherit the transport pipe/socket
     and prevent EOF shutdown.
@@ -568,8 +568,8 @@ def collect_all_files(
     for rel_path in candidates:
         if _should_ignore(rel_path, ignore_patterns):
             continue
-        # Skip paths that would exceed OS filename limits (macOS: 255 bytes
-        # per component, ~1024 total; Windows: 260 total).
+        # Skip paths that would exceed OS filename limits (e.g. 255 bytes
+        # per component).
         try:
             full_path = repo_root / rel_path
         except (OSError, ValueError):

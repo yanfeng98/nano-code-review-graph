@@ -454,7 +454,7 @@ CLI 标志优先级高于环境变量。当两者都未设置时，所有工具�
 
 **选项：**
 
-1. 从 **macOS Terminal.app**（或 iTerm）而非 IDE 的终端运行相同命令，然后重试 `pipx install .` 或 `pipx install "git+https://..."`。
+1. 从**外部终端**（而非 IDE 内嵌终端）运行相同命令，然后重试 `pipx install .` 或 `pipx install "git+https://..."`。
 2. 使用 **[uv](https://docs.astral.sh/uv/)** 从 checkout 安装 CLI（在许多情况下使用与 `pip` 不同的下载机制）：
 
    ```bash
@@ -463,19 +463,6 @@ CLI 标志优先级高于环境变量。当两者都未设置时，所有工具�
    ```
 
 3. 如需**在 clone 仓库中开发**而不进行全局安装，使用 `uv sync` 和 `uv run code-review-graph …`（或在 `uv sync` 后激活 `.venv`）。
-
-### Windows 配置问题（无效 JSON / 连接关闭）
-如果你使用 Windows 并通过 Claude Code 连接时遇到 `Invalid JSON: EOF while parsing` 或 `MCP error -32000: Connection closed`，不要在配置中使用 `cmd /c` 包装器。
-
-确保 `fastmcp` 更新到至少 `3.2.4+`。然后配置你的 `~/.claude.json` 直接执行 `.exe` 并通过配置传递 UTF-8 环境变量：
-
-```json
-"code-review-graph": {
-  "command": "C:\\path\\to\\your\\venv\\Scripts\\code-review-graph.exe",
-  "args": ["serve", "--repo", "C:\\path\\to\\your\\project"],
-  "env": { "PYTHONUTF8": "1" }
-}
-```
 
 ## 开发与分发
 
@@ -553,7 +540,7 @@ cd code-review-graph
 uv build   # 产出 dist/code_review_graph-<版本>-py3-none-any.whl 和 .tar.gz
 ```
 
-产物是**纯 Python 跨平台** wheel（Python 3.10+，任意 OS）。**接收方每台机器安装一次：**
+产物是**纯 Python** wheel（Python 3.10+）。**接收方每台机器安装一次：**
 
 ```bash
 pip install code_review_graph-<版本>-py3-none-any.whl

@@ -74,11 +74,9 @@ class TestFindRepoRoot:
         """No .git between ``sub`` and ``tmp_path`` -> None.
 
         Bounded with ``stop_at=tmp_path`` so the walk does not climb into
-        ancestors outside the test sandbox.  On Windows in particular,
-        ``tmp_path`` lives under ``C:/Users/<user>/AppData/Local/Temp/...``
-        and if the user has ``git init`` anywhere under their home (dotfiles,
-        chezmoi, etc.) the unbounded walk would find that ancestor .git and
-        the test would fail for reasons unrelated to the product.  See #241.
+        ancestors outside the test sandbox (e.g. a ``git init`` under the
+        user's home directory), which would fail for reasons unrelated to
+        the product.  See #241.
         """
         sub = tmp_path / "no_git"
         sub.mkdir()
@@ -330,12 +328,12 @@ class TestDataDir:
 
     def test_auto_gitignore_is_valid_utf8(self, tmp_path, monkeypatch):
         """Regression guard for #239 bug 1: the auto-generated .gitignore
-        must be written as UTF-8 on every platform.
+        must be written as UTF-8.
 
         Before the fix, ``write_text()`` was called without an encoding
         argument.  The header contains an em-dash (U+2014) which Python
-        writes using the system default codepage on Windows (cp1252 →
-        byte 0x97), producing a file that cannot be decoded as UTF-8.
+        writes using the platform default encoding, producing a file that
+        cannot be decoded as UTF-8.
         """
         monkeypatch.delenv("CRG_DATA_DIR", raising=False)
         from code_review_graph.incremental import get_data_dir
@@ -346,13 +344,13 @@ class TestDataDir:
         # The file must be valid UTF-8 — this is what actually broke.
         raw = gi.read_bytes()
         # The em-dash must be stored as the proper UTF-8 sequence (0xE2 0x80 0x94),
-        # not as the cp1252 single byte 0x97.
+        # not as a single non-UTF-8 byte.
         assert b"\xe2\x80\x94" in raw, (
             "auto-generated .gitignore is missing the UTF-8 em-dash; it was "
-            "probably written using the platform default codepage"
+            "probably written using the platform default encoding"
         )
         assert b"\x97" not in raw, (
-            "auto-generated .gitignore contains cp1252 byte 0x97 — indicates "
+            "auto-generated .gitignore contains a non-UTF-8 byte — indicates "
             "write_text was called without encoding='utf-8'"
         )
 

@@ -236,8 +236,8 @@ def _toml_str(value: object) -> str:
     """Render *value* as a TOML basic string.
 
     Backslashes and double quotes are escape characters in TOML basic
-    strings, so Windows paths like ``C:\\Users\\x`` must be escaped or
-    the file fails to parse on the next load. Control characters
+    strings, so paths containing backslashes or quotes must be escaped
+    or the file fails to parse on the next load. Control characters
     (U+0000-U+001F, U+007F) are forbidden unescaped by the TOML spec,
     so they are escaped too — ``tomllib`` rejects the file otherwise.
     """

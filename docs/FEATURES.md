@@ -6,7 +6,6 @@
 - **无需 fork 的自定义语言**：在你的 repo 中放入 `.code-review-graph/languages.toml`，即可索引 tree-sitter-language-pack 提供的任何 grammar——扩展名映射加 node-type 列表，经过校验和上限控制，内置语言始终优先。参见 [CUSTOM_LANGUAGES.md](CUSTOM_LANGUAGES.md)。
 - **docs/FAQ.md**：CRG 与 LSP、RAG、grep/agentic 搜索及相邻工具的对比；何时*不*该使用它；验证步骤；monorepo/worktree 与 registry 指引。
 - **贡献脚手架**：GitHub issue forms（bug/feature/platform）、镜像 CONTRIBUTING checklist 的 PR 模板，以及 pip + GitHub Actions 的 dependabot 配置。
-- **Windows 修复**：`daemon status` 不再以 WinError 87 崩溃（#511），CLI `detect-changes` 将 diff 路径映射为绝对原生路径，因此不再报告 0 个 functions（#528）。
 - **Provider 名称校验**：未知的 embedding provider 名称会抛出清晰的错误并列出有效 providers，而不是静默回退到本地模型。
 - **Store-leak 修复**：五个分析类 MCP tools 和 wiki-page tool 不再泄漏 SQLite 连接（try/finally `store.close()`）。
 - **`fastmcp<4` 上限**：下一个 fastmcp 主版本不再可能静默破坏 server。
@@ -25,7 +24,6 @@
 - **估算的 context savings**：Review、impact、detect-changes 和紧凑 architecture 响应包含微小的 `context_savings` 元数据（`estimated`、`saved_tokens`、`saved_percent`），适用于可以估算 baseline 的场景。
 - **默认紧凑的 architecture overview**：`get_architecture_overview_tool` 默认 `detail_level="minimal"`，以避免庞大的成员列表和逐 edge 的 payload。需要完整细节时使用 `detail_level="standard"`。
 - **受限的变更分析**：`CRG_MAX_CHANGED_FUNCS`、`CRG_MAX_TRANSITIVE_FRONTIER` 和 `CRG_TOOL_TIMEOUT` 帮助保持大型 MCP review 调用的响应性。
-- **Windows MCP 可靠性**：本地 embedding 模型在 Windows 上会在 FastMCP 启动 worker dispatch 之前预热，以避免语义搜索死锁。
 - **Parser 正确性**：Rust `#[test]` 和常见的 async test 属性现在会生成 `Test` nodes。
 - **Graph 查找正确性**：Review、impact 和 file-summary tools 将用户可见路径解析为存储的 graph 路径；`callers_of` 即使存在同文件 callers 时也会包含跨文件 callers。
 - **安装/运行时可靠性**：生成的 Codex/Claude hooks 会排空 stdin，wheel 中提供捆绑的文档，缺失的本地 embeddings 报告不可用状态。

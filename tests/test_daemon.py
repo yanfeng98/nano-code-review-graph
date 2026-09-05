@@ -43,8 +43,8 @@ def sample_config_file(tmp_path):
     (repo_b / ".git").mkdir()
 
     config = tmp_path / "watch.toml"
-    # as_posix() keeps hand-written TOML valid on Windows, where native
-    # backslash paths are invalid basic-string escapes.
+    # as_posix() keeps hand-written TOML valid (backslash paths are invalid
+    # basic-string escapes).
     config.write_text(
         f"[daemon]\n"
         f'session_name = "test-session"\n'
@@ -175,19 +175,19 @@ class TestConfigParsing:
         assert loaded.repos[0].path == str(repo.resolve())
 
     def test_serialize_toml_escapes_backslashes_and_quotes(self):
-        """Windows paths and quotes must survive serialize -> parse."""
+        """Paths containing backslashes and quotes must survive serialize -> parse."""
         from code_review_graph.daemon import tomllib
 
         config = DaemonConfig(
             session_name='quo"ted',
-            log_dir=Path(r"C:\Users\example\logs"),
+            log_dir=Path(r"data\backup\logs"),
             poll_interval=2,
-            repos=[WatchRepo(path=r"C:\Users\example\repo", alias="win")],
+            repos=[WatchRepo(path=r"data\backup\repo", alias="bk")],
         )
         parsed = tomllib.loads(_serialize_toml(config))
         assert parsed["daemon"]["session_name"] == 'quo"ted'
-        assert parsed["daemon"]["log_dir"] == str(Path(r"C:\Users\example\logs"))
-        assert parsed["repos"][0]["path"] == r"C:\Users\example\repo"
+        assert parsed["daemon"]["log_dir"] == str(Path(r"data\backup\logs"))
+        assert parsed["repos"][0]["path"] == r"data\backup\repo"
 
     def test_serialize_toml_escapes_control_characters(self):
         """TOML-forbidden control characters must survive serialize -> parse."""
@@ -302,7 +302,6 @@ class TestPIDManagement:
         clear_pid(pid_path)
         assert not pid_path.exists()
 
-    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX os.kill branch")
     @patch("os.kill")
     def test_is_daemon_running_alive(self, mock_kill, pid_path):
         """os.kill(pid, 0) succeeds — daemon is running."""
@@ -315,11 +314,10 @@ class TestPIDManagement:
     def test_is_daemon_running_dead(self, mock_alive, pid_path):
         """A dead PID clears the stale PID file and returns False.
 
-        pid_alive is patched at the module seam rather than os.kill: on
-        Windows the liveness check goes through OpenProcess, so an os.kill
-        mock is bypassed and the test would probe the runner's real PID
-        space, where small PIDs like 9999 are routinely reused (flaked in
-        CI). The os.kill mapping itself is covered by TestPidAlive.
+        pid_alive is patched at the module seam so the liveness check is
+        deterministic: probing the runner's real PID space would risk small
+        PIDs like 9999 being routinely reused (flaked in CI). The os.kill
+        path itself is covered by TestPidAlive.
         """
         write_pid(9999, pid_path)
         assert is_daemon_running(pid_path) is False
@@ -327,14 +325,12 @@ class TestPIDManagement:
         assert not pid_path.exists()
         mock_alive.assert_called_once_with(9999)
 
-    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX os.kill branch")
     @patch("os.kill", side_effect=OSError(87, "The parameter is incorrect"))
     def test_is_daemon_running_oserror_treated_as_not_alive(self, mock_kill, pid_path):
         """Regression #511: a bare OSError must not propagate out.
 
-        On Windows ``os.kill(pid, 0)`` raises OSError(WinError 87) for alive
-        PIDs outside the caller's console group; the liveness helper must
-        swallow unexpected OSErrors instead of crashing ``daemon status``.
+        A bare ``os.kill`` OSError for a live PID must be swallowed by the
+        liveness helper instead of crashing ``daemon status``.
         """
         write_pid(4321, pid_path)
         assert is_daemon_running(pid_path) is False
@@ -369,7 +365,6 @@ class TestPidAlive:
         proc.wait(timeout=30)
         assert pid_alive(proc.pid) is False
 
-    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX os.kill branch")
     @patch("os.kill", side_effect=PermissionError)
     def test_pid_alive_permission_error_means_alive(self, mock_kill):
         """EPERM means the process exists but is owned by another user."""
@@ -377,7 +372,6 @@ class TestPidAlive:
 
         assert pid_alive(12345) is True
 
-    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX os.kill branch")
     @patch("os.kill", side_effect=OSError(87, "The parameter is incorrect"))
     def test_pid_alive_unexpected_oserror_means_not_alive(self, mock_kill):
         """Regression #511: unexpected OSError is not-alive-safe, no crash."""
@@ -991,13 +985,12 @@ class TestDaemonCLI:
             assert "alive" in printed
             assert "dead" not in printed
 
-    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX os.kill branch")
     def test_handle_status_survives_oserror_from_liveness_check(self, tmp_path):
         """Regression #511: 'daemon status' must not crash on OSError.
 
         Before the fix, the child-liveness loop used bare ``os.kill(pid, 0)``
-        catching only ProcessLookupError/PermissionError, so the OSError
-        (WinError 87) Windows raises for alive PIDs crashed the command.
+        catching only ProcessLookupError/PermissionError, so an unexpected
+        OSError for a live PID crashed the command.
         """
         from code_review_graph.daemon_cli import _handle_status
 

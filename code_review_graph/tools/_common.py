@@ -70,7 +70,7 @@ def graph_provenance(repo_root: str | None = None) -> dict[str, Any] | None:
             return None
 
         # ``as_uri`` escapes URI-significant path characters before the
-        # read-only mode query is appended. It also handles Windows drives.
+        # read-only mode query is appended.
         database_uri = f"{db_path.resolve().as_uri()}?mode=ro"
         # Provenance is optional and reads only three local metadata rows.
         # Allow a brief commit boundary, but never inherit sqlite3's 5-second

@@ -51,10 +51,10 @@ python -m code_review_graph build
 
 ```bash
 pip show code-review-graph | grep Location
-# 找到同级的 `bin/` 目录；在 macOS 用户安装中通常是
-# ~/Library/Python/3.X/bin。把它加到你的 shell rc：
-echo 'export PATH="$HOME/Library/Python/3.12/bin:$PATH"' >> ~/.zshrc
-source ~/.zshrc
+# 找到同级的 `bin/` 目录；在 Linux 用户安装中通常是 ~/.local/bin。
+# 把它加到你的 shell rc：
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
 ```
 
 ### 3. code-review-graph 是项目级还是用户级？
@@ -104,7 +104,7 @@ code-review-graph install          # 重写 .mcp.json 和 hook 路径
 1. **你在 `install` 之后没有重启 Claude Code。** Claude Code 在启动时读取 `.mcp.json`——如果你在某个 session 里运行了 `install`，请完全退出并重新打开 Claude Code，让 MCP server 注册。
 2. **新 session 的 `cwd` 是另一个目录。** MCP server 以 `cwd=<project>` 启动，并从那里读取 `.code-review-graph/graph.db`。如果你的新 session 是在父文件夹或其他项目打开的，它找不到你构建的 graph。
 3. **你运行了 `build` 但没有运行 `install`。** `build` 创建 `graph.db`；`install` 才是通过 `.mcp.json` 把 MCP server 注册到 Claude Code 的命令。两者都需要。
-4. **MCP server 在启动时崩溃。** 在 Claude Code 内运行 `/mcp` 查看 server 状态，或在 macOS 上检查 `~/Library/Logs/Claude/mcp*.log`。
+4. **MCP server 在启动时崩溃。** 在 Claude Code 内运行 `/mcp` 查看 server 状态，或在 Linux 上检查 `~/.claude/logs/mcp*.log`。
 
 **快速检查清单：**
 
@@ -156,15 +156,6 @@ Graph 使用带 WAL 模式的 SQLite。如果看到锁错误：
 - 检查 `python -m code_review_graph serve` 能否无错误运行（本 fork 不发布到 PyPI，请勿用 `uvx code-review-graph`）
 - 如果使用自定义 `.mcp.json`，确保 `command`/`args` 指向本仓库可导入的包（`python -m code_review_graph serve`，绝对解释器路径最稳）
 - 重新运行 `code-review-graph install` 以重新生成配置
-
-## Windows / WSL
-
-- 如果 `daemon status` 以 WinError 87 崩溃（#511），或 CLI `detect-changes` 在 Windows 上映射出 0 个 functions（#528），升级到 v2.3.6+——两者都在那里修复
-- 向 MCP tools 传 `repo_root` 时，路径中使用正斜杠
-- 在 WSL 中，确保 `uv` 安装在 WSL 内部（而非 Windows 版本）：`curl -LsSf https://astral.sh/uv/install.sh | sh`
-- 如果安装后找不到 `uv`，把 `~/.cargo/bin` 加到你的 PATH
-- 由于文件系统事件限制，WSL1 上的文件监听（`code-review-graph watch`）可能有延迟；推荐使用 WSL2
-- 在原生 Windows（非 WSL）上，可能需要启用长路径支持：`git config --system core.longpaths true`
 
 ## Community detection 需要 igraph
 

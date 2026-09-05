@@ -60,7 +60,7 @@ DB 锁：SQLite WAL 模式，自动恢复。一次只允许一个 build。
 大型 repos：首次 build 30-60s。增量 <2s。向 .code-review-graphignore 添加模式。
 过期 graph：运行 code-review-graph update（或调用 build_or_update_graph_tool）。
 缺失 nodes：检查语言支持和 ignore 模式。使用 full_rebuild=True。
-Windows/WSL：路径中使用正斜杠。确保 uv 在 WSL 的 PATH 上。
+路径：向 MCP tools 传 repo_root 时使用正斜杠；确保 uv 在 PATH 上。
 </section>
 
 **对 AI 编码 agents 的指令（始终遵循）：**

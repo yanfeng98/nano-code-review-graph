@@ -1,6 +1,5 @@
 """Tests for MCP tool functions."""
 
-import os
 import tempfile
 import time
 from pathlib import Path
@@ -34,7 +33,7 @@ from code_review_graph.tools import (
 class TestTools:
     def setup_method(self):
         self.tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.tmp.close()  # release the handle before GraphStore reopens it on Windows
+        self.tmp.close()  # release the handle before GraphStore reopens it
         self.store = GraphStore(self.tmp.name)
         self._seed_data()
 
@@ -922,7 +921,7 @@ class TestFindLargeFunctions:
 
     def setup_method(self):
         self.tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.tmp.close()  # release the handle before GraphStore reopens it on Windows
+        self.tmp.close()  # release the handle before GraphStore reopens it
         self.store = GraphStore(self.tmp.name)
         # Create functions of various sizes
         self.store.upsert_node(NodeInfo(
@@ -1027,8 +1026,8 @@ class TestFlowTools:
     def setup_method(self):
         """Set up a temp dir with .git and .code-review-graph, seed data, build flows."""
         self.tmp_dir = tempfile.mkdtemp()
-        # Resolve symlinks (macOS /var -> /private/var) so paths match
-        # what _validate_repo_root returns via Path.resolve().
+        # Resolve symlinks so paths match what _validate_repo_root returns
+        # via Path.resolve().
         self.root = Path(self.tmp_dir).resolve()
 
         # Create markers so _validate_repo_root accepts this directory
@@ -1687,7 +1686,7 @@ class TestComputeSummaries:
 
     def setup_method(self):
         self.tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.tmp.close()  # release the handle before GraphStore reopens it on Windows
+        self.tmp.close()  # release the handle before GraphStore reopens it
         self.store = GraphStore(self.tmp.name)
         self._seed_graph()
 
@@ -2231,22 +2230,12 @@ class TestGraphProvenance:
 
     @pytest.mark.parametrize("repo_name", [
         "repo %40 #fragment",
-        "repo [windows-like] %23 #hash",
+        "repo [uri-significant] %23 #hash",
     ])
     def test_reads_metadata_from_uri_significant_paths(self, tmp_path, repo_name):
         repo = self._make_repo(
             tmp_path, {"last_updated": "2000-01-02T03:04:05"}, repo_name,
         )
-        provenance = common_module.graph_provenance(str(repo))
-        assert provenance["updated_at"] == "2000-01-02T03:04:05"
-
-    @pytest.mark.skipif(os.name != "nt", reason="native Windows path semantics")
-    def test_reads_metadata_from_native_windows_path(self, tmp_path):
-        repo = self._make_repo(
-            tmp_path, {"last_updated": "2000-01-02T03:04:05"},
-            "repo %23 #windows",
-        )
-        assert "\\" in str(repo)
         provenance = common_module.graph_provenance(str(repo))
         assert provenance["updated_at"] == "2000-01-02T03:04:05"
 

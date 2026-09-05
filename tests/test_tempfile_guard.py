@@ -1,4 +1,4 @@
-"""Cross-platform guards for Windows-only test-suite constraints."""
+"""Guard: named temp files must be closed before GraphStore reopens them."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ def _references_temp_name(node: ast.AST, target: str) -> bool:
 
 
 def test_delete_false_named_tempfiles_close_before_graphstore_reopens_them():
-    """Windows forbids reopening a NamedTemporaryFile while its handle is open."""
+    """A NamedTemporaryFile must be closed before GraphStore reopens it."""
     failures: list[str] = []
     tests_dir = Path(__file__).parent
 

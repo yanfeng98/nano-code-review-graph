@@ -170,10 +170,6 @@ def test_get_staged_and_unstaged_uses_rename_destination(
     assert get_staged_and_unstaged(git_repo_with_unicode_path) == [destination]
 
 
-@pytest.mark.skipif(
-    sys.platform == "win32",
-    reason="Windows filenames cannot contain '>' or newline characters",
-)
 def test_git_discovery_preserves_literal_separator_characters(
     git_repo_with_unicode_path: Path,
 ) -> None:

@@ -72,9 +72,9 @@ LOCAL_DEFAULT_MODEL = "all-MiniLM-L6-v2"
 # Populated by ``LocalEmbeddingProvider._get_model`` on first lazy load. Sharing the
 # loaded model across ``LocalEmbeddingProvider`` instances avoids re-importing
 # ``sentence_transformers`` + ``torch`` from worker threads, which deadlocks
-# ``semantic_search_nodes_tool`` on Windows stdio MCP (#385 fixed the peer
-# tools via ``asyncio.to_thread``; this cache fixes the remaining case where
-# torch DLL / OpenMP init runs inside an executor thread).
+# ``semantic_search_nodes_tool`` under stdio MCP (#385 fixed the peer tools
+# via ``asyncio.to_thread``; this cache fixes the remaining case where
+# native torch/OpenMP init runs inside an executor thread).
 _MODEL_CACHE: dict[str, Any] = {}
 _MODEL_INIT_LOCK = threading.RLock()
 

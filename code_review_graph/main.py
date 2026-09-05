@@ -132,10 +132,9 @@ async def build_or_update_graph_tool(
 
     Runs the blocking full_build / incremental_update work in a thread
     via ``asyncio.to_thread`` so the stdio event loop stays responsive.
-    Without this wrapper, long builds deadlocked on Windows because
+    Without this wrapper, long builds deadlocked because
     ``ProcessPoolExecutor`` (used by parallel parsing) interacted badly
-    with the sync handler blocking the only event-loop thread. See:
-    #46, #136.
+    with the sync handler blocking the only event-loop thread. See: #46, #136.
 
     Args:
         full_rebuild: If True, re-parse all files. Default: False (incremental).
@@ -394,7 +393,7 @@ async def embed_graph_tool(
     Runs the blocking sentence-transformers / HTTP inference in a
     thread via ``asyncio.to_thread`` so the stdio event loop stays
     responsive — without this wrapper, embedding a large graph would
-    silently hang the MCP server on Windows. See: #46, #136.
+    silently hang the MCP server. See: #46, #136.
 
     Args:
         repo_root: Repository root path. Auto-detected if omitted.

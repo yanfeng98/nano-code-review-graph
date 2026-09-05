@@ -151,8 +151,8 @@ class TestServeMainTransport:
 class TestLongRunningToolsAreAsync:
     """Long-running MCP tools must be registered as coroutines so the
     asyncio event loop stays responsive while the work runs in a
-    background thread via ``asyncio.to_thread``. Without this, Windows
-    MCP clients hang on ``build_or_update_graph_tool`` and
+    background thread via ``asyncio.to_thread``. Without this, MCP
+    clients hang on ``build_or_update_graph_tool`` and
     ``embed_graph_tool`` — see #46, #136.
     """
 
@@ -204,7 +204,7 @@ class TestLongRunningToolsAreAsync:
         assert not missing, f"heavy tool(s) not registered at all: {missing}"
         assert not not_async, (
             f"these tools must be async but were registered as sync, "
-            f"which will hang the stdio event loop on Windows: {not_async}"
+            f"which will hang the stdio event loop: {not_async}"
         )
 
     def test_heavy_tool_source_uses_to_thread(self):
@@ -220,7 +220,7 @@ class TestLongRunningToolsAreAsync:
             source = inspect.getsource(underlying)
             assert "asyncio.to_thread" in source, (
                 f"{tool_name} must call asyncio.to_thread to offload its "
-                f"blocking work; otherwise Windows MCP clients will hang. "
+                f"blocking work; otherwise the MCP client will hang. "
                 f"See #46, #136."
             )
 

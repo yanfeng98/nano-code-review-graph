@@ -354,9 +354,9 @@ def analyze_changes(
     # Compute changed ranges if not provided.
     if changed_ranges is None and repo_root is not None:
         # Diff keys are forward-slash paths relative to the repo root, but
-        # the graph stores absolute native paths. Remap so lookups work on
-        # Windows, where the LIKE-suffix fallback cannot bridge
-        # "src/app.py" to "C:\repo\src\app.py" (#528). Keys that are
+        # the graph stores absolute native paths. Remap relative keys to
+        # absolute native paths when the LIKE-suffix fallback cannot bridge
+        # "src/app.py" to the stored absolute path (#528). Keys that are
         # already absolute pass through pathlib joining unchanged. The
         # explicit changed_ranges path (MCP) is untouched — tools/review.py
         # remaps before calling, and remapping twice would corrupt keys.

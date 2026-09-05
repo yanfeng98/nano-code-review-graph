@@ -24,7 +24,7 @@ from code_review_graph.parser import EdgeInfo, NodeInfo
 class TestChanges:
     def setup_method(self):
         self.tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.tmp.close()  # release the handle before GraphStore reopens it on Windows
+        self.tmp.close()  # release the handle before GraphStore reopens it
         self.store = GraphStore(self.tmp.name)
 
     def teardown_method(self):
@@ -447,7 +447,7 @@ class TestChanges:
             patch("code_review_graph.tools.review.get_changed_files", return_value=[]),
             patch("code_review_graph.tools.review.get_staged_and_unstaged", return_value=[]),
             # Prevent the tool from closing our shared store, then restore the
-            # real method so teardown releases the database handle on Windows.
+            # real method so teardown releases the database handle.
             patch.object(self.store, "close"),
         ):
             mock_get_store.return_value = (self.store, Path("/fake/repo"))
@@ -490,7 +490,7 @@ class TestAnalyzeChangesFunctionCap:
 
     def setup_method(self):
         self.tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.tmp.close()  # release the handle before GraphStore reopens it on Windows
+        self.tmp.close()  # release the handle before GraphStore reopens it
         self.store = GraphStore(self.tmp.name)
 
     def teardown_method(self):
@@ -533,15 +533,15 @@ class TestAnalyzeChangesInternalParseRemap:
 
     The graph stores absolute native paths (see ``full_build``), but
     ``parse_diff_ranges`` keys are forward-slash paths relative to the
-    repo root.  On Windows the LIKE-suffix fallback can never bridge
-    "src/app.py" to "C:\\repo\\src\\app.py", so analyze_changes must remap
-    internally-parsed diff keys to absolute native paths — mirroring what
-    tools/review.py already does for the MCP path.
+    repo root.  When the LIKE-suffix fallback cannot bridge a relative key
+    to an absolute native path, analyze_changes must remap internally-parsed
+    diff keys to absolute native paths — mirroring what tools/review.py
+    already does for the MCP path.
     """
 
     def setup_method(self):
         self.tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.tmp.close()  # release the handle before GraphStore reopens it on Windows
+        self.tmp.close()  # release the handle before GraphStore reopens it
         self.store = GraphStore(self.tmp.name)
 
     def teardown_method(self):

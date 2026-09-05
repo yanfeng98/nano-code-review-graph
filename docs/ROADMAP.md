@@ -8,7 +8,6 @@
 - **无需 fork 的自定义语言**：`.code-review-graph/languages.toml` 把扩展名和 node types 映射到任意 tree-sitter-language-pack grammar（`docs/CUSTOM_LANGUAGES.md`）
 - **`docs/FAQ.md`**：与 LSP、RAG、grep/agentic 搜索及相邻工具的对比，外加何时不应使用的指导
 - **贡献脚手架**：issue forms、PR 模板、dependabot 配置
-- **Windows 修复**：针对 `daemon status`（#511）和 `detect-changes` 路径映射（#528）
 - **可靠性**：embedding provider-name 校验、analysis/wiki tools 中的 SQLite store-leak 修复、`fastmcp<4` 上限、通过 `git rev-parse --git-path hooks` 安装 hooks
 
 ### v2.3.5
@@ -24,7 +23,6 @@
 - 为 review、impact、detect-changes 和紧凑 architecture 响应提供的估算 context savings 元数据
 - 默认紧凑的 architecture overview，以减少大型 MCP payloads
 - 面向大型 diffs 的受限变更分析控制（`CRG_MAX_CHANGED_FUNCS`、`CRG_MAX_TRANSITIVE_FRONTIER`、`CRG_TOOL_TIMEOUT`）
-- Windows FastMCP 语义搜索死锁缓解
 - Rust test 检测和路径查找正确性修复
 - 为 2.3.4 发布刷新的文档和发布元数据
 
@@ -32,7 +30,7 @@
 - 跨源语言、shell 脚本、notebooks 和 SFC 风格文件的广泛 parser 覆盖扩展
 - 额外 AI 编码 platform 安装目标，包括 Gemini CLI、Qwen、Kiro、Qoder 和 GitHub Copilot 变体
 - localhost 上的 Streamable HTTP MCP transport
-- Parser/resolver、Windows、FastMCP 和 daemon 可靠性修复
+- Parser/resolver、FastMCP 和 daemon 可靠性修复
 - Community PR 扫描和 VS Code 无障碍改进
 
 ### v2.2.0

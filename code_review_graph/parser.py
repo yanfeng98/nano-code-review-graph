@@ -1244,9 +1244,9 @@ class CodeParser:
             #!/usr/bin/bash -e
 
         Only the basename of the interpreter is consulted.  Trailing flags
-        after the interpreter are ignored.  Windows-style ``\r\n`` line
-        endings are handled.  Binary files read as garbage bytes simply
-        fail the ``#!`` prefix check and return ``None``.
+        after the interpreter are ignored.  CRLF ``\r\n`` line endings are
+        handled.  Binary files read as garbage bytes simply fail the ``#!``
+        prefix check and return ``None``.
         """
         if head is None:
             try:
@@ -5389,8 +5389,8 @@ class CodeParser:
         else:
             resolved = self._do_resolve_module(module, file_path, language)
             if resolved is not None:
-                # Resolution walks the real filesystem, so on Windows the
-                # raw result uses backslashes; identity must not (#774).
+                # Resolution walks the real filesystem, so the returned path
+                # uses native separators; normalize so identity is stable (#774).
                 resolved = normalize_file_path(resolved)
             if len(self._module_file_cache) >= self._MODULE_CACHE_MAX:
                 self._module_file_cache.clear()
@@ -6733,4 +6733,3 @@ class CodeParser:
                     if inner.type == "identifier":
                         return inner.text.decode("utf-8", errors="replace")
         return None
-

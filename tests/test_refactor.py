@@ -23,7 +23,7 @@ class TestRenamePreview:
 
     def setup_method(self):
         self.tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.tmp.close()  # release the handle before GraphStore reopens it on Windows
+        self.tmp.close()  # release the handle before GraphStore reopens it
         self.store = GraphStore(self.tmp.name)
         self._seed()
 
@@ -142,7 +142,7 @@ class TestFindDeadCode:
 
     def setup_method(self):
         self.tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.tmp.close()  # release the handle before GraphStore reopens it on Windows
+        self.tmp.close()  # release the handle before GraphStore reopens it
         self.store = GraphStore(self.tmp.name)
         self._seed()
 
@@ -561,7 +561,7 @@ class TestSuggestRefactorings:
 
     def setup_method(self):
         self.tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.tmp.close()  # release the handle before GraphStore reopens it on Windows
+        self.tmp.close()  # release the handle before GraphStore reopens it
         self.store = GraphStore(self.tmp.name)
         self._seed()
 
@@ -846,7 +846,7 @@ class TestFindDeadCodeWithReferences:
 
     def setup_method(self):
         self.tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.tmp.close()  # release the handle before GraphStore reopens it on Windows
+        self.tmp.close()  # release the handle before GraphStore reopens it
         self.store = GraphStore(self.tmp.name)
         self._seed()
 
@@ -934,7 +934,7 @@ class TestFindDeadCodeWithTestedBy:
 
     def setup_method(self):
         self.tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.tmp.close()  # release the handle before GraphStore reopens it on Windows
+        self.tmp.close()  # release the handle before GraphStore reopens it
         self.store = GraphStore(self.tmp.name)
         self._seed()
 
@@ -1049,7 +1049,7 @@ class TestFindDeadCodeModuleScope:
 
     def setup_method(self):
         self.tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.tmp.close()  # release the handle before GraphStore reopens it on Windows
+        self.tmp.close()  # release the handle before GraphStore reopens it
         self.store = GraphStore(self.tmp.name)
         self.parser = CodeParser()
 

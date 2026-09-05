@@ -393,8 +393,8 @@ class TestDetectChangesEndToEnd:
 
     The graph stores absolute native paths, but the CLI path let
     analyze_changes parse the diff internally, producing forward-slash
-    relative keys that never matched on Windows.  This exercises the full
-    pipeline on a real tmp git repo with a committed change.
+    relative keys that never matched the stored absolute paths.  This
+    exercises the full pipeline on a real tmp git repo with a committed change.
     """
 
     @staticmethod

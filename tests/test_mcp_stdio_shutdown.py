@@ -10,8 +10,6 @@ import sys
 import time
 from pathlib import Path
 
-import pytest
-
 
 def _send(proc: subprocess.Popen[str], message: dict) -> None:
     assert proc.stdin is not None
@@ -44,7 +42,6 @@ def _read_response(
     raise AssertionError(f"MCP response {request_id} did not arrive within {timeout}s")
 
 
-@pytest.mark.skipif(os.name == "nt", reason="select() cannot poll Windows pipes")
 def test_stdio_server_parallel_build_then_eof_exits_cleanly(tmp_path):
     """The real stdio server must build in parallel and exit cleanly on EOF."""
     (tmp_path / ".git").mkdir()

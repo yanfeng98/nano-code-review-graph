@@ -22,7 +22,7 @@ def _get_signature(store, qualified_name):
 class TestRunPostProcessing:
     def setup_method(self):
         self.tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.tmp.close()  # release the handle before GraphStore reopens it on Windows
+        self.tmp.close()  # release the handle before GraphStore reopens it
         self.store = GraphStore(self.tmp.name)
         self._seed_data()
 
@@ -176,7 +176,7 @@ class TestRunPostProcessing:
 
     def test_empty_store_no_crash(self):
         empty_tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        empty_tmp.close()  # release the handle before GraphStore reopens it on Windows
+        empty_tmp.close()  # release the handle before GraphStore reopens it
         empty_store = GraphStore(empty_tmp.name)
         try:
             result = run_post_processing(empty_store)
@@ -216,7 +216,7 @@ class TestRunPostProcessing:
 class TestPostProcessingStepIsolation:
     def setup_method(self):
         self.tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.tmp.close()  # release the handle before GraphStore reopens it on Windows
+        self.tmp.close()  # release the handle before GraphStore reopens it
         self.store = GraphStore(self.tmp.name)
         self.store.upsert_node(
             NodeInfo(

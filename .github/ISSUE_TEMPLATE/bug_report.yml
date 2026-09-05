@@ -24,10 +24,7 @@ body:
     attributes:
       label: Operating system
       options:
-        - macOS
         - Linux
-        - Windows
-        - Other (describe in "Additional context")
     validations:
       required: true
   - type: input
