@@ -44,17 +44,12 @@ _MOCK_NAME_RE = re.compile(
     re.IGNORECASE,
 )
 
-# ---------------------------------------------------------------------------
-# Thread-safe pending refactors storage
-# ---------------------------------------------------------------------------
-
 _refactor_lock = threading.Lock()
 _pending_refactors: dict[str, dict] = {}
-REFACTOR_EXPIRY_SECONDS = 600  # 10 minutes
+REFACTOR_EXPIRY_SECONDS = 600
 
 
 def _cleanup_expired() -> int:
-    """Remove expired refactors from the pending dict.  Returns count removed."""
     now = time.time()
     expired = [
         rid for rid, r in _pending_refactors.items()
@@ -64,28 +59,12 @@ def _cleanup_expired() -> int:
         del _pending_refactors[rid]
     return len(expired)
 
-
-# ---------------------------------------------------------------------------
-# 1. rename_preview
-# ---------------------------------------------------------------------------
-
-
 def rename_preview(
     store: GraphStore,
     old_name: str,
     new_name: str,
 ) -> Optional[dict[str, Any]]:
-    """Build a rename edit list for *old_name* -> *new_name*.
-
-    Finds the node via ``store.search_nodes(old_name)``, collects
-    definition and reference sites, generates a unique ``refactor_id``,
-    and stores the preview in the thread-safe ``_pending_refactors`` dict.
-
-    Returns:
-        A refactor preview dict, or ``None`` if the node is not found.
-    """
     candidates = store.search_nodes(old_name, limit=10)
-    # Pick the best match: prefer exact name match.
     node = None
     for c in candidates:
         if c.name == old_name:
@@ -99,7 +78,6 @@ def rename_preview(
 
     edits: list[dict[str, Any]] = []
 
-    # --- Definition site ---
     edits.append({
         "file": node.file_path,
         "line": node.line_start,
@@ -108,7 +86,6 @@ def rename_preview(
         "confidence": "high",
     })
 
-    # --- Call sites (CALLS edges targeting this node) ---
     call_edges = store.get_edges_by_target(node.qualified_name)
     for edge in call_edges:
         if edge.kind == "CALLS":
@@ -120,7 +97,6 @@ def rename_preview(
                 "confidence": "high",
             })
 
-    # Also search by bare name for unqualified edges.
     bare_edges = store.search_edges_by_target_name(
         old_name,
         kind="CALLS",
@@ -139,7 +115,6 @@ def rename_preview(
             })
             seen.add(key)
 
-    # --- Import sites (IMPORTS_FROM edges targeting this node) ---
     import_edges = store.get_edges_by_target(node.qualified_name)
     for edge in import_edges:
         if edge.kind == "IMPORTS_FROM":
@@ -154,7 +129,6 @@ def rename_preview(
                 })
                 seen.add(key)
 
-    # --- Stats ---
     stats = {"high": 0, "medium": 0, "low": 0}
     for e in edits:
         stats[e["confidence"]] += 1

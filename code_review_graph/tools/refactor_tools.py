@@ -15,10 +15,6 @@ from ..refactor import (
 )
 from ._common import _get_store, _validate_repo_root
 
-# ---------------------------------------------------------------------------
-# Tool 17: refactor_tool  [REFACTOR]
-# ---------------------------------------------------------------------------
-
 
 def refactor_func(
     mode: str = "rename",
@@ -28,25 +24,6 @@ def refactor_func(
     file_pattern: str | None = None,
     repo_root: str | None = None,
 ) -> dict[str, Any]:
-    """Unified refactoring entry point.
-
-    [REFACTOR] Supports three modes:
-    - ``rename``: Preview renaming a symbol (requires *old_name* and
-      *new_name*).
-    - ``dead_code``: Find unreferenced functions/classes.
-    - ``suggest``: Get community-driven refactoring suggestions.
-
-    Args:
-        mode: One of ``"rename"``, ``"dead_code"``, or ``"suggest"``.
-        old_name: (rename mode) Current symbol name.
-        new_name: (rename mode) Desired new name.
-        kind: (dead_code mode) Optional node kind filter.
-        file_pattern: (dead_code mode) Optional file path substring filter.
-        repo_root: Repository root path. Auto-detected if omitted.
-
-    Returns:
-        Mode-specific results dict.
-    """
     valid_modes = {"rename", "dead_code", "suggest"}
     if mode not in valid_modes:
         return {
@@ -103,7 +80,7 @@ def refactor_func(
             )
             return result
 
-        else:  # suggest
+        else:
             suggestions = suggest_refactorings(store)
             result = {
                 "status": "ok",

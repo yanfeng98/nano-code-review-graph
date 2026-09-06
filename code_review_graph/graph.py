@@ -519,22 +519,6 @@ class GraphStore:
     def search_edges_by_target_name(
         self, name: str, kind: str = "CALLS", language: str | None = None,
     ) -> list[GraphEdge]:
-        """Search for edges where target_qualified matches an unqualified name.
-
-        CALLS edges often store unqualified target names (e.g. ``generateTestCode``)
-        rather than fully qualified ones (``file.ts::generateTestCode``).  This
-        method finds those edges by exact match on the plain function name so that
-        reverse call tracing (callers_of) works even when qualified-name lookup
-        returns nothing.
-
-        When ``language`` is given, only edges whose source node has a compatible
-        language are returned. JavaScript, TypeScript, and TSX form one family
-        because calls and inheritance routinely cross those source types (JSX is
-        stored as JavaScript; Astro as TypeScript). Other languages require an
-        exact match. Bare names are ambiguous across the whole graph, so without
-        this filter a common method name like ``clone`` can match a same-named
-        method in an unrelated language (#708).
-        """
         return list(self.iter_edges_by_target_name(name, kind=kind, language=language))
 
     def iter_edges_by_target_name(
